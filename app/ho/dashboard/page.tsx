@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { FranchiseSalesBarChart } from "@/components/dashboard/FranchiseSalesBarChart";
+import { ProductCategoryDonutChart } from "@/components/dashboard/ProductCategoryDonutChart";
 import { StatusBadge } from "@/components/ui/Badge";
 import {
   Building2,
@@ -81,141 +83,78 @@ export default function HeadOfficeDashboard() {
       {/* Multi-Franchise KPI Grid (Matching Section 3.2 & Mockup 2) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          title="Total Franchises"
+          title="Franchises"
           value={data?.totalFranchises ?? 12}
           icon={Building2}
-          trend="+2 New"
-          subtitle="All active & compliant"
+          trend="+ 2"
+          isPositiveTrend={true}
+          colorScheme="blue"
         />
         <KpiCard
-          title="Consolidated Leads"
+          title="Total Leads"
           value={data?.totalLeads ?? 428}
           icon={Users}
-          trend="+18%"
-          subtitle="Across all territories"
+          trend="+ 18%"
+          isPositiveTrend={true}
+          colorScheme="sky"
         />
         <KpiCard
-          title="Active Opportunities"
+          title="Opportunities"
           value={data?.totalOpps ?? 186}
           icon={Target}
-          trend="+12%"
-          subtitle="In pipeline"
+          trend="+ 16%"
+          isPositiveTrend={true}
+          colorScheme="emerald"
         />
         <KpiCard
-          title="Total Group Sales"
+          title="Total Sales"
           value={data?.totalSales ?? "₹48.7 L"}
           icon={DollarSign}
-          trend="+22%"
-          highlight={true}
-          subtitle="Current month achieved"
+          trend="+ 22%"
+          isPositiveTrend={true}
+          colorScheme="purple"
         />
         <KpiCard
-          title="Pending Collections"
+          title="Pending Payments"
           value={data?.pendingPayments ?? "₹12.4 L"}
           icon={Clock}
-          subtitle="Milestones pending"
+          trend="- 8%"
+          isPositiveTrend={false}
+          colorScheme="indigo"
         />
         <KpiCard
-          title="Installations Pending"
+          title="Installations"
           value={data?.installationsPending ?? 67}
           icon={Wrench}
-          trend="+25%"
-          subtitle="Factory & field technicians"
+          trend="+ 25%"
+          isPositiveTrend={true}
+          colorScheme="teal"
         />
         <KpiCard
-          title="Active Support Tickets"
+          title="Support Tickets"
           value={data?.activeTickets ?? 134}
           icon={LifeBuoy}
-          trend="-12%"
-          subtitle="Mean time to resolve: 4.2h"
+          trend="- 12%"
+          isPositiveTrend={false}
+          colorScheme="rose"
         />
         <KpiCard
-          title="Renewals Due (AMC)"
+          title="Renewals (Due)"
           value={data?.renewalsDue ?? "₹8.9 L"}
           icon={RefreshCw}
-          trend="+10%"
-          subtitle="Next 30 days"
+          trend="+ 30%"
+          isPositiveTrend={true}
+          colorScheme="amber"
         />
       </div>
 
-      {/* Franchise Comparison & Product Category Split */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Franchise-wise Sales Comparison */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-            <div>
-              <h3 className="font-semibold text-sm text-[#293033] tracking-tight">Franchise-wise Sales Performance</h3>
-              <p className="text-xs text-slate-400">Monthly revenue delivered per franchise (₹ in Lakhs)</p>
-            </div>
-            <span className="text-xs font-bold text-[#FF6600]">Top Performer: Coimbatore</span>
-          </div>
-
-          <div className="space-y-3.5">
-            {(data?.franchiseSalesBreakdown || [
-              { name: "Coimbatore", salesLakhs: "14.2", leads: 38, rate: "78%" },
-              { name: "Chennai", salesLakhs: "12.8", leads: 32, rate: "72%" },
-              { name: "Bangalore", salesLakhs: "9.4", leads: 28, rate: "65%" },
-              { name: "Madurai", salesLakhs: "6.8", leads: 21, rate: "60%" },
-              { name: "Salem", salesLakhs: "5.5", leads: 18, rate: "55%" },
-            ]).map((item: any) => {
-              const val = parseFloat(item.salesLakhs);
-              const maxLakhs = 15;
-              const width = Math.min(100, (val / maxLakhs) * 100);
-              return (
-                <div key={item.name} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-slate-800">{item.name} Franchise</span>
-                    <span className="text-slate-900 font-bold">₹{item.salesLakhs} L ({item.rate} of Target)</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden">
-                    <div
-                      className="bg-[#293033] h-full rounded-full transition-all duration-500 hover:bg-[#FF6600]"
-                      style={{ width: `${width}%` }}
-                    ></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      {/* Franchise Comparison Bar Chart & Product Category Donut Split */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-7">
+          <FranchiseSalesBarChart data={data?.franchiseSalesBreakdown} />
         </div>
-
-        {/* Product Category Donut / Radial Representation */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs flex flex-col justify-between">
-          <div>
-            <div className="pb-3 border-b border-slate-100 mb-4">
-              <h3 className="font-semibold text-sm text-[#293033] tracking-tight">Product Category Split</h3>
-              <p className="text-xs text-slate-400">Revenue mix across product verticals</p>
-            </div>
-
-            <div className="space-y-3">
-              {(data?.categoryBreakdown || [
-                { category: "CNC Machines & Accessories", percent: 40, color: "#FF6600" },
-                { category: "AMC & Renewals", percent: 30, color: "#293033" },
-                { category: "Software Licenses (CAM)", percent: 18, color: "#10B981" },
-                { category: "Installation & Services", percent: 12, color: "#6366F1" },
-              ]).map((c: any) => (
-                <div key={c.category} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }}></span>
-                      <span className="text-slate-700 font-medium truncate">{c.category}</span>
-                    </div>
-                    <span className="font-bold text-slate-900">{c.percent}%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${c.percent}%`, backgroundColor: c.color }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-100 text-center">
-            <span className="text-xs text-slate-500">Gross Margin Average: <strong className="text-emerald-600">22.4%</strong></span>
-          </div>
+        <div className="lg:col-span-5">
+          <ProductCategoryDonutChart data={data?.categoryBreakdown} />
         </div>
       </div>
 

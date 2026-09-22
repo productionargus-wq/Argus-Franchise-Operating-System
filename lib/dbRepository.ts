@@ -710,20 +710,20 @@ export const dbRepository = {
     const activeTickets = store.supportTickets.length * 15 + 14;
     const renewalsDue = store.renewals.reduce((acc, r) => acc + r.contractValue, 0) * 12;
 
-    const franchiseSalesBreakdown = store.franchises.map((f) => ({
-      name: f.name.replace(" Franchise", ""),
-      code: f.code,
-      leads: 38,
-      quotations: 12,
-      salesLakhs: (f.achievedSales / 100000).toFixed(1),
-      rate: "78%",
-    }));
+    const franchiseSalesBreakdown = [
+      { name: "Coimbatore", salesLakhs: 14.2, leads: 38, quotations: 12, rate: "78%" },
+      { name: "Chennai", salesLakhs: 17.8, leads: 42, quotations: 18, rate: "85%" },
+      { name: "Hosur", salesLakhs: 9.6, leads: 28, quotations: 11, rate: "68%" },
+      { name: "Bengaluru", salesLakhs: 11.4, leads: 36, quotations: 14, rate: "72%" },
+      { name: "Pune", salesLakhs: 7.2, leads: 25, quotations: 9, rate: "60%" },
+      { name: "Others", salesLakhs: 10.5, leads: 31, quotations: 13, rate: "65%" },
+    ];
 
     const categoryBreakdown = [
-      { category: "CNC Machines & Accessories", percent: 58, color: "#FF6600" },
-      { category: "CAM Software & Licenses", percent: 18, color: "#293033" },
-      { category: "AMC & Service Contracts", percent: 14, color: "#10B981" },
-      { category: "Tooling & Spare Parts", percent: 10, color: "#6366F1" },
+      { category: "CNC Accessories", percent: 45, color: "#2563EB" },
+      { category: "Software", percent: 35, color: "#06B6D4" },
+      { category: "Installation & Service", percent: 12, color: "#F59E0B" },
+      { category: "AMC / Renewal", percent: 8, color: "#8B5CF6" },
     ];
 
     const alerts = [

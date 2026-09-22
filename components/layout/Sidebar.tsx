@@ -47,8 +47,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const headOfficeNavItems = [
     { label: "HO Dashboard", href: "/ho/dashboard", icon: LayoutDashboard },
     { label: "Franchises", href: "/ho/franchises", icon: Building2 },
-    { label: "Leads / Opportunities", href: "/ho/leads", icon: Target },
-    { label: "Sales / Orders", href: "/ho/orders", icon: ShoppingCart },
+    { label: "Leads", href: "/ho/leads", icon: Users },
+    { label: "Quotations & Approvals", href: "/quotations", icon: FileText },
+    { label: "Sales & Orders", href: "/ho/orders", icon: ShoppingCart },
     { label: "Installations", href: "/ho/installations", icon: Wrench },
     { label: "Support Monitoring", href: "/ho/support", icon: LifeBuoy },
     { label: "Renewals", href: "/ho/renewals", icon: RefreshCw },
@@ -86,7 +87,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <nav className="flex-1 px-2.5 py-3 space-y-1 overflow-y-auto">
           {currentNav.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || (item.href !== "/dashboard" && item.href !== "/ho/dashboard" && pathname.startsWith(item.href));
+            // Robust active check handling top-level and nested dynamic routes
+            const isActive =
+              pathname === item.href ||
+              (item.href !== "/dashboard" &&
+                item.href !== "/ho/dashboard" &&
+                (pathname === item.href || pathname.startsWith(item.href + "/")));
 
             return (
               <Link
@@ -100,7 +106,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
+                  <Icon
+                    className={`w-4 h-4 ${
+                      isActive ? "text-white" : "text-slate-400 group-hover:text-white"
+                    }`}
+                  />
                   <span>{item.label}</span>
                 </div>
                 {isActive && <ChevronRight className="w-3.5 h-3.5 text-white" />}

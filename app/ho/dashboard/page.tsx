@@ -33,8 +33,15 @@ export default function HeadOfficeDashboard() {
       try {
         setLoading(true);
         const res = await fetch("/api/analytics?view=ho");
-        const json = await res.json();
-        setData(json);
+        if (res.ok) {
+          const text = await res.text();
+          if (text) {
+            const json = JSON.parse(text);
+            setData(json);
+          }
+        } else {
+          console.warn("HO Analytics API returned non-OK status:", res.status);
+        }
       } catch (e) {
         console.error(e);
       } finally {

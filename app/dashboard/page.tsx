@@ -46,8 +46,15 @@ export default function FranchiseDashboard() {
     try {
       setLoading(true);
       const res = await fetch(`/api/analytics?franchiseId=${currentUser.franchiseId || "FR-CBE"}&view=franchise`);
-      const data = await res.json();
-      setKpiData(data);
+      if (res.ok) {
+        const text = await res.text();
+        if (text) {
+          const data = JSON.parse(text);
+          setKpiData(data);
+        }
+      } else {
+        console.warn("Analytics API returned non-OK status:", res.status);
+      }
     } catch (err) {
       console.error("Error loading KPIs:", err);
     } finally {

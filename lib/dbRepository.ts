@@ -77,8 +77,22 @@ async function ensureInitialized() {
         if ((await ProductModel.countDocuments()) === 0) await ProductModel.insertMany(sanitizeList(MOCK_PRODUCTS));
         if ((await CustomerModel.countDocuments()) === 0) await CustomerModel.insertMany(sanitizeList(MOCK_CUSTOMERS));
         if ((await LeadModel.countDocuments()) === 0) await LeadModel.insertMany(sanitizeList(MOCK_LEADS));
-        if ((await OpportunityModel.countDocuments()) === 0) await OpportunityModel.insertMany(sanitizeList(MOCK_OPPORTUNITIES));
-        if ((await QuotationModel.countDocuments()) === 0) await QuotationModel.insertMany(sanitizeList(MOCK_QUOTATIONS));
+        if ((await OpportunityModel.countDocuments()) === 0) {
+          const opps = MOCK_OPPORTUNITIES.map((opp) => {
+            const clean = sanitize(opp);
+            clean.oppId = clean.opportunityId || clean.oppId || `OP-${Date.now()}`;
+            return clean;
+          });
+          await OpportunityModel.insertMany(opps);
+        }
+        if ((await QuotationModel.countDocuments()) === 0) {
+          const quotes = MOCK_QUOTATIONS.map((q) => {
+            const clean = sanitize(q);
+            clean.oppId = clean.opportunityId || clean.oppId;
+            return clean;
+          });
+          await QuotationModel.insertMany(quotes);
+        }
         if ((await OrderModel.countDocuments()) === 0) await OrderModel.insertMany(sanitizeList(MOCK_ORDERS));
         if ((await InstallationModel.countDocuments()) === 0) await InstallationModel.insertMany(sanitizeList(MOCK_INSTALLATIONS));
         if ((await SupportTicketModel.countDocuments()) === 0) await SupportTicketModel.insertMany(sanitizeList(MOCK_SUPPORT_TICKETS));

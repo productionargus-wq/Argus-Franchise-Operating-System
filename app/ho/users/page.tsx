@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 export default function UsersAndRolesPage() {
-  const { currentUser, switchRole } = useAuth();
+  const { currentUser, switchRole, availableUsers } = useAuth();
 
   const rolePermissions = [
     {
@@ -103,7 +103,7 @@ export default function UsersAndRolesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {MOCK_USERS.map((usr) => {
+              {availableUsers.map((usr) => {
                 const isCurrent = usr.id === currentUser.id;
 
                 return (

@@ -19,6 +19,7 @@ interface NotificationContextType {
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   removeNotification: (id: string) => void;
+  addNotification: (item: Omit<NotificationItem, "id" | "time" | "unread">) => void;
 }
 
 const HO_NOTIFICATIONS: NotificationItem[] = [
@@ -137,6 +138,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     setNotifications((prev) => prev.filter((item) => item.id !== id));
   };
 
+  const addNotification = (item: Omit<NotificationItem, "id" | "time" | "unread">) => {
+    const newNotif: NotificationItem = {
+      ...item,
+      id: `notif-${Date.now()}`,
+      time: "Just now",
+      unread: true,
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+  };
+
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
@@ -147,6 +158,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         markAsRead,
         markAllAsRead,
         removeNotification,
+        addNotification,
       }}
     >
       {children}

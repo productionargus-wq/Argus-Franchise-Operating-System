@@ -25,6 +25,7 @@ import {
   Renewal,
   CommissionRecord,
   TerritoryMapping,
+  UserSession,
 } from "./types";
 
 // In-memory persistent state store across API route invocations in Node runtime
@@ -78,6 +79,84 @@ export const dbRepository = {
 
   getFranchiseByCode(code: string): Franchise | undefined {
     return store.franchises.find((f) => f.code === code);
+  },
+
+  createFranchise(data: Partial<Franchise> & { adminUser?: Partial<UserSession> }): { franchise: Franchise; adminUser: UserSession } {
+    const rawCode = (data.code || `FR-${Date.now().toString().slice(-4)}`).toUpperCase().trim();
+    const code = rawCode.startsWith("FR-") ? rawCode : `FR-${rawCode}`;
+    const location = data.location || "New Location";
+    const name = data.name || `Argus ${location} Franchise`;
+    const state = data.state || "Tamil Nadu";
+    const territoryDistricts = Array.isArray(data.territoryDistricts)
+      ? data.territoryDistricts
+      : typeof data.territoryDistricts === "string" && data.territoryDistricts
+      ? (data.territoryDistricts as string).split(",").map((s) => s.trim()).filter(Boolean)
+      : [location];
+    const pincodes = Array.isArray(data.pincodes)
+      ? data.pincodes
+      : typeof data.pincodes === "string" && data.pincodes
+      ? (data.pincodes as string).split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
+
+    const newFranchise: Franchise = {
+      _id: `fr-${Date.now()}`,
+      code,
+      name,
+      location,
+      state,
+      territoryDistricts,
+      pincodes,
+      agreementStartDate: data.agreementStartDate || "2026-04-01",
+      agreementEndDate: data.agreementEndDate || "2029-03-31",
+      status: (data.status as Franchise["status"]) || "Active",
+      annualTarget: Number(data.annualTarget) || 12000000,
+      achievedSales: Number(data.achievedSales) || 0,
+      collections: Number(data.collections) || 0,
+      commissionEarned: Number(data.commissionEarned) || 0,
+      commissionPaid: Number(data.commissionPaid) || 0,
+      contactPerson: data.contactPerson || "Managing Partner",
+      email: data.email || `admin.${code.toLowerCase().replace(/[^a-z0-9]/g, "")}@arguscnc.com`,
+      phone: data.phone || "+91 98000 00000",
+    };
+
+    store.franchises.push(newFranchise);
+
+    // Auto-provision territory mappings
+    if (territoryDistricts.length > 0) {
+      territoryDistricts.forEach((dist, idx) => {
+        store.territories.push({
+          _id: `ter-${Date.now()}-${idx}`,
+          country: "India",
+          state,
+          district: dist,
+          pincodeRange: pincodes.length > 0 ? pincodes : [`6${Math.floor(10000 + Math.random() * 89999)}`],
+          assignedFranchiseId: code,
+          assignedFranchiseName: name,
+          isProtected: true,
+        });
+      });
+    }
+
+    // Auto-create initial Franchise Admin user
+    const initials = (newFranchise.contactPerson || "FA")
+      .split(" ")
+      .map((w) => w[0])
+      .filter(Boolean)
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "FA";
+
+    const adminUser: UserSession = {
+      id: `usr-${code.toLowerCase().replace(/[^a-z0-9]/g, "")}-admin`,
+      name: newFranchise.contactPerson,
+      email: newFranchise.email,
+      role: "franchise_admin",
+      franchiseId: code,
+      franchiseName: name,
+      avatar: initials,
+    };
+
+    return { franchise: newFranchise, adminUser };
   },
 
   // PRODUCTS / PRICE MASTER

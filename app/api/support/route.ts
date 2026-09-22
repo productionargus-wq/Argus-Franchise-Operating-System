@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import { dbRepository } from "@/lib/dbRepository";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const franchiseId = searchParams.get("franchiseId");
-  const tickets = await dbRepository.getSupportTickets(franchiseId);
-  return NextResponse.json(tickets);
+  try {
+    const { searchParams } = new URL(request.url);
+    const franchiseId = searchParams.get("franchiseId");
+    const tickets = await dbRepository.getSupportTickets(franchiseId);
+    return NextResponse.json(tickets);
+  } catch (error: any) {
+    if (error?.digest === "DYNAMIC_SERVER_USAGE") throw error;
+    console.error("Failed to fetch support tickets:", error);
+    return NextResponse.json({ error: error?.message || "Failed to fetch support tickets" }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {

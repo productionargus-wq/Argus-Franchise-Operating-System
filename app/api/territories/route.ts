@@ -1,16 +1,24 @@
 import { NextResponse } from "next/server";
 import { dbRepository } from "@/lib/dbRepository";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const pincode = searchParams.get("pincode");
-  const franchiseId = searchParams.get("franchiseId");
+  try {
+    const { searchParams } = new URL(request.url);
+    const pincode = searchParams.get("pincode");
+    const franchiseId = searchParams.get("franchiseId");
 
-  if (pincode && franchiseId) {
-    const conflict = await dbRepository.checkTerritoryConflict(pincode, franchiseId);
-    return NextResponse.json(conflict);
+    if (pincode && franchiseId) {
+      const conflict = await dbRepository.checkTerritoryConflict(pincode, franchiseId);
+      return NextResponse.json(conflict);
+    }
+
+    const territories = await dbRepository.getTerritories();
+    return NextResponse.json(territories);
+  } catch (error: any) {
+    if (error?.digest === "DYNAMIC_SERVER_USAGE") throw error;
+    console.error("Failed to fetch territories:", error);
+    return NextResponse.json({ error: error?.message || "Failed to fetch territories" }, { status: 500 });
   }
-
-  const territories = await dbRepository.getTerritories();
-  return NextResponse.json(territories);
 }

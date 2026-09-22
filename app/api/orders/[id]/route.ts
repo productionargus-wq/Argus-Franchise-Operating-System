@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { dbRepository } from "@/lib/dbRepository";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const order = await dbRepository.getOrderById(params.id);
-  if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-  return NextResponse.json(order);
+  try {
+    const order = await dbRepository.getOrderById(params.id);
+    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    return NextResponse.json(order);
+  } catch (error: any) {
+    if (error?.digest === "DYNAMIC_SERVER_USAGE") throw error;
+    console.error(`Failed to fetch order ${params.id}:`, error);
+    return NextResponse.json({ error: error?.message || "Failed to fetch order" }, { status: 500 });
+  }
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {

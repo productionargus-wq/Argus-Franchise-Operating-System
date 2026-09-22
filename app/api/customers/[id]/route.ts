@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { dbRepository } from "@/lib/dbRepository";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const customer = await dbRepository.getCustomerById(params.id);
-  if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+  try {
+    const customer = await dbRepository.getCustomerById(params.id);
+    if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
 
   // Gather linked records
   const allOpps = await dbRepository.getOpportunities();
@@ -45,14 +48,19 @@ export async function GET(request: Request, { params }: { params: { id: string }
     },
   ];
 
-  return NextResponse.json({
-    customer,
-    opportunities: opps,
-    quotations: quotes,
-    orders,
-    installations,
-    tickets,
-    renewals,
-    upsells,
-  });
+    return NextResponse.json({
+      customer,
+      opportunities: opps,
+      quotations: quotes,
+      orders,
+      installations,
+      tickets,
+      renewals,
+      upsells,
+    });
+  } catch (err: any) {
+    if (err?.digest === "DYNAMIC_SERVER_USAGE") throw err;
+    console.error(`Failed to fetch customer ${params.id}:`, err);
+    return NextResponse.json({ error: err?.message || "Failed to fetch customer" }, { status: 500 });
+  }
 }

@@ -112,6 +112,18 @@ async function ensureInitialized() {
   await initPromise;
 }
 
+function isObjectId(id: string): boolean {
+  return /^[0-9a-fA-F]{24}$/.test(id);
+}
+
+function idOr(id: string, ...altFields: Record<string, string>[]): Record<string, any> {
+  const conditions = altFields.map((f) => f);
+  if (isObjectId(id)) {
+    conditions.unshift({ _id: id });
+  }
+  return conditions.length === 1 ? conditions[0] : { $or: conditions };
+}
+
 function cleanDoc<T>(doc: any): T {
   if (!doc) return doc;
   const obj = doc.toObject ? doc.toObject() : { ...doc };
@@ -296,7 +308,7 @@ export const dbRepository = {
 
   async getLeadById(id: string): Promise<Lead | null> {
     await ensureInitialized();
-    const doc = await LeadModel.findOne({ $or: [{ _id: id }, { leadId: id }] }).lean();
+    const doc = await LeadModel.findOne(idOr(id, { leadId: id })).lean();
     return doc ? cleanDoc<Lead>(doc) : null;
   },
 
@@ -342,7 +354,7 @@ export const dbRepository = {
   async updateLead(id: string, updates: Partial<Lead>): Promise<Lead | null> {
     await ensureInitialized();
     const updated = await LeadModel.findOneAndUpdate(
-      { $or: [{ _id: id }, { leadId: id }] },
+      idOr(id, { leadId: id }),
       { $set: updates },
       { new: true }
     ).lean();
@@ -355,7 +367,7 @@ export const dbRepository = {
     if (!lead) return null;
 
     await LeadModel.findOneAndUpdate(
-      { $or: [{ _id: leadId }, { leadId: leadId }] },
+      idOr(leadId, { leadId: leadId }),
       { $set: { status: "Converted" } }
     );
 
@@ -432,14 +444,14 @@ export const dbRepository = {
 
   async getOpportunityById(id: string): Promise<Opportunity | null> {
     await ensureInitialized();
-    const doc = await OpportunityModel.findOne({ $or: [{ _id: id }, { opportunityId: id }, { oppId: id }] }).lean();
+    const doc = await OpportunityModel.findOne(idOr(id, { opportunityId: id }, { oppId: id })).lean();
     return doc ? cleanDoc<Opportunity>(doc) : null;
   },
 
   async updateOpportunity(id: string, updates: Partial<Opportunity>): Promise<Opportunity | null> {
     await ensureInitialized();
     const updated = await OpportunityModel.findOneAndUpdate(
-      { $or: [{ _id: id }, { opportunityId: id }, { oppId: id }] },
+      idOr(id, { opportunityId: id }, { oppId: id }),
       { $set: { ...updates, updatedAt: new Date().toISOString().split("T")[0] } },
       { new: true }
     ).lean();
@@ -456,7 +468,7 @@ export const dbRepository = {
 
   async getQuotationById(id: string): Promise<Quotation | null> {
     await ensureInitialized();
-    const doc = await QuotationModel.findOne({ $or: [{ _id: id }, { quoteId: id }] }).lean();
+    const doc = await QuotationModel.findOne(idOr(id, { quoteId: id })).lean();
     return doc ? cleanDoc<Quotation>(doc) : null;
   },
 
@@ -519,7 +531,7 @@ export const dbRepository = {
   async approveQuotation(id: string, approverName: string, notes?: string): Promise<Quotation | null> {
     await ensureInitialized();
     const updated = await QuotationModel.findOneAndUpdate(
-      { $or: [{ _id: id }, { quoteId: id }] },
+      idOr(id, { quoteId: id }),
       {
         $set: {
           status: "Approved",
@@ -536,7 +548,7 @@ export const dbRepository = {
   async rejectQuotation(id: string, approverName: string, reason: string): Promise<Quotation | null> {
     await ensureInitialized();
     const updated = await QuotationModel.findOneAndUpdate(
-      { $or: [{ _id: id }, { quoteId: id }] },
+      idOr(id, { quoteId: id }),
       {
         $set: {
           status: "Rejected",
@@ -559,7 +571,7 @@ export const dbRepository = {
 
   async getOrderById(id: string): Promise<SalesOrder | null> {
     await ensureInitialized();
-    const doc = await OrderModel.findOne({ $or: [{ _id: id }, { orderId: id }] }).lean();
+    const doc = await OrderModel.findOne(idOr(id, { orderId: id })).lean();
     return doc ? cleanDoc<SalesOrder>(doc) : null;
   },
 
@@ -623,7 +635,7 @@ export const dbRepository = {
 
     // Update quote status
     await QuotationModel.findOneAndUpdate(
-      { $or: [{ _id: quoteId }, { quoteId: quoteId }] },
+      idOr(quoteId, { quoteId: quoteId }),
       { $set: { status: "Accepted" } }
     );
 
@@ -631,7 +643,7 @@ export const dbRepository = {
     const targetOpp = quote.opportunityId || (quote as any).oppId;
     if (targetOpp) {
       await OpportunityModel.findOneAndUpdate(
-        { $or: [{ _id: targetOpp }, { opportunityId: targetOpp }, { oppId: targetOpp }] },
+        idOr(targetOpp, { opportunityId: targetOpp }, { oppId: targetOpp }),
         { $set: { stage: "Won" } }
       );
     }
@@ -707,7 +719,7 @@ export const dbRepository = {
     }
 
     const updated = await OrderModel.findOneAndUpdate(
-      { $or: [{ _id: orderId }, { orderId: orderId }] },
+      idOr(orderId, { orderId: orderId }),
       { $set: { paymentSchedule: order.paymentSchedule, orderStatus: order.orderStatus } },
       { new: true }
     ).lean();
@@ -734,7 +746,7 @@ export const dbRepository = {
   async updateOrderStatus(orderId: string, status: SalesOrder["orderStatus"]): Promise<SalesOrder | null> {
     await ensureInitialized();
     const updated = await OrderModel.findOneAndUpdate(
-      { $or: [{ _id: orderId }, { orderId: orderId }] },
+      idOr(orderId, { orderId: orderId }),
       { $set: { orderStatus: status } },
       { new: true }
     ).lean();
@@ -751,14 +763,14 @@ export const dbRepository = {
 
   async getInstallationById(id: string): Promise<Installation | null> {
     await ensureInitialized();
-    const doc = await InstallationModel.findOne({ $or: [{ _id: id }, { installationId: id }] }).lean();
+    const doc = await InstallationModel.findOne(idOr(id, { installationId: id })).lean();
     return doc ? cleanDoc<Installation>(doc) : null;
   },
 
   async updateInstallation(id: string, updates: Partial<Installation>): Promise<Installation | null> {
     await ensureInitialized();
     const updated = await InstallationModel.findOneAndUpdate(
-      { $or: [{ _id: id }, { installationId: id }] },
+      idOr(id, { installationId: id }),
       { $set: updates },
       { new: true }
     ).lean();
@@ -775,7 +787,7 @@ export const dbRepository = {
 
   async getSupportTicketById(id: string): Promise<SupportTicket | null> {
     await ensureInitialized();
-    const doc = await SupportTicketModel.findOne({ $or: [{ _id: id }, { ticketId: id }] }).lean();
+    const doc = await SupportTicketModel.findOne(idOr(id, { ticketId: id })).lean();
     return doc ? cleanDoc<SupportTicket>(doc) : null;
   },
 
@@ -823,7 +835,7 @@ export const dbRepository = {
       message: comment.message,
     };
     const updated = await SupportTicketModel.findOneAndUpdate(
-      { $or: [{ _id: ticketId }, { ticketId: ticketId }] },
+      idOr(ticketId, { ticketId: ticketId }),
       { $push: { comments: newComment } },
       { new: true }
     ).lean();
@@ -842,7 +854,7 @@ export const dbRepository = {
       updates.resolvedAt = new Date().toLocaleString("en-GB");
     }
     const updated = await SupportTicketModel.findOneAndUpdate(
-      { $or: [{ _id: ticketId }, { ticketId: ticketId }] },
+      idOr(ticketId, { ticketId: ticketId }),
       { $set: updates },
       { new: true }
     ).lean();
@@ -869,7 +881,7 @@ export const dbRepository = {
       channel,
     };
     const updated = await RenewalModel.findOneAndUpdate(
-      { $or: [{ _id: id }, { renewalId: id }] },
+      idOr(id, { renewalId: id }),
       { $push: { remindersSent: reminder } },
       { new: true }
     ).lean();
@@ -896,7 +908,7 @@ export const dbRepository = {
       updates.paymentReference = ref || `NEFT-ARGUS-${Math.floor(10000 + Math.random() * 90000)}`;
     }
     const updated = await CommissionModel.findOneAndUpdate(
-      { $or: [{ _id: id }, { commissionId: id }] },
+      idOr(id, { commissionId: id }),
       { $set: updates },
       { new: true }
     ).lean();
@@ -913,7 +925,7 @@ export const dbRepository = {
 
   async getCustomerById(id: string): Promise<CustomerProfile | null> {
     await ensureInitialized();
-    const doc = await CustomerModel.findOne({ $or: [{ _id: id }, { customerId: id }] }).lean();
+    const doc = await CustomerModel.findOne(idOr(id, { customerId: id })).lean();
     return doc ? cleanDoc<CustomerProfile>(doc) : null;
   },
 

@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { dbRepository } from "@/lib/dbRepository";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
-  const franchises = await dbRepository.getFranchises();
-  return NextResponse.json(franchises);
+  try {
+    const franchises = await dbRepository.getFranchises();
+    return NextResponse.json(franchises);
+  } catch (error: any) {
+    if (error?.digest === "DYNAMIC_SERVER_USAGE") throw error;
+    console.error("Failed to get franchises:", error);
+    return NextResponse.json({ error: error?.message || "Failed to fetch franchises" }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {

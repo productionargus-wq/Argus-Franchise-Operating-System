@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { dbRepository } from "@/lib/dbRepository";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const franchiseId = searchParams.get("franchiseId");
-  const customers = await dbRepository.getCustomers(franchiseId);
-  return NextResponse.json(customers);
+  try {
+    const { searchParams } = new URL(request.url);
+    const franchiseId = searchParams.get("franchiseId");
+    const customers = await dbRepository.getCustomers(franchiseId);
+    return NextResponse.json(customers);
+  } catch (error: any) {
+    if (error?.digest === "DYNAMIC_SERVER_USAGE") throw error;
+    console.error("Failed to fetch customers:", error);
+    return NextResponse.json({ error: error?.message || "Failed to fetch customers" }, { status: 500 });
+  }
 }

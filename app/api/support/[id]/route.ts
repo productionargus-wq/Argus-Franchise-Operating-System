@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { dbRepository } from "@/lib/dbRepository";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const ticket = await dbRepository.getSupportTicketById(params.id);
-  if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
-  return NextResponse.json(ticket);
+  try {
+    const ticket = await dbRepository.getSupportTicketById(params.id);
+    if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    return NextResponse.json(ticket);
+  } catch (error: any) {
+    if (error?.digest === "DYNAMIC_SERVER_USAGE") throw error;
+    console.error(`Failed to fetch support ticket ${params.id}:`, error);
+    return NextResponse.json({ error: error?.message || "Failed to fetch support ticket" }, { status: 500 });
+  }
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {

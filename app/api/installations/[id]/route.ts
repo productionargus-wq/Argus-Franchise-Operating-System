@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { dbRepository } from "@/lib/dbRepository";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const inst = await dbRepository.getInstallationById(params.id);
-  if (!inst) return NextResponse.json({ error: "Installation not found" }, { status: 404 });
-  return NextResponse.json(inst);
+  try {
+    const inst = await dbRepository.getInstallationById(params.id);
+    if (!inst) return NextResponse.json({ error: "Installation not found" }, { status: 404 });
+    return NextResponse.json(inst);
+  } catch (error: any) {
+    if (error?.digest === "DYNAMIC_SERVER_USAGE") throw error;
+    console.error(`Failed to fetch installation ${params.id}:`, error);
+    return NextResponse.json({ error: error?.message || "Failed to fetch installation" }, { status: 500 });
+  }
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {

@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { dbRepository } from "@/lib/dbRepository";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const lead = await dbRepository.getLeadById(params.id);
-  if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
-  return NextResponse.json(lead);
+  try {
+    const lead = await dbRepository.getLeadById(params.id);
+    if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+    return NextResponse.json(lead);
+  } catch (err: any) {
+    if (err?.digest === "DYNAMIC_SERVER_USAGE") throw err;
+    console.error(`Failed to fetch lead ${params.id}:`, err);
+    return NextResponse.json({ error: err?.message || "Failed to fetch lead" }, { status: 500 });
+  }
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {

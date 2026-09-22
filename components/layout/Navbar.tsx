@@ -70,14 +70,16 @@ export function Navbar({ onToggleSidebar, isSidebarOpen }: NavbarProps) {
           </button>
 
           <Link href={isHeadOffice ? "/ho/dashboard" : "/dashboard"} className="flex items-center gap-2.5">
-            <Image
-              src="/argus-logo-dark-navbar.png"
-              alt="ARGUSCNC"
-              width={160}
-              height={36}
-              className="h-8 sm:h-9 w-auto object-contain"
-              priority
-            />
+            <div className="bg-white/95 hover:bg-white px-2.5 py-1 rounded-lg transition-colors shadow-2xs flex items-center">
+              <Image
+                src="/argus-logo.png"
+                alt="ARGUSCNC"
+                width={140}
+                height={30}
+                className="h-7 sm:h-8 w-auto object-contain"
+                priority
+              />
+            </div>
             <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded bg-[#3A4448] text-slate-300 border border-slate-600">
               Franchise OS
             </span>

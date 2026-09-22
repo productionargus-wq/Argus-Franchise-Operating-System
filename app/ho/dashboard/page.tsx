@@ -58,7 +58,7 @@ export default function HeadOfficeDashboard() {
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Real-time aggregate oversight across all 12 franchise territories, approvals, quotas and SLA health.
+            Real-time aggregate oversight across all {data?.totalFranchises ?? "all"} franchise territories, approvals, quotas and SLA health.
           </p>
         </div>
 
@@ -68,7 +68,7 @@ export default function HeadOfficeDashboard() {
             className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
           >
             <Building2 className="w-3.5 h-3.5" />
-            <span>Manage 12 Franchises</span>
+            <span>Manage {data?.totalFranchises ? `${data.totalFranchises} Franchises` : "Franchises"}</span>
           </Link>
           <Link
             href="/quotations"

@@ -113,73 +113,68 @@ export default function FranchiseDashboard() {
         </div>
       </div>
 
-      {/* 9 KPI Cards (Matching Section 3.1 & Mockup 1) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5">
+      {/* 8 KPI Cards (Matching Section 3.1 & Reference Mockup) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           title="New Leads"
           value={kpiData?.newLeads?.count ?? 38}
           icon={Users}
-          trend={kpiData?.newLeads?.trend ?? "+25%"}
+          trend={kpiData?.newLeads?.trend ?? "+ 27%"}
           isPositiveTrend={true}
-          subtitle="Target: 40/month"
+          colorScheme="sky"
         />
         <KpiCard
-          title="Qualified Leads"
+          title="Qualified"
           value={kpiData?.qualified?.count ?? 24}
           icon={Target}
-          trend={kpiData?.qualified?.trend ?? "+14%"}
+          trend={kpiData?.qualified?.trend ?? "+ 14%"}
           isPositiveTrend={true}
-          subtitle="Qualification rate: 63%"
+          colorScheme="emerald"
         />
         <KpiCard
-          title="Demos Conducted"
+          title="Demos"
           value={kpiData?.demos?.count ?? 12}
           icon={CheckCircle2}
-          trend={kpiData?.demos?.trend ?? "+15%"}
+          trend={kpiData?.demos?.trend ?? "+ 33%"}
           isPositiveTrend={true}
-          subtitle="At Experience Center"
+          colorScheme="indigo"
         />
         <KpiCard
-          title="Quotation Value"
+          title="Quotations"
           value={kpiData?.quotationValue?.formatted ?? "₹8.6 L"}
           icon={FileText}
-          trend={kpiData?.quotationValue?.trend ?? "+10%"}
+          trend={kpiData?.quotationValue?.trend ?? "+ 18%"}
           isPositiveTrend={true}
-          subtitle="8 Active quotes"
-          highlight={true}
+          colorScheme="rose"
         />
         <KpiCard
           title="PO Received"
           value={kpiData?.poReceived?.formatted ?? "₹3.4 L"}
           icon={ShoppingCart}
-          trend={kpiData?.poReceived?.trend ?? "+21%"}
+          trend={kpiData?.poReceived?.trend ?? "+ 21%"}
           isPositiveTrend={true}
-          subtitle="4 Confirmed Orders"
+          colorScheme="teal"
         />
         <KpiCard
           title="Payment Pending"
           value={kpiData?.paymentPending?.formatted ?? "₹1.2 L"}
           icon={Clock}
-          subtitle="Milestones overdue"
+          trend={kpiData?.paymentPending?.trend ?? "- 5%"}
+          isPositiveTrend={false}
+          colorScheme="amber"
         />
         <KpiCard
           title="Installations Pending"
           value={kpiData?.installationsPending?.count ?? 4}
           icon={Wrench}
-          subtitle="2 scheduled this week"
+          colorScheme="rose"
         />
         <KpiCard
-          title="Renewals Due"
+          title="Renewals"
           value={kpiData?.renewalsDue?.formatted ?? "₹72,000"}
           icon={RefreshCw}
-          subtitle="This Month"
-        />
-        <KpiCard
-          title="Commission Accrued"
-          value={kpiData?.commission?.formatted ?? "₹1.45 L"}
-          icon={Coins}
-          subtitle="Eligible on payment receipt"
-          highlight={true}
+          subtitle="(This Month)"
+          colorScheme="emerald"
         />
       </div>
 

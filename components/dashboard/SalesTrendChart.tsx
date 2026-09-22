@@ -1,89 +1,208 @@
-import React from "react";
+"use client";
 
-interface SalesMonth {
+import React, { useState } from "react";
+
+export interface MonthlySalesData {
   month: string;
   hardware: number; // in Lakhs
-  software: number;
-  spares: number;
+  software: number; // in Lakhs
 }
 
 interface SalesTrendChartProps {
-  data?: SalesMonth[];
+  data?: MonthlySalesData[];
 }
 
-export function SalesTrendChart({ data }: SalesTrendChartProps) {
-  const defaultData: SalesMonth[] = [
-    { month: "Aug", hardware: 14.5, software: 1.8, spares: 1.2 },
-    { month: "Sep", hardware: 16.2, software: 2.1, spares: 1.4 },
-    { month: "Oct", hardware: 18.0, software: 2.5, spares: 1.8 },
-    { month: "Nov", hardware: 21.4, software: 3.0, spares: 2.2 },
-    { month: "Dec", hardware: 24.8, software: 3.5, spares: 2.8 },
-  ];
+const DEFAULT_SALES_TREND: MonthlySalesData[] = [
+  { month: "Jul", hardware: 5.2, software: 3.0 },
+  { month: "Aug", hardware: 4.2, software: 4.0 },
+  { month: "Sep", hardware: 3.8, software: 3.9 },
+  { month: "Oct", hardware: 8.2, software: 5.1 },
+  { month: "Nov", hardware: 10.0, software: 6.8 },
+  { month: "Dec", hardware: 8.5, software: 6.5 },
+];
 
-  const chartData = data || defaultData;
-  const maxVal = 32; // max height scale in Lakhs
+export function SalesTrendChart({ data }: SalesTrendChartProps) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  const chartData = data && data.length > 0 ? data : DEFAULT_SALES_TREND;
+
+  // Chart Geometry
+  const chartWidth = 560;
+  const chartHeight = 260;
+  const paddingLeft = 55;
+  const paddingRight = 20;
+  const paddingTop = 25;
+  const paddingBottom = 45;
+
+  const innerWidth = chartWidth - paddingLeft - paddingRight;
+  const innerHeight = chartHeight - paddingTop - paddingBottom;
+
+  const maxScale = 20;
+  const yTicks = [20, 15, 10, 5, 0];
+
+  const barWidth = 32;
+  const barSpacing = innerWidth / chartData.length;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 mb-4 gap-2">
-        <div>
-          <h3 className="font-semibold text-sm text-[#293033] tracking-tight">Monthly Sales Trend</h3>
-          <p className="text-xs text-slate-400">Revenue split across products (₹ Lakhs)</p>
-        </div>
-        <div className="flex items-center gap-3 text-xs">
+    <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+        <h3 className="font-bold text-base text-[#293033] tracking-tight">
+          Monthly Sales Trend
+        </h3>
+
+        {/* Legend */}
+        <div className="flex items-center gap-4 text-xs font-semibold">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-xs bg-[#FF6600]"></span>
+            <span className="w-3 h-3 rounded-xs bg-[#2563EB]" />
             <span className="text-slate-600">Hardware</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-xs bg-[#293033]"></span>
+            <span className="w-3 h-3 rounded-xs bg-[#10B981]" />
             <span className="text-slate-600">Software</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-xs bg-[#10B981]"></span>
-            <span className="text-slate-600">Spares</span>
           </div>
         </div>
       </div>
 
-      {/* Chart Bars */}
-      <div className="h-48 flex items-end justify-between gap-2 sm:gap-6 pt-6 pb-2 border-b border-slate-200">
-        {chartData.map((d) => {
-          const hwHeight = (d.hardware / maxVal) * 100;
-          const swHeight = (d.software / maxVal) * 100;
-          const spHeight = (d.spares / maxVal) * 100;
+      <div className="relative w-full overflow-hidden">
+        <svg
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          className="w-full h-auto select-none"
+        >
+          {/* Y-Axis Label: ₹ Lakh */}
+          <text
+            x={16}
+            y={chartHeight / 2 - 10}
+            transform={`rotate(-90, 16, ${chartHeight / 2 - 10})`}
+            textAnchor="middle"
+            className="text-[11px] font-semibold fill-slate-500"
+          >
+            ₹ Lakh
+          </text>
 
-          return (
-            <div key={d.month} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group">
-              <div className="w-full max-w-[48px] flex items-end justify-center gap-1 h-full">
-                {/* Hardware Bar */}
-                <div
-                  className="w-1/3 bg-[#FF6600] hover:bg-[#E65C00] rounded-t-xs transition-all duration-300 relative"
-                  style={{ height: `${hwHeight}%` }}
-                  title={`Hardware: ₹${d.hardware}L`}
-                ></div>
-                {/* Software Bar */}
-                <div
-                  className="w-1/3 bg-[#293033] hover:bg-[#3A4448] rounded-t-xs transition-all duration-300 relative"
-                  style={{ height: `${swHeight}%` }}
-                  title={`Software: ₹${d.software}L`}
-                ></div>
-                {/* Spares Bar */}
-                <div
-                  className="w-1/3 bg-[#10B981] hover:bg-emerald-600 rounded-t-xs transition-all duration-300 relative"
-                  style={{ height: `${spHeight}%` }}
-                  title={`Spares: ₹${d.spares}L`}
-                ></div>
-              </div>
-              <span className="text-xs font-semibold text-slate-600 mt-2">{d.month}</span>
-            </div>
-          );
-        })}
-      </div>
+          {/* Grid lines and Y-axis tick values */}
+          {yTicks.map((tick) => {
+            const y = paddingTop + innerHeight - (tick / maxScale) * innerHeight;
+            return (
+              <g key={tick}>
+                <text
+                  x={paddingLeft - 10}
+                  y={y + 4}
+                  textAnchor="end"
+                  className="text-[11px] font-medium fill-slate-400"
+                >
+                  {tick}
+                </text>
+                <line
+                  x1={paddingLeft}
+                  y1={y}
+                  x2={chartWidth - paddingRight}
+                  y2={y}
+                  stroke={tick === 0 ? "#CBD5E1" : "#F1F5F9"}
+                  strokeWidth={tick === 0 ? "1.5" : "1"}
+                  strokeDasharray={tick === 0 ? undefined : "3 3"}
+                />
+              </g>
+            );
+          })}
 
-      <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-        <span>YTD Sales: <strong className="text-slate-800">₹1.14 Cr</strong></span>
-        <span className="text-emerald-600 font-semibold">+28% vs last year</span>
+          {/* Stacked Bars & X-Axis Labels */}
+          {chartData.map((item, index) => {
+            const x =
+              paddingLeft + index * barSpacing + (barSpacing - barWidth) / 2;
+
+            const hwHeight = (item.hardware / maxScale) * innerHeight;
+            const swHeight = (item.software / maxScale) * innerHeight;
+            const totalHeight = hwHeight + swHeight;
+
+            const hwY = paddingTop + innerHeight - hwHeight;
+            const swY = hwY - swHeight;
+            const totalY = paddingTop + innerHeight - totalHeight;
+
+            const isHovered = hoveredIndex === index;
+            const total = (item.hardware + item.software).toFixed(1);
+
+            return (
+              <g
+                key={item.month}
+                className="cursor-pointer transition-all duration-200"
+                onMouseEnter={() => setHoveredIndex(index)}
+                onMouseLeave={() => setHoveredIndex(null)}
+              >
+                {/* Hardware Segment (Bottom - Blue) */}
+                <rect
+                  x={x}
+                  y={hwY}
+                  width={barWidth}
+                  height={hwHeight}
+                  rx={swHeight > 0 ? 0 : 4}
+                  ry={swHeight > 0 ? 0 : 4}
+                  fill="#2563EB"
+                  className={`transition-all duration-200 ${
+                    isHovered ? "brightness-110" : ""
+                  }`}
+                />
+
+                {/* Software Segment (Top - Green) */}
+                {swHeight > 0 && (
+                  <rect
+                    x={x}
+                    y={swY}
+                    width={barWidth}
+                    height={swHeight}
+                    rx={4}
+                    ry={4}
+                    fill="#10B981"
+                    className={`transition-all duration-200 ${
+                      isHovered ? "brightness-110" : ""
+                    }`}
+                  />
+                )}
+
+                {/* Hover Tooltip Popup */}
+                {isHovered && (
+                  <g>
+                    <rect
+                      x={x + barWidth / 2 - 45}
+                      y={Math.max(4, totalY - 38)}
+                      width={90}
+                      height={32}
+                      rx={6}
+                      className="fill-[#1E293B] filter drop-shadow-md"
+                    />
+                    <text
+                      x={x + barWidth / 2}
+                      y={Math.max(4, totalY - 38) + 14}
+                      textAnchor="middle"
+                      className="text-[10px] font-bold fill-white"
+                    >
+                      {item.month}: ₹{total}L
+                    </text>
+                    <text
+                      x={x + barWidth / 2}
+                      y={Math.max(4, totalY - 38) + 26}
+                      textAnchor="middle"
+                      className="text-[9px] fill-slate-300"
+                    >
+                      H: ₹{item.hardware}L | S: ₹{item.software}L
+                    </text>
+                  </g>
+                )}
+
+                {/* Month label */}
+                <text
+                  x={x + barWidth / 2}
+                  y={chartHeight - paddingBottom + 20}
+                  textAnchor="middle"
+                  className={`text-[11px] font-medium transition-colors ${
+                    isHovered ? "fill-blue-600 font-bold" : "fill-slate-600"
+                  }`}
+                >
+                  {item.month}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
       </div>
     </div>
   );

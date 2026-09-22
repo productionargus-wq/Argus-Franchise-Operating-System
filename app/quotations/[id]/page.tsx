@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { Quotation } from "@/lib/types";
@@ -229,11 +230,15 @@ export default function QuotationDetailPage() {
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex justify-between items-start">
           <div>
-            <div className="flex items-center">
-              <span className="font-extrabold text-2xl tracking-wider text-slate-900">ARGUS</span>
-              <span className="font-extrabold text-2xl tracking-wider text-[#FF6600]">CNC</span>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">High Performance CNC Machinery & Automation</p>
+            <Image
+              src="/argus-logo.png"
+              alt="ARGUSCNC"
+              width={180}
+              height={42}
+              className="h-10 w-auto object-contain"
+              priority
+            />
+            <p className="text-xs text-slate-500 mt-1">High Performance CNC Machinery & Automation</p>
           </div>
           <div className="text-right text-xs">
             <span className="font-bold text-slate-900 block text-sm">{quotation.quoteId}</span>

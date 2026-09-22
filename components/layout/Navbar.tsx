@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/lib/AuthContext";
 import {
   Bell,
@@ -68,11 +69,15 @@ export function Navbar({ onToggleSidebar, isSidebarOpen }: NavbarProps) {
             {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
-          <Link href={isHeadOffice ? "/ho/dashboard" : "/dashboard"} className="flex items-center gap-3">
-            <div className="flex items-center">
-              <span className="font-extrabold text-xl tracking-wider text-white">ARGUS</span>
-              <span className="font-extrabold text-xl tracking-wider text-[#FF6600]">CNC</span>
-            </div>
+          <Link href={isHeadOffice ? "/ho/dashboard" : "/dashboard"} className="flex items-center gap-2.5">
+            <Image
+              src="/argus-logo-dark-navbar.png"
+              alt="ARGUSCNC"
+              width={160}
+              height={36}
+              className="h-8 sm:h-9 w-auto object-contain"
+              priority
+            />
             <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded bg-[#3A4448] text-slate-300 border border-slate-600">
               Franchise OS
             </span>

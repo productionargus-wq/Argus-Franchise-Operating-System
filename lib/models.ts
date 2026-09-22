@@ -1,305 +1,332 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, Model } from "mongoose";
 
-// Franchise Schema
+// FRANCHISE SCHEMA
 const FranchiseSchema = new Schema(
   {
-    code: { type: String, required: true, unique: true },
+    code: { type: String, required: true, unique: true, index: true },
     name: { type: String, required: true },
-    location: String,
-    state: String,
-    territoryDistricts: [String],
-    pincodes: [String],
-    agreementStartDate: String,
-    agreementEndDate: String,
-    status: { type: String, default: "Active" },
-    annualTarget: { type: Number, default: 0 },
+    location: { type: String, required: true },
+    state: { type: String, default: "Tamil Nadu" },
+    territoryDistricts: [{ type: String }],
+    pincodes: [{ type: String }],
+    agreementStartDate: { type: String },
+    agreementEndDate: { type: String },
+    status: { type: String, default: "Active", enum: ["Active", "Inactive", "Suspended"] },
+    annualTarget: { type: Number, default: 12000000 },
     achievedSales: { type: Number, default: 0 },
     collections: { type: Number, default: 0 },
     commissionEarned: { type: Number, default: 0 },
     commissionPaid: { type: Number, default: 0 },
-    contactPerson: String,
-    email: String,
-    phone: String,
+    contactPerson: { type: String },
+    email: { type: String },
+    phone: { type: String },
   },
-  { timestamps: true }
+  { strict: false, timestamps: true }
 );
 
-// Product / Price Master Schema
+// PRODUCT SCHEMA
 const ProductSchema = new Schema(
   {
-    sku: { type: String, required: true, unique: true },
+    sku: { type: String, required: true, unique: true, index: true },
     name: { type: String, required: true },
     category: { type: String, required: true },
-    listPrice: { type: Number, required: true },
-    franchisePurchasePrice: { type: Number, required: true },
-    minSellingPrice: { type: Number, required: true },
-    maxDiscountPercent: { type: Number, required: true },
+    listPrice: { type: Number, default: 0 },
+    franchisePurchasePrice: { type: Number, default: 0 },
+    minSellingPrice: { type: Number, default: 0 },
+    maxDiscountPercent: { type: Number, default: 10 },
     gstPercent: { type: Number, default: 18 },
     installationCharge: { type: Number, default: 0 },
     warrantyPeriodMonths: { type: Number, default: 12 },
-    renewalAmcRules: String,
-    description: String,
+    renewalAmcRules: { type: String },
+    description: { type: String },
     inStock: { type: Boolean, default: true },
   },
-  { timestamps: true }
+  { strict: false, timestamps: true }
 );
 
-// Lead Schema
-const LeadSchema = new Schema(
-  {
-    leadId: { type: String, required: true, unique: true },
-    customerName: { type: String, required: true },
-    companyName: { type: String, required: true },
-    phone: String,
-    email: String,
-    source: String,
-    industry: String,
-    state: String,
-    district: String,
-    pincode: String,
-    productInterest: String,
-    ownerId: String,
-    ownerName: String,
-    franchiseId: { type: String, required: true },
-    franchiseName: String,
-    status: { type: String, default: "New" },
-    nextFollowUpDate: String,
-    territoryConflict: { type: Boolean, default: false },
-    conflictNotes: String,
-    notes: String,
-  },
-  { timestamps: true }
-);
-
-// Opportunity Schema
-const OpportunitySchema = new Schema(
-  {
-    opportunityId: { type: String, required: true, unique: true },
-    leadId: String,
-    customerId: String,
-    customerName: String,
-    companyName: String,
-    phone: String,
-    email: String,
-    franchiseId: { type: String, required: true },
-    franchiseName: String,
-    stage: { type: String, default: "New" },
-    expectedValue: Number,
-    product: String,
-    requirementsNotes: String,
-    demo: {
-      demoId: String,
-      scheduledDate: String,
-      conductedDate: String,
-      assignedEngineerId: String,
-      assignedEngineerName: String,
-      product: String,
-      status: String,
-      result: String,
-      notes: String,
-      attachments: [String],
-    },
-    timeline: [
-      {
-        stage: String,
-        date: String,
-        completed: Boolean,
-        note: String,
-      },
-    ],
-  },
-  { timestamps: true }
-);
-
-// Quotation Schema
-const QuotationSchema = new Schema(
-  {
-    quoteId: { type: String, required: true, unique: true },
-    opportunityId: String,
-    customerId: String,
-    customerName: String,
-    companyName: String,
-    franchiseId: { type: String, required: true },
-    franchiseName: String,
-    version: { type: Number, default: 1 },
-    items: [
-      {
-        sku: String,
-        name: String,
-        listPrice: Number,
-        minSellingPrice: Number,
-        maxDiscountPercent: Number,
-        appliedDiscountPercent: Number,
-        unitPrice: Number,
-        quantity: Number,
-        gstPercent: Number,
-        installationCharge: Number,
-        total: Number,
-      },
-    ],
-    subtotal: Number,
-    totalDiscount: Number,
-    taxAmount: Number,
-    installationTotal: Number,
-    grandTotal: Number,
-    status: { type: String, default: "Draft" },
-    requiresSpecialApproval: { type: Boolean, default: false },
-    approvalReason: String,
-    specialApprovalBy: String,
-    specialApprovalDate: String,
-    rejectionReason: String,
-    auditLogs: [
-      {
-        timestamp: String,
-        user: String,
-        action: String,
-        details: String,
-      },
-    ],
-    validUntil: String,
-  },
-  { timestamps: true }
-);
-
-// Order Schema
-const OrderSchema = new Schema(
-  {
-    orderId: { type: String, required: true, unique: true },
-    quoteId: String,
-    opportunityId: String,
-    customerId: String,
-    customerName: String,
-    companyName: String,
-    franchiseId: { type: String, required: true },
-    franchiseName: String,
-    poNumber: String,
-    poDate: String,
-    orderValue: Number,
-    orderStatus: { type: String, default: "Confirmed" },
-    paymentSchedule: [
-      {
-        milestoneName: String,
-        percentage: Number,
-        amount: Number,
-        dueDate: String,
-        receivedAmount: { type: Number, default: 0 },
-        receivedDate: String,
-        referenceNumber: String,
-        status: { type: String, default: "Pending" },
-      },
-    ],
-    materialDispatchedDate: String,
-    deliveredDate: String,
-  },
-  { timestamps: true }
-);
-
-// Installation Schema
-const InstallationSchema = new Schema(
-  {
-    installationId: { type: String, required: true, unique: true },
-    orderId: String,
-    customerId: String,
-    customerName: String,
-    companyName: String,
-    franchiseId: { type: String, required: true },
-    machineSerial: String,
-    productName: String,
-    assignedEngineerId: String,
-    assignedEngineerName: String,
-    scheduledDate: String,
-    completedDate: String,
-    checklist: {
-      materialDelivered: { type: Boolean, default: false },
-      preInstallCheck: { type: Boolean, default: false },
-      machineInstalled: { type: Boolean, default: false },
-      trainingCompleted: { type: Boolean, default: false },
-      customerSignOff: { type: Boolean, default: false },
-    },
-    photos: [String],
-    trainingDetails: {
-      traineesCount: Number,
-      operatorsTrained: [String],
-      topicsCovered: [String],
-    },
-    customerSignOffData: {
-      signeeName: String,
-      signeeDesignation: String,
-      signatureImage: String,
-      signedAt: String,
-    },
-    status: { type: String, default: "Scheduled" },
-  },
-  { timestamps: true }
-);
-
-// Support Ticket Schema
-const SupportTicketSchema = new Schema(
-  {
-    ticketId: { type: String, required: true, unique: true },
-    customerId: String,
-    customerName: String,
-    companyName: String,
-    franchiseId: { type: String, required: true },
-    machineSerial: String,
-    productName: String,
-    category: String,
-    priority: String,
-    slaDeadline: String,
-    slaHoursTotal: Number,
-    slaBreached: { type: Boolean, default: false },
-    assignedEngineerId: String,
-    assignedEngineerName: String,
-    status: { type: String, default: "Open" },
-    issueDescription: String,
-    comments: [
-      {
-        id: String,
-        authorName: String,
-        role: String,
-        timestamp: String,
-        message: String,
-      },
-    ],
-    resolutionNotes: String,
-    resolvedAt: String,
-  },
-  { timestamps: true }
-);
-
-// Customer Schema
+// CUSTOMER SCHEMA
 const CustomerSchema = new Schema(
   {
-    customerId: { type: String, required: true, unique: true },
+    customerId: { type: String, required: true, unique: true, index: true },
     companyName: { type: String, required: true },
-    contactPerson: String,
-    designation: String,
-    email: String,
-    phone: String,
-    industry: String,
-    address: String,
-    district: String,
-    state: String,
-    pincode: String,
-    gstin: String,
-    franchiseId: { type: String, required: true },
-    franchiseName: String,
+    contactPerson: { type: String },
+    designation: { type: String },
+    email: { type: String },
+    phone: { type: String },
+    industry: { type: String },
+    address: { type: String },
+    district: { type: String },
+    state: { type: String },
+    pincode: { type: String },
+    gstin: { type: String },
+    franchiseId: { type: String, index: true },
+    franchiseName: { type: String },
     lifetimeValue: { type: Number, default: 0 },
     activeMachinesCount: { type: Number, default: 0 },
     pendingTicketsCount: { type: Number, default: 0 },
-    nextRenewalDate: String,
-    notes: String,
+    nextRenewalDate: { type: String },
+    notes: { type: String },
   },
-  { timestamps: true }
+  { strict: false, timestamps: true }
 );
 
-// Model exports with Next.js hot-reload guard
-export const FranchiseModel = mongoose.models.Franchise || mongoose.model("Franchise", FranchiseSchema);
-export const ProductModel = mongoose.models.Product || mongoose.model("Product", ProductSchema);
-export const LeadModel = mongoose.models.Lead || mongoose.model("Lead", LeadSchema);
-export const OpportunityModel = mongoose.models.Opportunity || mongoose.model("Opportunity", OpportunitySchema);
-export const QuotationModel = mongoose.models.Quotation || mongoose.model("Quotation", QuotationSchema);
-export const OrderModel = mongoose.models.Order || mongoose.model("Order", OrderSchema);
-export const InstallationModel = mongoose.models.Installation || mongoose.model("Installation", InstallationSchema);
-export const SupportTicketModel = mongoose.models.SupportTicket || mongoose.model("SupportTicket", SupportTicketSchema);
-export const CustomerModel = mongoose.models.Customer || mongoose.model("Customer", CustomerSchema);
+// LEAD SCHEMA
+const LeadSchema = new Schema(
+  {
+    leadId: { type: String, required: true, unique: true, index: true },
+    customerName: { type: String, required: true },
+    companyName: { type: String, required: true },
+    phone: { type: String },
+    email: { type: String },
+    source: { type: String },
+    industry: { type: String },
+    state: { type: String },
+    district: { type: String },
+    pincode: { type: String, index: true },
+    productInterest: { type: String },
+    ownerId: { type: String },
+    ownerName: { type: String },
+    franchiseId: { type: String, index: true },
+    franchiseName: { type: String },
+    status: { type: String, default: "New" },
+    nextFollowUpDate: { type: String },
+    territoryConflict: { type: Boolean, default: false },
+    conflictNotes: { type: String },
+    notes: { type: String },
+  },
+  { strict: false, timestamps: true }
+);
+
+// OPPORTUNITY SCHEMA
+const OpportunitySchema = new Schema(
+  {
+    opportunityId: { type: String, index: true },
+    oppId: { type: String, index: true },
+    leadId: { type: String, index: true },
+    customerName: { type: String },
+    companyName: { type: String },
+    franchiseId: { type: String, index: true },
+    franchiseName: { type: String },
+    productInterest: { type: String },
+    stage: { type: String, default: "Discovery" },
+    expectedValue: { type: Number, default: 0 },
+    probabilityPercent: { type: Number, default: 20 },
+    expectedCloseDate: { type: String },
+    assignedTo: { type: String },
+    notes: { type: String },
+    demo: { type: Schema.Types.Mixed },
+    quotationId: { type: String },
+  },
+  { strict: false, timestamps: true }
+);
+
+// QUOTATION SCHEMA
+const QuotationSchema = new Schema(
+  {
+    quoteId: { type: String, index: true },
+    oppId: { type: String, index: true },
+    opportunityId: { type: String, index: true },
+    customerId: { type: String },
+    customerName: { type: String },
+    companyName: { type: String },
+    franchiseId: { type: String, index: true },
+    franchiseName: { type: String },
+    items: [{ type: Schema.Types.Mixed }],
+    subtotal: { type: Number, default: 0 },
+    specialDiscountPercent: { type: Number, default: 0 },
+    discountAmount: { type: Number, default: 0 },
+    gstAmount: { type: Number, default: 0 },
+    grandTotal: { type: Number, default: 0 },
+    approvalStatus: { type: String, default: "Not Required" },
+    requiresHoApproval: { type: Boolean, default: false },
+    approvedBy: { type: String },
+    approvedAt: { type: String },
+    rejectionReason: { type: String },
+    status: { type: String, default: "Draft" },
+    validUntil: { type: String },
+    terms: { type: String },
+  },
+  { strict: false, timestamps: true }
+);
+
+// SALES ORDER SCHEMA
+const OrderSchema = new Schema(
+  {
+    orderId: { type: String, index: true },
+    quoteId: { type: String, index: true },
+    poNumber: { type: String },
+    poDate: { type: String },
+    customerId: { type: String },
+    customerName: { type: String },
+    companyName: { type: String },
+    franchiseId: { type: String, index: true },
+    franchiseName: { type: String },
+    items: [{ type: Schema.Types.Mixed }],
+    orderValue: { type: Number, default: 0 },
+    paymentSchedule: [{ type: Schema.Types.Mixed }],
+    orderStatus: { type: String, default: "Draft" },
+    estimatedDispatchDate: { type: String },
+    actualDispatchDate: { type: String },
+    trackingNumber: { type: String },
+  },
+  { strict: false, timestamps: true }
+);
+
+// INSTALLATION SCHEMA
+const InstallationSchema = new Schema(
+  {
+    installationId: { type: String, index: true },
+    orderId: { type: String, index: true },
+    customerId: { type: String },
+    customerName: { type: String },
+    companyName: { type: String },
+    franchiseId: { type: String, index: true },
+    franchiseName: { type: String },
+    machineSerial: { type: String, index: true },
+    productName: { type: String },
+    siteReadinessStatus: { type: String, default: "Pending" },
+    serviceEngineerId: { type: String },
+    serviceEngineerName: { type: String },
+    scheduledDate: { type: String },
+    completedDate: { type: String },
+    checklist: [{ type: Schema.Types.Mixed }],
+    status: { type: String, default: "Scheduled" },
+    operatorTrainingSigned: { type: Boolean, default: false },
+    customerSignoff: { type: Schema.Types.Mixed },
+    notes: { type: String },
+  },
+  { strict: false, timestamps: true }
+);
+
+// SUPPORT TICKET SCHEMA
+const SupportTicketSchema = new Schema(
+  {
+    ticketId: { type: String, index: true },
+    customerId: { type: String },
+    customerName: { type: String },
+    companyName: { type: String },
+    franchiseId: { type: String, index: true },
+    machineSerial: { type: String },
+    productName: { type: String },
+    category: { type: String, default: "Breakdown" },
+    priority: { type: String, default: "Medium" },
+    slaHoursTotal: { type: Number, default: 24 },
+    slaDeadline: { type: String },
+    slaBreached: { type: Boolean, default: false },
+    assignedEngineerId: { type: String },
+    assignedEngineerName: { type: String },
+    status: { type: String, default: "Open" },
+    issueDescription: { type: String },
+    resolutionNotes: { type: String },
+    resolvedAt: { type: String },
+    comments: [{ type: Schema.Types.Mixed }],
+  },
+  { strict: false, timestamps: true }
+);
+
+// RENEWAL SCHEMA
+const RenewalSchema = new Schema(
+  {
+    renewalId: { type: String, index: true },
+    customerId: { type: String },
+    customerName: { type: String },
+    companyName: { type: String },
+    franchiseId: { type: String, index: true },
+    machineSerial: { type: String },
+    productName: { type: String },
+    contractType: { type: String, default: "AMC" },
+    contractValue: { type: Number, default: 0 },
+    startDate: { type: String },
+    expiryDate: { type: String },
+    status: { type: String, default: "Pending" },
+    remindersSent: [{ type: Schema.Types.Mixed }],
+    assignedTo: { type: String },
+  },
+  { strict: false, timestamps: true }
+);
+
+// COMMISSION SCHEMA
+const CommissionSchema = new Schema(
+  {
+    commissionId: { type: String, index: true },
+    franchiseId: { type: String, index: true },
+    franchiseName: { type: String },
+    orderId: { type: String, index: true },
+    orderValue: { type: Number, default: 0 },
+    eligibleRevenue: { type: Number, default: 0 },
+    commissionRate: { type: Number, default: 8 },
+    calculatedAmount: { type: Number, default: 0 },
+    status: { type: String, default: "Calculated" },
+    paidDate: { type: String },
+    paymentReference: { type: String },
+  },
+  { strict: false, timestamps: true }
+);
+
+// TERRITORY SCHEMA
+const TerritorySchema = new Schema(
+  {
+    country: { type: String, default: "India" },
+    state: { type: String },
+    district: { type: String },
+    pincodeRange: [{ type: String }],
+    assignedFranchiseId: { type: String, index: true },
+    assignedFranchiseName: { type: String },
+    isProtected: { type: Boolean, default: true },
+  },
+  { strict: false, timestamps: true }
+);
+
+// USER SCHEMA
+const UserSchema = new Schema(
+  {
+    id: { type: String, required: true, unique: true, index: true },
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true, index: true },
+    role: { type: String, required: true },
+    franchiseId: { type: String },
+    franchiseName: { type: String },
+    avatar: { type: String },
+  },
+  { strict: false, timestamps: true }
+);
+
+// EXPORT MONGOOSE MODELS (Singleton-safe across Next.js reloads)
+export const FranchiseModel: Model<any> =
+  mongoose.models.Franchise || mongoose.model("Franchise", FranchiseSchema);
+
+export const ProductModel: Model<any> =
+  mongoose.models.Product || mongoose.model("Product", ProductSchema);
+
+export const CustomerModel: Model<any> =
+  mongoose.models.Customer || mongoose.model("Customer", CustomerSchema);
+
+export const LeadModel: Model<any> =
+  mongoose.models.Lead || mongoose.model("Lead", LeadSchema);
+
+export const OpportunityModel: Model<any> =
+  mongoose.models.Opportunity || mongoose.model("Opportunity", OpportunitySchema);
+
+export const QuotationModel: Model<any> =
+  mongoose.models.Quotation || mongoose.model("Quotation", QuotationSchema);
+
+export const OrderModel: Model<any> =
+  mongoose.models.Order || mongoose.model("Order", OrderSchema);
+
+export const InstallationModel: Model<any> =
+  mongoose.models.Installation || mongoose.model("Installation", InstallationSchema);
+
+export const SupportTicketModel: Model<any> =
+  mongoose.models.SupportTicket || mongoose.model("SupportTicket", SupportTicketSchema);
+
+export const RenewalModel: Model<any> =
+  mongoose.models.Renewal || mongoose.model("Renewal", RenewalSchema);
+
+export const CommissionModel: Model<any> =
+  mongoose.models.Commission || mongoose.model("Commission", CommissionSchema);
+
+export const TerritoryModel: Model<any> =
+  mongoose.models.Territory || mongoose.model("Territory", TerritorySchema);
+
+export const UserModel: Model<any> =
+  mongoose.models.User || mongoose.model("User", UserSchema);

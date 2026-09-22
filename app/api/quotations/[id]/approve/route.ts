@@ -7,11 +7,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const { action, approverName, reason } = body;
 
     if (action === "approve") {
-      const quote = dbRepository.approveQuotation(params.id, approverName || "HO Super Admin", reason);
+      const quote = await dbRepository.approveQuotation(params.id, approverName || "HO Super Admin", reason);
       if (!quote) return NextResponse.json({ error: "Quotation not found" }, { status: 404 });
       return NextResponse.json(quote);
     } else if (action === "reject") {
-      const quote = dbRepository.rejectQuotation(params.id, approverName || "HO Super Admin", reason || "Discount outside commercial margins.");
+      const quote = await dbRepository.rejectQuotation(params.id, approverName || "HO Super Admin", reason || "Discount outside commercial margins.");
       if (!quote) return NextResponse.json({ error: "Quotation not found" }, { status: 404 });
       return NextResponse.json(quote);
     }

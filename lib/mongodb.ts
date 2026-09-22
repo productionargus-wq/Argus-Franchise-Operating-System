@@ -1,10 +1,14 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/argus_franchise_os";
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  throw new Error("Please define the MONGODB_URI environment variable inside .env");
+}
 
 interface MongooseCache {
   conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose | null> | null;
+  promise: Promise<typeof mongoose> | null;
 }
 
 declare global {
@@ -18,33 +22,27 @@ if (!global.mongooseCache) {
   global.mongooseCache = cached;
 }
 
-export async function connectToDatabase(): Promise<typeof mongoose | null> {
-  if (cached.conn) {
+export async function connectToDatabase(): Promise<typeof mongoose> {
+  if (cached.conn && mongoose.connection.readyState === 1) {
     return cached.conn;
   }
 
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 15000,
     };
 
-    cached.promise = mongoose
-      .connect(MONGODB_URI, opts)
-      .then((m) => {
-        console.log("[MongoDB] Connected successfully to:", MONGODB_URI);
-        return m;
-      })
-      .catch((err) => {
-        console.warn("[MongoDB] Direct connection failed, operating with in-memory repository:", err.message);
-        return null;
-      });
+    cached.promise = mongoose.connect(MONGODB_URI!, opts).then((m) => {
+      return m;
+    });
   }
 
   try {
     cached.conn = await cached.promise;
-  } catch {
-    cached.conn = null;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
   }
 
   return cached.conn;

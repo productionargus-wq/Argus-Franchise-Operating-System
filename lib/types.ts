@@ -175,14 +175,16 @@ export interface Quotation {
 }
 
 export interface PaymentMilestone {
-  milestoneName: "Advance" | "Before Dispatch" | "Post Installation";
+  milestoneName: "Advance" | "Before Dispatch" | "Post Installation" | string;
   percentage: number;
   amount: number;
+  dueAmount?: number;
   dueDate: string;
   receivedAmount: number;
   receivedDate?: string;
   referenceNumber?: string;
-  status: "Pending" | "Received" | "Overdue";
+  paymentReference?: string;
+  status: "Pending" | "Received" | "Overdue" | "Partially Received";
 }
 
 export interface SalesOrder {
@@ -198,7 +200,7 @@ export interface SalesOrder {
   poNumber: string;
   poDate: string;
   orderValue: number;
-  orderStatus: "Confirmed" | "Production/Stock" | "QC" | "Dispatch" | "Delivered";
+  orderStatus: "Confirmed" | "Production/Stock" | "QC" | "Dispatch" | "Delivered" | "Payment Cleared" | "Order Placed" | string;
   paymentSchedule: PaymentMilestone[];
   materialDispatchedDate?: string;
   deliveredDate?: string;

@@ -7,10 +7,10 @@ export async function GET(request: Request) {
   const franchiseId = searchParams.get("franchiseId");
 
   if (pincode && franchiseId) {
-    const conflict = dbRepository.checkTerritoryConflict(pincode, franchiseId);
+    const conflict = await dbRepository.checkTerritoryConflict(pincode, franchiseId);
     return NextResponse.json(conflict);
   }
 
-  const territories = dbRepository.getTerritories();
+  const territories = await dbRepository.getTerritories();
   return NextResponse.json(territories);
 }

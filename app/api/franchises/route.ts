@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { dbRepository } from "@/lib/dbRepository";
 
 export async function GET() {
-  const franchises = dbRepository.getFranchises();
+  const franchises = await dbRepository.getFranchises();
   return NextResponse.json(franchises);
 }
 
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const result = dbRepository.createFranchise(body);
+    const result = await dbRepository.createFranchise(body);
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
     console.error("Failed to create franchise:", error);

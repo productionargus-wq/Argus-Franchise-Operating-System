@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { dbRepository } from "@/lib/dbRepository";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const customer = dbRepository.getCustomerById(params.id);
+  const customer = await dbRepository.getCustomerById(params.id);
   if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
 
   // Gather linked records
-  const allOpps = dbRepository.getOpportunities();
-  const allQuotes = dbRepository.getQuotations();
-  const allOrders = dbRepository.getOrders();
-  const allInstallations = dbRepository.getInstallations();
-  const allTickets = dbRepository.getSupportTickets();
-  const allRenewals = dbRepository.getRenewals();
+  const allOpps = await dbRepository.getOpportunities();
+  const allQuotes = await dbRepository.getQuotations();
+  const allOrders = await dbRepository.getOrders();
+  const allInstallations = await dbRepository.getInstallations();
+  const allTickets = await dbRepository.getSupportTickets();
+  const allRenewals = await dbRepository.getRenewals();
 
   const opps = allOpps.filter((o) => o.customerId === customer._id || o.customerId === customer.customerId);
   const quotes = allQuotes.filter((q) => q.customerId === customer._id || q.customerId === customer.customerId);

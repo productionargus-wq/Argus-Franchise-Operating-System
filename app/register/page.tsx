@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -17,21 +17,25 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const companyNameRef = useRef("");
+  const gstinRef = useRef("");
+
+  // Keep refs synchronized with inputs to eliminate any stale closures from GIS callbacks
+  useEffect(() => {
+    companyNameRef.current = companyName;
+  }, [companyName]);
+
+  useEffect(() => {
+    gstinRef.current = gstin;
+  }, [gstin]);
+
   const handleRegisterWithGoogle = async (email: string, name: string) => {
-    // Form Validations
-    if (!companyName.trim()) {
+    const activeCompanyName = (companyNameRef.current || companyName || "").trim();
+    const activeGstin = (gstinRef.current || gstin || "").trim().toUpperCase() || "NOT_PROVIDED";
+
+    // Form Validation: only company name is strictly required
+    if (!activeCompanyName) {
       setErrorMessage("Please enter your registered Company Name.");
-      return;
-    }
-
-    const cleanGstin = gstin.trim().toUpperCase();
-    if (!cleanGstin) {
-      setErrorMessage("Please enter your company GSTIN Number.");
-      return;
-    }
-
-    if (cleanGstin.length !== 15) {
-      setErrorMessage("GSTIN must be exactly 15 characters (e.g. 33AAAAA0000A1Z5).");
       return;
     }
 
@@ -39,8 +43,8 @@ export default function RegisterPage() {
     setErrorMessage(null);
 
     const result = await registerWithGoogle(
-      companyName.trim(),
-      cleanGstin,
+      activeCompanyName,
+      activeGstin,
       email,
       name
     );
@@ -118,17 +122,15 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* 2. GSTIN Number */}
+            {/* 2. GSTIN Number (Optional) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                GSTIN Number (15 Digits) <span className="text-red-500">*</span>
+                GSTIN Number <span className="text-slate-400 font-normal">(Optional)</span>
               </label>
               <div className="relative">
                 <FileCheck className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
-                  required
-                  maxLength={15}
                   placeholder="e.g. 33AAAAA0000A1Z5"
                   value={gstin}
                   onChange={(e) => {
@@ -139,7 +141,7 @@ export default function RegisterPage() {
                 />
               </div>
               <p className="mt-1 text-[11px] text-slate-400">
-                Official Indian Goods and Services Tax Identification Number for your business.
+                Optional Indian Goods and Services Tax Identification Number for your business.
               </p>
             </div>
 
@@ -152,7 +154,7 @@ export default function RegisterPage() {
                 mode="register"
                 label="Register with Google"
                 isLoading={loading}
-                disabled={!companyName.trim() || gstin.trim().length !== 15}
+                disabled={!companyName.trim()}
                 onAuthenticated={handleRegisterWithGoogle}
               />
               <p className="mt-1.5 text-[11px] text-center text-slate-400">

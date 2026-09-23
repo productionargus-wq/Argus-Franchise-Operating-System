@@ -25,6 +25,13 @@ export function GoogleSignInButton({
 }: GoogleSignInButtonProps) {
   const [gisLoaded, setGisLoaded] = useState(false);
   const googleBtnContainerRef = useRef<HTMLDivElement>(null);
+  const initializedRef = useRef(false);
+  const onAuthenticatedRef = useRef(onAuthenticated);
+
+  // Keep callback reference fresh on every render to eliminate stale closure bugs
+  useEffect(() => {
+    onAuthenticatedRef.current = onAuthenticated;
+  }, [onAuthenticated]);
 
   const clientId =
     process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
@@ -44,7 +51,7 @@ export function GoogleSignInButton({
       );
       const payload = JSON.parse(jsonPayload);
       if (payload.email) {
-        onAuthenticated(
+        onAuthenticatedRef.current(
           payload.email.toLowerCase(),
           payload.name || payload.email.split("@")[0]
         );
@@ -60,12 +67,15 @@ export function GoogleSignInButton({
     const initGIS = () => {
       if (typeof window !== "undefined" && window.google?.accounts?.id) {
         try {
-          window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: handleCredentialResponse,
-            auto_select: false,
-            cancel_on_tap_outside: true,
-          });
+          if (!initializedRef.current) {
+            window.google.accounts.id.initialize({
+              client_id: clientId,
+              callback: handleCredentialResponse,
+              auto_select: false,
+              cancel_on_tap_outside: true,
+            });
+            initializedRef.current = true;
+          }
 
           if (googleBtnContainerRef.current) {
             googleBtnContainerRef.current.innerHTML = "";

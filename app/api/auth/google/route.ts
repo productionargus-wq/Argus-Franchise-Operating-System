@@ -19,18 +19,8 @@ export async function POST(request: Request) {
       if (!companyName || !companyName.trim()) {
         return NextResponse.json({ error: "Company Name is required" }, { status: 400 });
       }
-      if (!gstin || !gstin.trim()) {
-        return NextResponse.json({ error: "GSTIN number is required" }, { status: 400 });
-      }
-
-      // Basic GSTIN format check (15 chars, alphanumeric)
-      const cleanGstin = gstin.trim().toUpperCase();
-      if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleanGstin) && cleanGstin.length !== 15) {
-        return NextResponse.json(
-          { error: "Invalid GSTIN format. Expected 15-character Indian GSTIN (e.g. 33AAAAA0000A1Z5)." },
-          { status: 400 }
-        );
-      }
+      // GSTIN is optional / flexible
+      const cleanGstin = gstin && gstin.trim() ? gstin.trim().toUpperCase() : "NOT_PROVIDED";
 
       const result = await dbRepository.registerOrganization({
         name: companyName.trim(),

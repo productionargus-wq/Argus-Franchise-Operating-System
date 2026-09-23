@@ -45,43 +45,44 @@ function sanitizeList(list: any[]) {
   return list.map(sanitize);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await connectToDatabase();
 
-    const TEMP_ORG = "ORG-TEMP";
+    const { searchParams } = new URL(request.url);
+    const targetOrg = searchParams.get("orgId") || "ORG-TEMP";
 
     // Upsert franchises so all 12 territories are guaranteed
     for (const fr of MOCK_FRANCHISES) {
-      await FranchiseModel.findOneAndUpdate({ code: fr.code, orgId: TEMP_ORG }, { $set: { ...sanitize(fr), orgId: TEMP_ORG } }, { upsert: true });
+      await FranchiseModel.findOneAndUpdate({ code: fr.code, orgId: targetOrg }, { $set: { ...sanitize(fr), orgId: targetOrg } }, { upsert: true });
     }
 
     // Populate products if empty
-    if ((await ProductModel.countDocuments({ orgId: TEMP_ORG })) < MOCK_PRODUCTS.length) {
+    if ((await ProductModel.countDocuments({ orgId: targetOrg })) < MOCK_PRODUCTS.length) {
       for (const p of MOCK_PRODUCTS) {
-        await ProductModel.findOneAndUpdate({ sku: p.sku, orgId: TEMP_ORG }, { $set: { ...sanitize(p), orgId: TEMP_ORG } }, { upsert: true });
+        await ProductModel.findOneAndUpdate({ sku: p.sku, orgId: targetOrg }, { $set: { ...sanitize(p), orgId: targetOrg } }, { upsert: true });
       }
     }
 
     // Populate customers if empty
-    if ((await CustomerModel.countDocuments({ orgId: TEMP_ORG })) < MOCK_CUSTOMERS.length) {
+    if ((await CustomerModel.countDocuments({ orgId: targetOrg })) < MOCK_CUSTOMERS.length) {
       for (const c of MOCK_CUSTOMERS) {
-        await CustomerModel.findOneAndUpdate({ customerId: c.customerId, orgId: TEMP_ORG }, { $set: { ...sanitize(c), orgId: TEMP_ORG } }, { upsert: true });
+        await CustomerModel.findOneAndUpdate({ customerId: c.customerId, orgId: targetOrg }, { $set: { ...sanitize(c), orgId: targetOrg } }, { upsert: true });
       }
     }
 
     // Populate leads if empty
-    if ((await LeadModel.countDocuments({ orgId: TEMP_ORG })) < MOCK_LEADS.length) {
+    if ((await LeadModel.countDocuments({ orgId: targetOrg })) < MOCK_LEADS.length) {
       for (const l of MOCK_LEADS) {
-        await LeadModel.findOneAndUpdate({ leadId: l.leadId, orgId: TEMP_ORG }, { $set: { ...sanitize(l), orgId: TEMP_ORG } }, { upsert: true });
+        await LeadModel.findOneAndUpdate({ leadId: l.leadId, orgId: targetOrg }, { $set: { ...sanitize(l), orgId: targetOrg } }, { upsert: true });
       }
     }
 
     // Populate opportunities
-    if ((await OpportunityModel.countDocuments({ orgId: TEMP_ORG })) === 0) {
+    if ((await OpportunityModel.countDocuments({ orgId: targetOrg })) === 0) {
       const opps = MOCK_OPPORTUNITIES.map((opp) => {
         const clean = sanitize(opp);
-        clean.orgId = TEMP_ORG;
+        clean.orgId = targetOrg;
         clean.oppId = clean.opportunityId || clean.oppId || `OP-${Date.now()}`;
         return clean;
       });
@@ -89,10 +90,10 @@ export async function GET() {
     }
 
     // Populate quotations
-    if ((await QuotationModel.countDocuments({ orgId: TEMP_ORG })) === 0) {
+    if ((await QuotationModel.countDocuments({ orgId: targetOrg })) === 0) {
       const quotes = MOCK_QUOTATIONS.map((q) => {
         const clean = sanitize(q);
-        clean.orgId = TEMP_ORG;
+        clean.orgId = targetOrg;
         clean.oppId = clean.opportunityId || clean.oppId;
         return clean;
       });
@@ -100,38 +101,38 @@ export async function GET() {
     }
 
     // Populate orders
-    if ((await OrderModel.countDocuments({ orgId: TEMP_ORG })) === 0) {
-      await OrderModel.insertMany(MOCK_ORDERS.map((o) => ({ ...sanitize(o), orgId: TEMP_ORG })));
+    if ((await OrderModel.countDocuments({ orgId: targetOrg })) === 0) {
+      await OrderModel.insertMany(MOCK_ORDERS.map((o) => ({ ...sanitize(o), orgId: targetOrg })));
     }
 
     // Populate installations
-    if ((await InstallationModel.countDocuments({ orgId: TEMP_ORG })) === 0) {
-      await InstallationModel.insertMany(MOCK_INSTALLATIONS.map((i) => ({ ...sanitize(i), orgId: TEMP_ORG })));
+    if ((await InstallationModel.countDocuments({ orgId: targetOrg })) === 0) {
+      await InstallationModel.insertMany(MOCK_INSTALLATIONS.map((i) => ({ ...sanitize(i), orgId: targetOrg })));
     }
 
     // Populate support tickets
-    if ((await SupportTicketModel.countDocuments({ orgId: TEMP_ORG })) === 0) {
-      await SupportTicketModel.insertMany(MOCK_SUPPORT_TICKETS.map((s) => ({ ...sanitize(s), orgId: TEMP_ORG })));
+    if ((await SupportTicketModel.countDocuments({ orgId: targetOrg })) === 0) {
+      await SupportTicketModel.insertMany(MOCK_SUPPORT_TICKETS.map((s) => ({ ...sanitize(s), orgId: targetOrg })));
     }
 
     // Populate renewals
-    if ((await RenewalModel.countDocuments({ orgId: TEMP_ORG })) === 0) {
-      await RenewalModel.insertMany(MOCK_RENEWALS.map((r) => ({ ...sanitize(r), orgId: TEMP_ORG })));
+    if ((await RenewalModel.countDocuments({ orgId: targetOrg })) === 0) {
+      await RenewalModel.insertMany(MOCK_RENEWALS.map((r) => ({ ...sanitize(r), orgId: targetOrg })));
     }
 
     // Populate commissions
-    if ((await CommissionModel.countDocuments({ orgId: TEMP_ORG })) === 0) {
-      await CommissionModel.insertMany(MOCK_COMMISSIONS.map((c) => ({ ...sanitize(c), orgId: TEMP_ORG })));
+    if ((await CommissionModel.countDocuments({ orgId: targetOrg })) === 0) {
+      await CommissionModel.insertMany(MOCK_COMMISSIONS.map((c) => ({ ...sanitize(c), orgId: targetOrg })));
     }
 
     // Populate territories
-    if ((await TerritoryModel.countDocuments({ orgId: TEMP_ORG })) === 0) {
-      await TerritoryModel.insertMany(MOCK_TERRITORIES.map((t) => ({ ...sanitize(t), orgId: TEMP_ORG })));
+    if ((await TerritoryModel.countDocuments({ orgId: targetOrg })) === 0) {
+      await TerritoryModel.insertMany(MOCK_TERRITORIES.map((t) => ({ ...sanitize(t), orgId: targetOrg })));
     }
 
     // Populate users
-    if ((await UserModel.countDocuments({ orgId: TEMP_ORG })) === 0) {
-      await UserModel.insertMany(MOCK_USERS.map((u) => ({ ...sanitize(u), orgId: TEMP_ORG, orgName: "Demo CNC Systems (Template)" })));
+    if ((await UserModel.countDocuments({ orgId: targetOrg })) === 0) {
+      await UserModel.insertMany(MOCK_USERS.map((u) => ({ ...sanitize(u), orgId: targetOrg, orgName: "Industrial CNC Systems" })));
     }
 
     const counts = {

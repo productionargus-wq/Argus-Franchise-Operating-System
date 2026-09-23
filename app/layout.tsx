@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 
@@ -14,6 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <Script src="https://accounts.google.com/gsi/client" strategy="beforeInteractive" />
+      </head>
       <body className="antialiased bg-[#F8F9FA] text-[#293033]">
         <AppShell>{children}</AppShell>
       </body>

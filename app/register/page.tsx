@@ -57,9 +57,9 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-linear-to-b from-slate-50 via-slate-100 to-slate-200 flex flex-col justify-center py-10 sm:px-6 lg:px-8 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-[#293033] shadow-xl border border-slate-700 mb-4">
+        <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white shadow-md border border-slate-200 mb-4">
           <Image
-            src="/argus_logo_charcoal.png"
+            src="/argus-logo.png"
             alt="Argus CNC Logo"
             width={160}
             height={42}

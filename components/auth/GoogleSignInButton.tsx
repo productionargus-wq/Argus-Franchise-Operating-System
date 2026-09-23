@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { GoogleAuthModal } from "./GoogleAuthModal";
 
 interface GoogleSignInButtonProps {
@@ -11,6 +11,12 @@ interface GoogleSignInButtonProps {
   isLoading?: boolean;
 }
 
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
+
 export function GoogleSignInButton({
   mode,
   label,
@@ -19,22 +25,111 @@ export function GoogleSignInButton({
   isLoading = false,
 }: GoogleSignInButtonProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [gisLoaded, setGisLoaded] = useState(false);
+  const googleBtnContainerRef = useRef<HTMLDivElement>(null);
+
+  const clientId =
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+    "378804509607-1g9lguuc8gvv52ojira20hisr0citcsj.apps.googleusercontent.com";
+
+  // Decode JWT payload returned by Google Identity Services
+  const handleCredentialResponse = (response: any) => {
+    if (!response?.credential) return;
+    try {
+      const base64Url = response.credential.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      const payload = JSON.parse(jsonPayload);
+      if (payload.email) {
+        onAuthenticated(
+          payload.email.toLowerCase(),
+          payload.name || payload.email.split("@")[0]
+        );
+      }
+    } catch (e) {
+      console.error("Failed to decode Google Identity credential:", e);
+    }
+  };
+
+  useEffect(() => {
+    let checkInterval: NodeJS.Timeout;
+
+    const initGIS = () => {
+      if (typeof window !== "undefined" && window.google?.accounts?.id) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+
+          if (googleBtnContainerRef.current) {
+            googleBtnContainerRef.current.innerHTML = "";
+            window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
+              type: "standard",
+              theme: "outline",
+              size: "large",
+              text: mode === "register" ? "signup_with" : "signin_with",
+              shape: "rectangular",
+              logo_alignment: "center",
+              width: 360,
+            });
+            setGisLoaded(true);
+          }
+        } catch (err) {
+          console.warn("Google GIS initialization notice:", err);
+        }
+      }
+    };
+
+    // If script already loaded
+    if (window.google?.accounts?.id) {
+      initGIS();
+    } else {
+      // Poll briefly for GIS script readiness
+      checkInterval = setInterval(() => {
+        if (window.google?.accounts?.id) {
+          clearInterval(checkInterval);
+          initGIS();
+        }
+      }, 200);
+    }
+
+    return () => {
+      if (checkInterval) clearInterval(checkInterval);
+    };
+  }, [clientId, mode]);
 
   const defaultLabel =
     mode === "register" ? "Sign up with Google" : "Sign in with Google";
 
   return (
-    <>
+    <div className="w-full flex flex-col items-center gap-2.5">
+      {/* Official Google Identity Services Render Container */}
+      <div
+        ref={googleBtnContainerRef}
+        className={`w-full flex justify-center items-center overflow-hidden min-h-[44px] ${
+          disabled || isLoading ? "pointer-events-none opacity-50" : ""
+        }`}
+      />
+
+      {/* Styled Branded Button (renders immediately or acts as interactive trigger/fallback) */}
       <button
         type="button"
         disabled={disabled || isLoading}
         onClick={() => setModalOpen(true)}
-        className="w-full py-3 px-4 bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-semibold text-sm rounded-xl transition-all shadow-xs flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group active:scale-[0.99]"
+        className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 text-slate-700 font-semibold text-xs rounded-xl transition-all shadow-2xs flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 group"
       >
         {isLoading ? (
-          <div className="w-5 h-5 border-2 border-slate-300 border-t-[#FF6600] rounded-full animate-spin"></div>
+          <div className="w-4 h-4 border-2 border-slate-300 border-t-[#FF6600] rounded-full animate-spin"></div>
         ) : (
-          <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
             <path
               fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -53,8 +148,12 @@ export function GoogleSignInButton({
             />
           </svg>
         )}
-        <span className="group-hover:text-slate-900 transition-colors">
-          {isLoading ? "Authenticating with Google..." : label || defaultLabel}
+        <span>
+          {isLoading
+            ? "Authenticating with Google..."
+            : gisLoaded
+            ? "Select Google Account / Switch Account"
+            : label || defaultLabel}
         </span>
       </button>
 
@@ -67,6 +166,6 @@ export function GoogleSignInButton({
           onAuthenticated(email, name);
         }}
       />
-    </>
+    </div>
   );
 }

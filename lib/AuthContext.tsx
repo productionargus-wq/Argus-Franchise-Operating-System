@@ -33,47 +33,29 @@ interface AuthContextType {
   canEditPriceMaster: boolean;
 }
 
-const DEFAULT_USER: UserSession = {
-  ...MOCK_USERS[1],
-  orgId: "ORG-ARGUS",
-  orgName: "Argus CNC Technologies Ltd",
-  status: "active",
-};
-
-const DEFAULT_ORG: Organization = {
-  orgId: "ORG-ARGUS",
-  name: "Argus CNC Technologies Ltd",
-  gstin: "33AAAAA0000A1Z5",
-  adminEmail: "vikram.ho@arguscnc.com",
-  adminName: "Vikram Rathore",
-  status: "APPROVED",
-  createdAt: "2026-01-01",
-  approvedAt: "2026-01-01",
-  approvedBy: "System Setup",
+const GUEST_USER: UserSession = {
+  id: "guest",
+  name: "Not Signed In",
+  email: "",
+  role: "franchise_sales",
+  orgId: null,
+  orgName: null,
+  franchiseId: null,
+  status: "disabled",
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<UserSession>(DEFAULT_USER);
-  const [organization, setOrganization] = useState<Organization | null>(DEFAULT_ORG);
+  const [currentUser, setCurrentUser] = useState<UserSession>(GUEST_USER);
+  const [organization, setOrganization] = useState<Organization | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [availableUsers, setAvailableUsers] = useState<UserSession[]>(MOCK_USERS);
+  const [availableUsers, setAvailableUsers] = useState<UserSession[]>([]);
 
   useEffect(() => {
     try {
-      // 1. Restore Custom Users List
-      const customUsersJson = localStorage.getItem("argus_custom_users");
-      let allUsers = [...MOCK_USERS];
-      if (customUsersJson) {
-        const customUsers: UserSession[] = JSON.parse(customUsersJson);
-        const toAdd = customUsers.filter((cu) => !allUsers.some((u) => u.id === cu.id));
-        allUsers = [...allUsers, ...toAdd];
-        setAvailableUsers(allUsers);
-      }
-
-      // 2. Restore Live Session if logged in
+      // Restore Live Session if logged in
       const savedSession = localStorage.getItem("argus_auth_session");
       if (savedSession) {
         const parsed = JSON.parse(savedSession);
@@ -81,12 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setCurrentUser(parsed.user);
           setOrganization(parsed.organization || null);
           setIsAuthenticated(true);
-        }
-      } else {
-        const savedId = localStorage.getItem("argus_current_user_id");
-        if (savedId) {
-          const found = allUsers.find((u) => u.id === savedId);
-          if (found) setCurrentUser(found);
+          setAvailableUsers([parsed.user]);
         }
       }
     } catch (e) {
@@ -95,6 +72,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (currentUser?.orgId) {
+      fetch(`/api/users?orgId=${encodeURIComponent(currentUser.orgId)}`)
+        .then((res) => (res.ok ? res.json() : []))
+        .then((users: UserSession[]) => {
+          if (Array.isArray(users) && users.length > 0) {
+            setAvailableUsers(users);
+          }
+        })
+        .catch((err) => console.error("Failed to load org users:", err));
+    }
+  }, [currentUser?.orgId]);
 
   const loginWithGoogle = async (
     email: string,

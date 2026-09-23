@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { TerritoryMapping } from "@/lib/types";
+import { useAuth } from "@/lib/AuthContext";
 import {
   MapPin,
   ShieldCheck,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 
 export default function TerritoryManagementPage() {
+  const { currentUser } = useAuth();
   const [territories, setTerritories] = useState<TerritoryMapping[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,9 +27,12 @@ export default function TerritoryManagementPage() {
     async function loadTerritories() {
       try {
         setLoading(true);
-        const res = await fetch("/api/territories");
+        const url = currentUser?.orgId
+          ? `/api/territories?orgId=${encodeURIComponent(currentUser.orgId)}`
+          : "/api/territories";
+        const res = await fetch(url);
         const data = await res.json();
-        setTerritories(data);
+        setTerritories(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error(e);
       } finally {
@@ -35,12 +40,13 @@ export default function TerritoryManagementPage() {
       }
     }
     loadTerritories();
-  }, []);
+  }, [currentUser]);
 
   const handleTestConflict = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`/api/territories?pincode=${testPincode}&franchiseId=${testFranchise}`);
+      const orgParam = currentUser?.orgId ? `&orgId=${encodeURIComponent(currentUser.orgId)}` : "";
+      const res = await fetch(`/api/territories?pincode=${testPincode}&franchiseId=${testFranchise}${orgParam}`);
       const data = await res.json();
       setConflictResult(data);
     } catch (e) {

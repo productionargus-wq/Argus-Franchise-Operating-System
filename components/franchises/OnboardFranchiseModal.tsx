@@ -31,7 +31,7 @@ export function OnboardFranchiseModal({
   onFranchiseCreated,
 }: OnboardFranchiseModalProps) {
   const router = useRouter();
-  const { registerNewUser, switchRole } = useAuth();
+  const { currentUser, registerNewUser, switchRole } = useAuth();
   const { addNotification } = useNotifications();
 
   const initialForm = {
@@ -110,6 +110,7 @@ export function OnboardFranchiseModal({
         contactPerson: form.contactPerson.trim(),
         phone: form.phone.trim() || "+91 98000 00000",
         email: form.email.trim(),
+        orgId: currentUser?.orgId,
       };
 
       const res = await fetch("/api/franchises", {

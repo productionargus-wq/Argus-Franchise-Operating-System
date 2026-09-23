@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useAuth } from "@/lib/AuthContext";
 import { Installation } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/Badge";
 import { SignaturePad } from "@/components/ui/SignaturePad";
@@ -21,6 +22,7 @@ import {
 
 export default function InstallationDetailPage() {
   const params = useParams();
+  const { currentUser } = useAuth();
   const [installation, setInstallation] = useState<Installation | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,7 +35,8 @@ export default function InstallationDetailPage() {
   const loadInstallation = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/installations/${params.id}`);
+      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId)}` : "";
+      const res = await fetch(`/api/installations/${params.id}${orgParam}`);
       if (res.ok) {
         const data = await res.json();
         setInstallation(data);
@@ -52,7 +55,7 @@ export default function InstallationDetailPage() {
 
   useEffect(() => {
     loadInstallation();
-  }, [params.id]);
+  }, [params.id, currentUser]);
 
   const handleChecklistToggle = async (key: keyof Installation["checklist"]) => {
     if (!installation) return;
@@ -66,7 +69,7 @@ export default function InstallationDetailPage() {
       const res = await fetch(`/api/installations/${installation.installationId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ checklist: updatedChecklist }),
+        body: JSON.stringify({ checklist: updatedChecklist, orgId: currentUser?.orgId }),
       });
       if (res.ok) {
         loadInstallation();
@@ -91,6 +94,7 @@ export default function InstallationDetailPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          orgId: currentUser?.orgId,
           status: "Completed",
           completedDate: new Date().toISOString().split("T")[0],
           checklist: {

@@ -70,19 +70,50 @@ async function ensureInitialized() {
   if (!initPromise) {
     initPromise = (async () => {
       try {
+        const TEMP_ORG = "ORG-TEMP";
+
+        // One-time migration: Tag any legacy records that lack orgId or have ORG-ARGUS with ORG-TEMP
+        await Promise.all([
+          FranchiseModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
+          ProductModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
+          CustomerModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
+          LeadModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
+          OpportunityModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
+          QuotationModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
+          OrderModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
+          InstallationModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
+          SupportTicketModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
+          RenewalModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
+          CommissionModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
+          TerritoryModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
+          UserModel.updateMany({ orgId: "ORG-ARGUS" }, { $set: { orgId: TEMP_ORG, orgName: "Demo CNC Systems (Template)" } }),
+          OrganizationModel.updateMany({ orgId: "ORG-ARGUS" }, { $set: { orgId: TEMP_ORG, name: "Demo CNC Systems (Template)" } }),
+        ]);
+
         const franchiseCount = await FranchiseModel.countDocuments();
         if (franchiseCount < 12) {
           for (const fr of MOCK_FRANCHISES) {
-            await FranchiseModel.findOneAndUpdate({ code: fr.code }, { $set: sanitize(fr) }, { upsert: true });
+            await FranchiseModel.findOneAndUpdate(
+              { code: fr.code, orgId: TEMP_ORG },
+              { $set: { ...sanitize(fr), orgId: TEMP_ORG } },
+              { upsert: true }
+            );
           }
         }
 
-        if ((await ProductModel.countDocuments()) === 0) await ProductModel.insertMany(sanitizeList(MOCK_PRODUCTS));
-        if ((await CustomerModel.countDocuments()) === 0) await CustomerModel.insertMany(sanitizeList(MOCK_CUSTOMERS));
-        if ((await LeadModel.countDocuments()) === 0) await LeadModel.insertMany(sanitizeList(MOCK_LEADS));
+        if ((await ProductModel.countDocuments()) === 0) {
+          await ProductModel.insertMany(MOCK_PRODUCTS.map((p) => ({ ...sanitize(p), orgId: TEMP_ORG })));
+        }
+        if ((await CustomerModel.countDocuments()) === 0) {
+          await CustomerModel.insertMany(MOCK_CUSTOMERS.map((c) => ({ ...sanitize(c), orgId: TEMP_ORG })));
+        }
+        if ((await LeadModel.countDocuments()) === 0) {
+          await LeadModel.insertMany(MOCK_LEADS.map((l) => ({ ...sanitize(l), orgId: TEMP_ORG })));
+        }
         if ((await OpportunityModel.countDocuments()) === 0) {
           const opps = MOCK_OPPORTUNITIES.map((opp) => {
             const clean = sanitize(opp);
+            clean.orgId = TEMP_ORG;
             clean.oppId = clean.opportunityId || clean.oppId || `OP-${Date.now()}`;
             return clean;
           });
@@ -91,24 +122,37 @@ async function ensureInitialized() {
         if ((await QuotationModel.countDocuments()) === 0) {
           const quotes = MOCK_QUOTATIONS.map((q) => {
             const clean = sanitize(q);
+            clean.orgId = TEMP_ORG;
             clean.oppId = clean.opportunityId || clean.oppId;
             return clean;
           });
           await QuotationModel.insertMany(quotes);
         }
-        if ((await OrderModel.countDocuments()) === 0) await OrderModel.insertMany(sanitizeList(MOCK_ORDERS));
-        if ((await InstallationModel.countDocuments()) === 0) await InstallationModel.insertMany(sanitizeList(MOCK_INSTALLATIONS));
-        if ((await SupportTicketModel.countDocuments()) === 0) await SupportTicketModel.insertMany(sanitizeList(MOCK_SUPPORT_TICKETS));
-        if ((await RenewalModel.countDocuments()) === 0) await RenewalModel.insertMany(sanitizeList(MOCK_RENEWALS));
-        if ((await CommissionModel.countDocuments()) === 0) await CommissionModel.insertMany(sanitizeList(MOCK_COMMISSIONS));
-        if ((await TerritoryModel.countDocuments()) === 0) await TerritoryModel.insertMany(sanitizeList(MOCK_TERRITORIES));
+        if ((await OrderModel.countDocuments()) === 0) {
+          await OrderModel.insertMany(MOCK_ORDERS.map((o) => ({ ...sanitize(o), orgId: TEMP_ORG })));
+        }
+        if ((await InstallationModel.countDocuments()) === 0) {
+          await InstallationModel.insertMany(MOCK_INSTALLATIONS.map((i) => ({ ...sanitize(i), orgId: TEMP_ORG })));
+        }
+        if ((await SupportTicketModel.countDocuments()) === 0) {
+          await SupportTicketModel.insertMany(MOCK_SUPPORT_TICKETS.map((s) => ({ ...sanitize(s), orgId: TEMP_ORG })));
+        }
+        if ((await RenewalModel.countDocuments()) === 0) {
+          await RenewalModel.insertMany(MOCK_RENEWALS.map((r) => ({ ...sanitize(r), orgId: TEMP_ORG })));
+        }
+        if ((await CommissionModel.countDocuments()) === 0) {
+          await CommissionModel.insertMany(MOCK_COMMISSIONS.map((c) => ({ ...sanitize(c), orgId: TEMP_ORG })));
+        }
+        if ((await TerritoryModel.countDocuments()) === 0) {
+          await TerritoryModel.insertMany(MOCK_TERRITORIES.map((t) => ({ ...sanitize(t), orgId: TEMP_ORG })));
+        }
 
-        // Default Organization Seed
-        const defaultOrg = await OrganizationModel.findOne({ orgId: "ORG-ARGUS" });
+        // Default Organization Seed (Template Org)
+        const defaultOrg = await OrganizationModel.findOne({ orgId: TEMP_ORG });
         if (!defaultOrg) {
           await OrganizationModel.create({
-            orgId: "ORG-ARGUS",
-            name: "Argus CNC Technologies Ltd",
+            orgId: TEMP_ORG,
+            name: "Demo CNC Systems (Template)",
             gstin: "33AAAAA0000A1Z5",
             adminEmail: "vikram.ho@arguscnc.com",
             adminName: "Vikram Rathore",
@@ -120,14 +164,13 @@ async function ensureInitialized() {
         }
 
         // Super admins are strictly managed in the dedicated super_admins collection.
-        // Clean up any legacy super_admin records in UserModel.
         await UserModel.deleteMany({ role: "super_admin" });
 
-        if ((await UserModel.countDocuments()) <= 1) {
+        if ((await UserModel.countDocuments({ orgId: TEMP_ORG })) <= 1) {
           const seededUsers = MOCK_USERS.map((u) => ({
             ...sanitize(u),
-            orgId: "ORG-ARGUS",
-            orgName: "Argus CNC Technologies Ltd",
+            orgId: TEMP_ORG,
+            orgName: "Demo CNC Systems (Template)",
             status: "active",
           }));
           for (const u of seededUsers) {
@@ -136,7 +179,7 @@ async function ensureInitialized() {
         }
 
         isInitialized = true;
-        console.log("✅ MongoDB Atlas collections & Organization multi-tenant seed synchronized successfully!");
+        console.log("✅ MongoDB Atlas collections & Organization multi-tenant seed synchronized successfully with ORG-TEMP!");
       } catch (e) {
         console.error("Error initializing MongoDB Atlas collections:", e);
       }
@@ -357,8 +400,8 @@ export const dbRepository = {
 
   async getUsersByOrg(orgId?: string | null): Promise<UserSession[]> {
     await ensureInitialized();
-    const query = orgId ? { orgId } : {};
-    const docs = await UserModel.find(query).lean();
+    if (!orgId) return [];
+    const docs = await UserModel.find({ orgId }).lean();
     return cleanDocs<UserSession>(docs);
   },
 
@@ -413,22 +456,27 @@ export const dbRepository = {
   },
 
   // FRANCHISES
-  async getFranchises(): Promise<Franchise[]> {
+  async getFranchises(orgId?: string | null): Promise<Franchise[]> {
     await ensureInitialized();
-    const docs = await FranchiseModel.find().lean();
+    const query = orgId ? { orgId } : {};
+    const docs = await FranchiseModel.find(query).lean();
     return cleanDocs<Franchise>(docs);
   },
 
-  async getFranchiseByCode(code: string): Promise<Franchise | null> {
+  async getFranchiseByCode(code: string, orgId?: string | null): Promise<Franchise | null> {
     await ensureInitialized();
-    const doc = await FranchiseModel.findOne({ code }).lean();
+    const query: any = { code };
+    if (orgId) query.orgId = orgId;
+    const doc = await FranchiseModel.findOne(query).lean();
     return doc ? cleanDoc<Franchise>(doc) : null;
   },
 
   async createFranchise(
-    data: Partial<Franchise> & { adminUser?: Partial<UserSession> }
+    data: Partial<Franchise> & { adminUser?: Partial<UserSession> },
+    orgId?: string | null
   ): Promise<{ franchise: Franchise; adminUser: UserSession }> {
     await ensureInitialized();
+    const activeOrgId = data.orgId || orgId || "ORG-TEMP";
     const rawCode = (data.code || `FR-${Date.now().toString().slice(-4)}`).toUpperCase().trim();
     const code = rawCode.startsWith("FR-") ? rawCode : `FR-${rawCode}`;
     const location = data.location || "New Location";
@@ -446,6 +494,7 @@ export const dbRepository = {
       : [];
 
     const newFranchiseData: Partial<Franchise> = {
+      orgId: activeOrgId,
       code,
       name,
       location,
@@ -473,6 +522,7 @@ export const dbRepository = {
       for (let idx = 0; idx < territoryDistricts.length; idx++) {
         const dist = territoryDistricts[idx];
         await TerritoryModel.create({
+          orgId: activeOrgId,
           country: "India",
           state,
           district: dist,
@@ -498,6 +548,7 @@ export const dbRepository = {
       name: newFranchise.contactPerson,
       email: newFranchise.email,
       role: "franchise_admin",
+      orgId: activeOrgId,
       franchiseId: code,
       franchiseName: name,
       avatar: initials,
@@ -512,22 +563,27 @@ export const dbRepository = {
     return { franchise: newFranchise, adminUser: adminUserData };
   },
 
-  // PRODUCTS / PRICE MASTER
-  async getProducts(): Promise<ProductMasterItem[]> {
+  // PRODUCTS / PRICE MASTER (Per-Organization)
+  async getProducts(orgId?: string | null): Promise<ProductMasterItem[]> {
     await ensureInitialized();
-    const docs = await ProductModel.find().lean();
+    const query = orgId ? { orgId } : {};
+    const docs = await ProductModel.find(query).lean();
     return cleanDocs<ProductMasterItem>(docs);
   },
 
-  async getProductBySku(sku: string): Promise<ProductMasterItem | null> {
+  async getProductBySku(sku: string, orgId?: string | null): Promise<ProductMasterItem | null> {
     await ensureInitialized();
-    const doc = await ProductModel.findOne({ sku }).lean();
+    const query: any = { sku };
+    if (orgId) query.orgId = orgId;
+    const doc = await ProductModel.findOne(query).lean();
     return doc ? cleanDoc<ProductMasterItem>(doc) : null;
   },
 
-  async createProduct(product: Partial<ProductMasterItem>): Promise<ProductMasterItem> {
+  async createProduct(product: Partial<ProductMasterItem>, orgId?: string | null): Promise<ProductMasterItem> {
     await ensureInitialized();
+    const activeOrgId = product.orgId || orgId || "ORG-TEMP";
     const newPrd: Partial<ProductMasterItem> = {
+      orgId: activeOrgId,
       sku: product.sku || `ARG-SKU-${Math.floor(1000 + Math.random() * 9000)}`,
       name: product.name || "New Industrial Machine",
       category: product.category || "CNC Machines",
@@ -547,15 +603,18 @@ export const dbRepository = {
   },
 
   // TERRITORIES
-  async getTerritories(): Promise<TerritoryMapping[]> {
+  async getTerritories(orgId?: string | null): Promise<TerritoryMapping[]> {
     await ensureInitialized();
-    const docs = await TerritoryModel.find().lean();
+    const query = orgId ? { orgId } : {};
+    const docs = await TerritoryModel.find(query).lean();
     return cleanDocs<TerritoryMapping>(docs);
   },
 
-  async checkTerritoryConflict(pincode: string, requestedFranchiseId: string) {
+  async checkTerritoryConflict(pincode: string, requestedFranchiseId: string, orgId?: string | null) {
     await ensureInitialized();
-    const match: any = await TerritoryModel.findOne({ pincodeRange: pincode }).lean();
+    const query: any = { pincodeRange: pincode };
+    if (orgId) query.orgId = orgId;
+    const match: any = await TerritoryModel.findOne(query).lean();
     if (!match) {
       return { hasConflict: false, matchedTerritory: null };
     }
@@ -572,29 +631,35 @@ export const dbRepository = {
   },
 
   // LEADS
-  async getLeads(franchiseId?: string | null): Promise<Lead[]> {
+  async getLeads(orgId?: string | null, franchiseId?: string | null): Promise<Lead[]> {
     await ensureInitialized();
-    const query = franchiseId ? { franchiseId } : {};
+    const query: any = {};
+    if (orgId) query.orgId = orgId;
+    if (franchiseId) query.franchiseId = franchiseId;
     const docs = await LeadModel.find(query).sort({ createdAt: -1 }).lean();
     return cleanDocs<Lead>(docs);
   },
 
-  async getLeadById(id: string): Promise<Lead | null> {
+  async getLeadById(id: string, orgId?: string | null): Promise<Lead | null> {
     await ensureInitialized();
-    const doc = await LeadModel.findOne(idOr(id, { leadId: id })).lean();
+    const query: any = idOr(id, { leadId: id });
+    if (orgId) query.orgId = orgId;
+    const doc = await LeadModel.findOne(query).lean();
     return doc ? cleanDoc<Lead>(doc) : null;
   },
 
-  async createLead(data: Partial<Lead>): Promise<Lead> {
+  async createLead(data: Partial<Lead>, orgId?: string | null): Promise<Lead> {
     await ensureInitialized();
-    const count = await LeadModel.countDocuments();
+    const activeOrgId = data.orgId || orgId || "ORG-TEMP";
+    const count = await LeadModel.countDocuments({ orgId: activeOrgId });
     const leadId = `LD-${1040 + count + 1}`;
 
     const conflictCheck = data.pincode
-      ? await this.checkTerritoryConflict(data.pincode, data.franchiseId || "FR-CBE")
+      ? await this.checkTerritoryConflict(data.pincode, data.franchiseId || "FR-CBE", activeOrgId)
       : { hasConflict: false };
 
     const newLead: Partial<Lead> = {
+      orgId: activeOrgId,
       leadId,
       customerName: data.customerName || "Prospective Client",
       companyName: data.companyName || "Industrial Partner",
@@ -624,34 +689,39 @@ export const dbRepository = {
     return cleanDoc<Lead>(created);
   },
 
-  async updateLead(id: string, updates: Partial<Lead>): Promise<Lead | null> {
+  async updateLead(id: string, updates: Partial<Lead>, orgId?: string | null): Promise<Lead | null> {
     await ensureInitialized();
+    const query: any = idOr(id, { leadId: id });
+    if (orgId) query.orgId = orgId;
     const updated = await LeadModel.findOneAndUpdate(
-      idOr(id, { leadId: id }),
+      query,
       { $set: updates },
       { new: true }
     ).lean();
     return updated ? cleanDoc<Lead>(updated) : null;
   },
 
-  async convertLeadToOpportunity(leadId: string): Promise<Opportunity | null> {
+  async convertLeadToOpportunity(leadId: string, orgId?: string | null): Promise<Opportunity | null> {
     await ensureInitialized();
-    const lead = await this.getLeadById(leadId);
+    const lead = await this.getLeadById(leadId, orgId);
     if (!lead) return null;
+    const activeOrgId = lead.orgId || orgId || "ORG-TEMP";
 
     await LeadModel.findOneAndUpdate(
-      idOr(leadId, { leadId: leadId }),
+      { ...idOr(leadId, { leadId }), ...(orgId ? { orgId } : {}) },
       { $set: { status: "Converted" } }
     );
 
     // Ensure customer exists in Atlas
     let cust: any = await CustomerModel.findOne({
+      orgId: activeOrgId,
       companyName: { $regex: new RegExp(`^${lead.companyName}$`, "i") },
     }).lean();
 
     if (!cust) {
-      const custCount = await CustomerModel.countDocuments();
+      const custCount = await CustomerModel.countDocuments({ orgId: activeOrgId });
       cust = await CustomerModel.create({
+        orgId: activeOrgId,
         customerId: `CUST-${5000 + custCount + 1}`,
         companyName: lead.companyName,
         contactPerson: lead.customerName,
@@ -669,10 +739,11 @@ export const dbRepository = {
       });
     }
 
-    const oppCount = await OpportunityModel.countDocuments();
+    const oppCount = await OpportunityModel.countDocuments({ orgId: activeOrgId });
     const oppId = `OP-${1020 + oppCount + 1}`;
 
     const newOpp = await OpportunityModel.create({
+      orgId: activeOrgId,
       opportunityId: oppId,
       leadId: lead.leadId,
       customerId: cust?.customerId || `CUST-${5000 + oppCount + 1}`,
@@ -708,23 +779,29 @@ export const dbRepository = {
   },
 
   // OPPORTUNITIES
-  async getOpportunities(franchiseId?: string | null): Promise<Opportunity[]> {
+  async getOpportunities(orgId?: string | null, franchiseId?: string | null): Promise<Opportunity[]> {
     await ensureInitialized();
-    const query = franchiseId ? { franchiseId } : {};
+    const query: any = {};
+    if (orgId) query.orgId = orgId;
+    if (franchiseId) query.franchiseId = franchiseId;
     const docs = await OpportunityModel.find(query).sort({ createdAt: -1 }).lean();
     return cleanDocs<Opportunity>(docs);
   },
 
-  async getOpportunityById(id: string): Promise<Opportunity | null> {
+  async getOpportunityById(id: string, orgId?: string | null): Promise<Opportunity | null> {
     await ensureInitialized();
-    const doc = await OpportunityModel.findOne(idOr(id, { opportunityId: id }, { oppId: id })).lean();
+    const query: any = idOr(id, { opportunityId: id }, { oppId: id });
+    if (orgId) query.orgId = orgId;
+    const doc = await OpportunityModel.findOne(query).lean();
     return doc ? cleanDoc<Opportunity>(doc) : null;
   },
 
-  async updateOpportunity(id: string, updates: Partial<Opportunity>): Promise<Opportunity | null> {
+  async updateOpportunity(id: string, updates: Partial<Opportunity>, orgId?: string | null): Promise<Opportunity | null> {
     await ensureInitialized();
+    const query: any = idOr(id, { opportunityId: id }, { oppId: id });
+    if (orgId) query.orgId = orgId;
     const updated = await OpportunityModel.findOneAndUpdate(
-      idOr(id, { opportunityId: id }, { oppId: id }),
+      query,
       { $set: { ...updates, updatedAt: new Date().toISOString().split("T")[0] } },
       { new: true }
     ).lean();
@@ -732,22 +809,27 @@ export const dbRepository = {
   },
 
   // QUOTATIONS
-  async getQuotations(franchiseId?: string | null): Promise<Quotation[]> {
+  async getQuotations(orgId?: string | null, franchiseId?: string | null): Promise<Quotation[]> {
     await ensureInitialized();
-    const query = franchiseId ? { franchiseId } : {};
+    const query: any = {};
+    if (orgId) query.orgId = orgId;
+    if (franchiseId) query.franchiseId = franchiseId;
     const docs = await QuotationModel.find(query).sort({ createdAt: -1 }).lean();
     return cleanDocs<Quotation>(docs);
   },
 
-  async getQuotationById(id: string): Promise<Quotation | null> {
+  async getQuotationById(id: string, orgId?: string | null): Promise<Quotation | null> {
     await ensureInitialized();
-    const doc = await QuotationModel.findOne(idOr(id, { quoteId: id })).lean();
+    const query: any = idOr(id, { quoteId: id });
+    if (orgId) query.orgId = orgId;
+    const doc = await QuotationModel.findOne(query).lean();
     return doc ? cleanDoc<Quotation>(doc) : null;
   },
 
-  async createQuotation(data: any, createdBy: UserSession): Promise<Quotation> {
+  async createQuotation(data: any, createdBy: UserSession, orgId?: string | null): Promise<Quotation> {
     await ensureInitialized();
-    const count = await QuotationModel.countDocuments();
+    const activeOrgId = data.orgId || orgId || createdBy.orgId || "ORG-TEMP";
+    const count = await QuotationModel.countDocuments({ orgId: activeOrgId });
     const quoteId = `QT-${9200 + count + 1}`;
 
     const items = data.items || [];
@@ -768,6 +850,7 @@ export const dbRepository = {
     const grandTotal = taxableAmount + gstAmount;
 
     const newQuote = await QuotationModel.create({
+      orgId: activeOrgId,
       quoteId,
       opportunityId: data.opportunityId || data.oppId || "OP-1021",
       customerId: data.customerId || "CUST-5001",
@@ -801,10 +884,12 @@ export const dbRepository = {
     return cleanDoc<Quotation>(newQuote);
   },
 
-  async approveQuotation(id: string, approverName: string, notes?: string): Promise<Quotation | null> {
+  async approveQuotation(id: string, approverName: string, notes?: string, orgId?: string | null): Promise<Quotation | null> {
     await ensureInitialized();
+    const query: any = idOr(id, { quoteId: id });
+    if (orgId) query.orgId = orgId;
     const updated = await QuotationModel.findOneAndUpdate(
-      idOr(id, { quoteId: id }),
+      query,
       {
         $set: {
           status: "Approved",
@@ -818,10 +903,12 @@ export const dbRepository = {
     return updated ? cleanDoc<Quotation>(updated) : null;
   },
 
-  async rejectQuotation(id: string, approverName: string, reason: string): Promise<Quotation | null> {
+  async rejectQuotation(id: string, approverName: string, reason: string, orgId?: string | null): Promise<Quotation | null> {
     await ensureInitialized();
+    const query: any = idOr(id, { quoteId: id });
+    if (orgId) query.orgId = orgId;
     const updated = await QuotationModel.findOneAndUpdate(
-      idOr(id, { quoteId: id }),
+      query,
       {
         $set: {
           status: "Rejected",
@@ -835,28 +922,34 @@ export const dbRepository = {
   },
 
   // SALES ORDERS
-  async getOrders(franchiseId?: string | null): Promise<SalesOrder[]> {
+  async getOrders(orgId?: string | null, franchiseId?: string | null): Promise<SalesOrder[]> {
     await ensureInitialized();
-    const query = franchiseId ? { franchiseId } : {};
+    const query: any = {};
+    if (orgId) query.orgId = orgId;
+    if (franchiseId) query.franchiseId = franchiseId;
     const docs = await OrderModel.find(query).sort({ createdAt: -1 }).lean();
     return cleanDocs<SalesOrder>(docs);
   },
 
-  async getOrderById(id: string): Promise<SalesOrder | null> {
+  async getOrderById(id: string, orgId?: string | null): Promise<SalesOrder | null> {
     await ensureInitialized();
-    const doc = await OrderModel.findOne(idOr(id, { orderId: id })).lean();
+    const query: any = idOr(id, { orderId: id });
+    if (orgId) query.orgId = orgId;
+    const doc = await OrderModel.findOne(query).lean();
     return doc ? cleanDoc<SalesOrder>(doc) : null;
   },
 
   async createOrderFromQuotation(
     quoteId: string,
-    poDetails: { poNumber: string; poDate: string }
+    poDetails: { poNumber: string; poDate: string },
+    orgId?: string | null
   ): Promise<SalesOrder | null> {
     await ensureInitialized();
-    const quote = await this.getQuotationById(quoteId);
+    const quote = await this.getQuotationById(quoteId, orgId);
     if (!quote) return null;
+    const activeOrgId = quote.orgId || orgId || "ORG-TEMP";
 
-    const count = await OrderModel.countDocuments();
+    const count = await OrderModel.countDocuments({ orgId: activeOrgId });
     const orderId = `SO-${4000 + count + 1}`;
 
     const advanceAmount = Math.round(quote.grandTotal * 0.2);
@@ -864,6 +957,7 @@ export const dbRepository = {
     const installAmount = quote.grandTotal - advanceAmount - dispatchAmount;
 
     const orderDoc = await OrderModel.create({
+      orgId: activeOrgId,
       orderId,
       quoteId: quote.quoteId,
       poNumber: poDetails.poNumber,
@@ -908,7 +1002,7 @@ export const dbRepository = {
 
     // Update quote status
     await QuotationModel.findOneAndUpdate(
-      idOr(quoteId, { quoteId: quoteId }),
+      { ...idOr(quoteId, { quoteId }), ...(orgId ? { orgId } : {}) },
       { $set: { status: "Accepted" } }
     );
 
@@ -916,14 +1010,15 @@ export const dbRepository = {
     const targetOpp = quote.opportunityId || (quote as any).oppId;
     if (targetOpp) {
       await OpportunityModel.findOneAndUpdate(
-        idOr(targetOpp, { opportunityId: targetOpp }, { oppId: targetOpp }),
+        { ...idOr(targetOpp, { opportunityId: targetOpp }, { oppId: targetOpp }), ...(orgId ? { orgId } : {}) },
         { $set: { stage: "Won" } }
       );
     }
 
     // Auto-create Commission record in Atlas
-    const commCount = await CommissionModel.countDocuments();
+    const commCount = await CommissionModel.countDocuments({ orgId: activeOrgId });
     await CommissionModel.create({
+      orgId: activeOrgId,
       commissionId: `COM-${2000 + commCount + 1}`,
       franchiseId: quote.franchiseId,
       franchiseName: quote.franchiseName,
@@ -937,8 +1032,9 @@ export const dbRepository = {
     });
 
     // Auto-create Installation record in Atlas
-    const instCount = await InstallationModel.countDocuments();
+    const instCount = await InstallationModel.countDocuments({ orgId: activeOrgId });
     await InstallationModel.create({
+      orgId: activeOrgId,
       installationId: `INS-${100 + instCount + 1}`,
       orderId,
       customerId: quote.customerId,
@@ -969,10 +1065,11 @@ export const dbRepository = {
   async updateOrderMilestone(
     orderId: string,
     milestoneName: string,
-    payment: { receivedAmount?: number; amount?: number; paymentReference?: string; ref?: string }
+    payment: { receivedAmount?: number; amount?: number; paymentReference?: string; ref?: string },
+    orgId?: string | null
   ): Promise<SalesOrder | null> {
     await ensureInitialized();
-    const order = await this.getOrderById(orderId);
+    const order = await this.getOrderById(orderId, orgId);
     if (!order) return null;
 
     const milestone = order.paymentSchedule.find((m) => m.milestoneName === milestoneName);
@@ -991,18 +1088,23 @@ export const dbRepository = {
       order.orderStatus = "Payment Cleared";
     }
 
+    const query: any = idOr(orderId, { orderId });
+    if (orgId) query.orgId = orgId;
+
     const updated = await OrderModel.findOneAndUpdate(
-      idOr(orderId, { orderId: orderId }),
+      query,
       { $set: { paymentSchedule: order.paymentSchedule, orderStatus: order.orderStatus } },
       { new: true }
     ).lean();
 
     // Update commission based on collections
     const totalReceived = order.paymentSchedule.reduce((acc, m) => acc + (m.receivedAmount || 0), 0);
-    const comm: any = await CommissionModel.findOne({ orderId }).lean();
+    const commQuery: any = { orderId };
+    if (orgId) commQuery.orgId = orgId;
+    const comm: any = await CommissionModel.findOne(commQuery).lean();
     if (comm) {
       await CommissionModel.findOneAndUpdate(
-        { orderId },
+        commQuery,
         {
           $set: {
             eligibleRevenue: totalReceived,
@@ -1016,10 +1118,12 @@ export const dbRepository = {
     return updated ? cleanDoc<SalesOrder>(updated) : null;
   },
 
-  async updateOrderStatus(orderId: string, status: SalesOrder["orderStatus"]): Promise<SalesOrder | null> {
+  async updateOrderStatus(orderId: string, status: SalesOrder["orderStatus"], orgId?: string | null): Promise<SalesOrder | null> {
     await ensureInitialized();
+    const query: any = idOr(orderId, { orderId });
+    if (orgId) query.orgId = orgId;
     const updated = await OrderModel.findOneAndUpdate(
-      idOr(orderId, { orderId: orderId }),
+      query,
       { $set: { orderStatus: status } },
       { new: true }
     ).lean();
@@ -1027,23 +1131,29 @@ export const dbRepository = {
   },
 
   // INSTALLATIONS & TRAINING
-  async getInstallations(franchiseId?: string | null): Promise<Installation[]> {
+  async getInstallations(orgId?: string | null, franchiseId?: string | null): Promise<Installation[]> {
     await ensureInitialized();
-    const query = franchiseId ? { franchiseId } : {};
+    const query: any = {};
+    if (orgId) query.orgId = orgId;
+    if (franchiseId) query.franchiseId = franchiseId;
     const docs = await InstallationModel.find(query).sort({ scheduledDate: 1 }).lean();
     return cleanDocs<Installation>(docs);
   },
 
-  async getInstallationById(id: string): Promise<Installation | null> {
+  async getInstallationById(id: string, orgId?: string | null): Promise<Installation | null> {
     await ensureInitialized();
-    const doc = await InstallationModel.findOne(idOr(id, { installationId: id })).lean();
+    const query: any = idOr(id, { installationId: id });
+    if (orgId) query.orgId = orgId;
+    const doc = await InstallationModel.findOne(query).lean();
     return doc ? cleanDoc<Installation>(doc) : null;
   },
 
-  async updateInstallation(id: string, updates: Partial<Installation>): Promise<Installation | null> {
+  async updateInstallation(id: string, updates: Partial<Installation>, orgId?: string | null): Promise<Installation | null> {
     await ensureInitialized();
+    const query: any = idOr(id, { installationId: id });
+    if (orgId) query.orgId = orgId;
     const updated = await InstallationModel.findOneAndUpdate(
-      idOr(id, { installationId: id }),
+      query,
       { $set: updates },
       { new: true }
     ).lean();
@@ -1051,27 +1161,33 @@ export const dbRepository = {
   },
 
   // SUPPORT TICKETS
-  async getSupportTickets(franchiseId?: string | null): Promise<SupportTicket[]> {
+  async getSupportTickets(orgId?: string | null, franchiseId?: string | null): Promise<SupportTicket[]> {
     await ensureInitialized();
-    const query = franchiseId ? { franchiseId } : {};
+    const query: any = {};
+    if (orgId) query.orgId = orgId;
+    if (franchiseId) query.franchiseId = franchiseId;
     const docs = await SupportTicketModel.find(query).sort({ createdAt: -1 }).lean();
     return cleanDocs<SupportTicket>(docs);
   },
 
-  async getSupportTicketById(id: string): Promise<SupportTicket | null> {
+  async getSupportTicketById(id: string, orgId?: string | null): Promise<SupportTicket | null> {
     await ensureInitialized();
-    const doc = await SupportTicketModel.findOne(idOr(id, { ticketId: id })).lean();
+    const query: any = idOr(id, { ticketId: id });
+    if (orgId) query.orgId = orgId;
+    const doc = await SupportTicketModel.findOne(query).lean();
     return doc ? cleanDoc<SupportTicket>(doc) : null;
   },
 
-  async createSupportTicket(data: Partial<SupportTicket>): Promise<SupportTicket> {
+  async createSupportTicket(data: Partial<SupportTicket>, orgId?: string | null): Promise<SupportTicket> {
     await ensureInitialized();
-    const count = await SupportTicketModel.countDocuments();
+    const activeOrgId = data.orgId || orgId || "ORG-TEMP";
+    const count = await SupportTicketModel.countDocuments({ orgId: activeOrgId });
     const ticketId = `TK-${1050 + count + 1}`;
 
     const slaHours = data.priority === "Critical" ? 4 : data.priority === "High" ? 8 : 24;
 
     const newTicket = await SupportTicketModel.create({
+      orgId: activeOrgId,
       ticketId,
       customerId: data.customerId || "cust-1",
       customerName: data.customerName || "Customer Rep",
@@ -1097,7 +1213,8 @@ export const dbRepository = {
 
   async addTicketComment(
     ticketId: string,
-    comment: { authorName: string; role: string; message: string }
+    comment: { authorName: string; role: string; message: string },
+    orgId?: string | null
   ): Promise<SupportTicket | null> {
     await ensureInitialized();
     const newComment = {
@@ -1107,8 +1224,10 @@ export const dbRepository = {
       timestamp: new Date().toLocaleString("en-GB"),
       message: comment.message,
     };
+    const query: any = idOr(ticketId, { ticketId });
+    if (orgId) query.orgId = orgId;
     const updated = await SupportTicketModel.findOneAndUpdate(
-      idOr(ticketId, { ticketId: ticketId }),
+      query,
       { $push: { comments: newComment } },
       { new: true }
     ).lean();
@@ -1118,7 +1237,8 @@ export const dbRepository = {
   async updateTicketStatus(
     ticketId: string,
     status: SupportTicket["status"],
-    notes?: string
+    notes?: string,
+    orgId?: string | null
   ): Promise<SupportTicket | null> {
     await ensureInitialized();
     const updates: any = { status };
@@ -1126,8 +1246,10 @@ export const dbRepository = {
       updates.resolutionNotes = notes || "Issue resolved and verified on site.";
       updates.resolvedAt = new Date().toLocaleString("en-GB");
     }
+    const query: any = idOr(ticketId, { ticketId });
+    if (orgId) query.orgId = orgId;
     const updated = await SupportTicketModel.findOneAndUpdate(
-      idOr(ticketId, { ticketId: ticketId }),
+      query,
       { $set: updates },
       { new: true }
     ).lean();
@@ -1135,9 +1257,11 @@ export const dbRepository = {
   },
 
   // RENEWALS
-  async getRenewals(franchiseId?: string | null): Promise<Renewal[]> {
+  async getRenewals(orgId?: string | null, franchiseId?: string | null): Promise<Renewal[]> {
     await ensureInitialized();
-    const query = franchiseId ? { franchiseId } : {};
+    const query: any = {};
+    if (orgId) query.orgId = orgId;
+    if (franchiseId) query.franchiseId = franchiseId;
     const docs = await RenewalModel.find(query).sort({ expiryDate: 1 }).lean();
     return cleanDocs<Renewal>(docs);
   },
@@ -1145,7 +1269,8 @@ export const dbRepository = {
   async triggerRenewalReminder(
     id: string,
     type: "60d" | "30d" | "15d" | "7d" | "Escalation",
-    channel: "Email" | "WhatsApp" | "In-App"
+    channel: "Email" | "WhatsApp" | "In-App",
+    orgId?: string | null
   ): Promise<Renewal | null> {
     await ensureInitialized();
     const reminder = {
@@ -1153,8 +1278,10 @@ export const dbRepository = {
       sentAt: new Date().toLocaleString("en-GB"),
       channel,
     };
+    const query: any = idOr(id, { renewalId: id });
+    if (orgId) query.orgId = orgId;
     const updated = await RenewalModel.findOneAndUpdate(
-      idOr(id, { renewalId: id }),
+      query,
       { $push: { remindersSent: reminder } },
       { new: true }
     ).lean();
@@ -1162,9 +1289,11 @@ export const dbRepository = {
   },
 
   // COMMISSIONS
-  async getCommissions(franchiseId?: string | null): Promise<CommissionRecord[]> {
+  async getCommissions(orgId?: string | null, franchiseId?: string | null): Promise<CommissionRecord[]> {
     await ensureInitialized();
-    const query = franchiseId ? { franchiseId } : {};
+    const query: any = {};
+    if (orgId) query.orgId = orgId;
+    if (franchiseId) query.franchiseId = franchiseId;
     const docs = await CommissionModel.find(query).sort({ createdAt: -1 }).lean();
     return cleanDocs<CommissionRecord>(docs);
   },
@@ -1172,7 +1301,8 @@ export const dbRepository = {
   async updateCommissionStatus(
     id: string,
     status: CommissionRecord["status"],
-    ref?: string
+    ref?: string,
+    orgId?: string | null
   ): Promise<CommissionRecord | null> {
     await ensureInitialized();
     const updates: any = { status };
@@ -1180,8 +1310,10 @@ export const dbRepository = {
       updates.paidDate = new Date().toISOString().split("T")[0];
       updates.paymentReference = ref || `NEFT-ARGUS-${Math.floor(10000 + Math.random() * 90000)}`;
     }
+    const query: any = idOr(id, { commissionId: id });
+    if (orgId) query.orgId = orgId;
     const updated = await CommissionModel.findOneAndUpdate(
-      idOr(id, { commissionId: id }),
+      query,
       { $set: updates },
       { new: true }
     ).lean();
@@ -1189,29 +1321,36 @@ export const dbRepository = {
   },
 
   // CUSTOMERS
-  async getCustomers(franchiseId?: string | null): Promise<CustomerProfile[]> {
+  async getCustomers(orgId?: string | null, franchiseId?: string | null): Promise<CustomerProfile[]> {
     await ensureInitialized();
-    const query = franchiseId ? { franchiseId } : {};
+    const query: any = {};
+    if (orgId) query.orgId = orgId;
+    if (franchiseId) query.franchiseId = franchiseId;
     const docs = await CustomerModel.find(query).sort({ companyName: 1 }).lean();
     return cleanDocs<CustomerProfile>(docs);
   },
 
-  async getCustomerById(id: string): Promise<CustomerProfile | null> {
+  async getCustomerById(id: string, orgId?: string | null): Promise<CustomerProfile | null> {
     await ensureInitialized();
-    const doc = await CustomerModel.findOne(idOr(id, { customerId: id })).lean();
+    const query: any = idOr(id, { customerId: id });
+    if (orgId) query.orgId = orgId;
+    const doc = await CustomerModel.findOne(query).lean();
     return doc ? cleanDoc<CustomerProfile>(doc) : null;
   },
 
   // DASHBOARD KPIS & ANALYTICS
-  async getFranchiseDashboardKPIs(franchiseId: string) {
+  async getFranchiseDashboardKPIs(franchiseId: string, orgId?: string | null) {
     await ensureInitialized();
-    const leads = await LeadModel.find({ franchiseId }).lean();
-    const opps = await OpportunityModel.find({ franchiseId }).lean();
-    const quotes = await QuotationModel.find({ franchiseId }).lean();
-    const orders = await OrderModel.find({ franchiseId }).lean();
-    const installations = await InstallationModel.find({ franchiseId }).lean();
-    const renewals = await RenewalModel.find({ franchiseId }).lean();
-    const commissions = await CommissionModel.find({ franchiseId }).lean();
+    const query: any = { franchiseId };
+    if (orgId) query.orgId = orgId;
+
+    const leads = await LeadModel.find(query).lean();
+    const opps = await OpportunityModel.find(query).lean();
+    const quotes = await QuotationModel.find(query).lean();
+    const orders = await OrderModel.find(query).lean();
+    const installations = await InstallationModel.find(query).lean();
+    const renewals = await RenewalModel.find(query).lean();
+    const commissions = await CommissionModel.find(query).lean();
 
     const newLeadsCount = leads.length;
     const qualifiedCount = leads.filter((l) => l.status === "Qualified" || l.status === "Converted").length;
@@ -1229,94 +1368,96 @@ export const dbRepository = {
     const earnedCommission = commissions.reduce((acc, c) => acc + (c.calculatedAmount || 0), 0);
 
     return {
-      newLeads: { count: newLeadsCount || 38, trend: "+ 27%" },
-      qualified: { count: qualifiedCount || 24, trend: "+ 14%" },
-      demos: { count: demosCount || 12, trend: "+ 33%" },
-      quotationValue: { value: quoteTotal || 860000, formatted: `₹${(quoteTotal / 100000 || 8.6).toFixed(1)} L`, trend: "+ 18%" },
-      poReceived: { value: poReceivedValue || 340000, formatted: `₹${(poReceivedValue / 100000 || 3.4).toFixed(1)} L`, trend: "+ 21%" },
-      paymentPending: { value: paymentPending || 120000, formatted: `₹${(paymentPending / 100000 || 1.2).toFixed(1)} L`, trend: "- 5%" },
-      installationsPending: { count: pendingInstallations || 4 },
-      renewalsDue: { value: renewalsMonthValue || 72000, formatted: `₹${(renewalsMonthValue || 72000).toLocaleString("en-IN")}`, subtitle: "(This Month)" },
+      newLeads: { count: newLeadsCount, trend: newLeadsCount > 0 ? "+ 10%" : "0%" },
+      qualified: { count: qualifiedCount, trend: qualifiedCount > 0 ? "+ 5%" : "0%" },
+      demos: { count: demosCount, trend: demosCount > 0 ? "+ 8%" : "0%" },
+      quotationValue: { value: quoteTotal, formatted: `₹${(quoteTotal / 100000).toFixed(1)} L`, trend: quoteTotal > 0 ? "+ 12%" : "0%" },
+      poReceived: { value: poReceivedValue, formatted: `₹${(poReceivedValue / 100000).toFixed(1)} L`, trend: poReceivedValue > 0 ? "+ 15%" : "0%" },
+      paymentPending: { value: paymentPending, formatted: `₹${(paymentPending / 100000).toFixed(1)} L`, trend: "0%" },
+      installationsPending: { count: pendingInstallations },
+      renewalsDue: { value: renewalsMonthValue, formatted: `₹${renewalsMonthValue.toLocaleString("en-IN")}`, subtitle: "(This Month)" },
       commission: { value: earnedCommission, formatted: `₹${(earnedCommission / 100000).toFixed(2)} L` },
       pipelineFunnel: [
-        { stage: "New Lead", count: 38, fill: "#2563EB" },
-        { stage: "Qualified", count: 24, fill: "#06B6D4" },
-        { stage: "Demo", count: 12, fill: "#F97316" },
-        { stage: "Quotation", count: 9, fill: "#EAB308" },
-        { stage: "PO", count: 5, fill: "#10B981" },
-        { stage: "Won", count: 4, fill: "#1D4ED8" },
+        { stage: "New Lead", count: leads.filter(l => l.status === "New").length, fill: "#2563EB" },
+        { stage: "Qualified", count: qualifiedCount, fill: "#06B6D4" },
+        { stage: "Demo", count: demosCount, fill: "#F97316" },
+        { stage: "Quotation", count: quotes.length, fill: "#EAB308" },
+        { stage: "PO", count: orders.length, fill: "#10B981" },
+        { stage: "Won", count: opps.filter(o => o.stage === "Won").length, fill: "#1D4ED8" },
       ],
       salesTrend: [
-        { month: "Jul", hardware: 5.2, software: 3.0 },
-        { month: "Aug", hardware: 4.2, software: 4.0 },
-        { month: "Sep", hardware: 3.8, software: 3.9 },
-        { month: "Oct", hardware: 8.2, software: 5.1 },
-        { month: "Nov", hardware: 10.0, software: 6.8 },
-        { month: "Dec", hardware: 8.5, software: 6.5 },
+        { month: "Jan", hardware: 0, software: 0 },
+        { month: "Feb", hardware: 0, software: 0 },
+        { month: "Mar", hardware: 0, software: 0 },
+        { month: "Apr", hardware: 0, software: 0 },
+        { month: "May", hardware: 0, software: 0 },
+        { month: "Jun", hardware: Number((poReceivedValue / 100000).toFixed(1)), software: 0 },
       ],
     };
   },
 
-  async getHeadOfficeDashboardKPIs() {
+  async getHeadOfficeDashboardKPIs(orgId?: string | null) {
     await ensureInitialized();
-    const franchises = await FranchiseModel.find().lean();
-    const leads = await LeadModel.find().lean();
-    const opps = await OpportunityModel.find().lean();
-    const tickets = await SupportTicketModel.find().lean();
-    const renewals = await RenewalModel.find().lean();
+    const query = orgId ? { orgId } : {};
+
+    const franchises = await FranchiseModel.find(query).lean();
+    const leads = await LeadModel.find(query).lean();
+    const opps = await OpportunityModel.find(query).lean();
+    const quotes = await QuotationModel.find(query).lean();
+    const orders = await OrderModel.find(query).lean();
+    const tickets = await SupportTicketModel.find(query).lean();
+    const renewals = await RenewalModel.find(query).lean();
+    const installations = await InstallationModel.find(query).lean();
 
     const totalFranchises = franchises.length;
-    const totalLeads = leads.length * 10 + 28;
-    const totalOpps = opps.length * 8 + 42;
-    const totalSales = franchises.reduce((acc, f) => acc + (f.achievedSales || 0), 0);
+    const totalLeads = leads.length;
+    const totalOpps = opps.length;
+    const totalSales = orders.reduce((acc, o) => acc + (o.orderValue || 0), 0) || franchises.reduce((acc, f) => acc + (f.achievedSales || 0), 0);
     const totalCollections = franchises.reduce((acc, f) => acc + (f.collections || 0), 0);
-    const pendingPayments = totalSales - totalCollections;
-    const installationsPending = 67;
-    const activeTickets = tickets.length * 15 + 14;
-    const renewalsDue = renewals.reduce((acc, r) => acc + (r.contractValue || 0), 0) * 12;
+    const pendingPayments = Math.max(0, totalSales - totalCollections);
+    const installationsPending = installations.filter(i => i.status !== "Completed").length;
+    const activeTickets = tickets.filter(t => t.status === "Open" || t.status === "In Progress").length;
+    const renewalsDue = renewals.reduce((acc, r) => acc + (r.contractValue || 0), 0);
 
-    const franchiseSalesBreakdown = [
-      { name: "Coimbatore", salesLakhs: 14.2, leads: 38, quotations: 12, rate: "78%" },
-      { name: "Chennai", salesLakhs: 17.8, leads: 42, quotations: 18, rate: "85%" },
-      { name: "Hosur", salesLakhs: 9.6, leads: 28, quotations: 11, rate: "68%" },
-      { name: "Bengaluru", salesLakhs: 11.4, leads: 36, quotations: 14, rate: "72%" },
-      { name: "Pune", salesLakhs: 7.2, leads: 25, quotations: 9, rate: "60%" },
-      { name: "Others", salesLakhs: 10.5, leads: 31, quotations: 13, rate: "65%" },
-    ];
+    const franchiseSalesBreakdown = franchises.map((f) => ({
+      name: f.location || f.name,
+      salesLakhs: Number(((f.achievedSales || 0) / 100000).toFixed(1)),
+      leads: leads.filter((l) => l.franchiseId === f.code).length,
+      quotations: quotes.filter((q) => q.franchiseId === f.code).length,
+      rate: `${f.annualTarget ? Math.min(100, Math.round(((f.achievedSales || 0) / f.annualTarget) * 100)) : 0}%`,
+    }));
 
     const categoryBreakdown = [
-      { category: "CNC Accessories", percent: 45, color: "#2563EB" },
-      { category: "Software", percent: 35, color: "#06B6D4" },
-      { category: "Installation & Service", percent: 12, color: "#F59E0B" },
-      { category: "AMC / Renewal", percent: 8, color: "#8B5CF6" },
+      { category: "CNC Accessories", percent: totalSales > 0 ? 45 : 0, color: "#2563EB" },
+      { category: "Software", percent: totalSales > 0 ? 35 : 0, color: "#06B6D4" },
+      { category: "Installation & Service", percent: totalSales > 0 ? 12 : 0, color: "#F59E0B" },
+      { category: "AMC / Renewal", percent: totalSales > 0 ? 8 : 0, color: "#8B5CF6" },
     ];
 
-    const alerts = [
-      {
-        id: "alt-1",
+    const alerts: any[] = [];
+    const pendingQuotes = quotes.filter((q) => q.requiresSpecialApproval && q.status === "Pending_Approval");
+    for (const pq of pendingQuotes.slice(0, 2)) {
+      alerts.push({
+        id: `alt-q-${pq.quoteId}`,
         type: "special_approval",
         title: "Special Price Approval Required",
-        desc: "QT-9204: Apex Tooling Solutions requested 15% discount (Max allowed: 10%). Requires HO Approval.",
-        link: "/quotations/QT-9204",
+        desc: `${pq.quoteId}: ${pq.customerName || "Client"} special discount requested. Requires HO Approval.`,
+        link: `/quotations/${pq.quoteId}`,
         severity: "critical",
-      },
-      {
-        id: "alt-2",
-        type: "territory_conflict",
-        title: "Territory Boundary Conflict",
-        desc: "Lead LD-1043 (Rajesh Hi-Tech Valves, PIN 641601) overlaps Coimbatore and Salem borders.",
-        link: "/leads",
-        severity: "warning",
-      },
-      {
-        id: "alt-3",
+      });
+    }
+
+    const urgentTickets = tickets.filter((t) => (t.priority === "Critical" || t.priority === "High") && (t.status === "Open" || t.status === "In Progress"));
+    for (const ut of urgentTickets.slice(0, 2)) {
+      alerts.push({
+        id: `alt-t-${ut.ticketId}`,
         type: "sla_warning",
-        title: "Critical Support SLA Alert",
-        desc: "TK-1056: Sri Venkatesh Industries Spindle E-04 error (Critical 4h SLA deadline in 2 hours).",
-        link: "/support",
+        title: `${ut.priority} Support Ticket SLA`,
+        desc: `${ut.ticketId}: ${ut.customerName || "Customer"} - ${ut.issueDescription || "Breakdown"}.`,
+        link: `/support/${ut.ticketId}`,
         severity: "critical",
-      },
-    ];
+      });
+    }
 
     return {
       totalFranchises,

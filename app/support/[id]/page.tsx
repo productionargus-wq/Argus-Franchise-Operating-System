@@ -31,7 +31,8 @@ export default function SupportTicketDetailPage() {
   const loadTicket = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/support/${params.id}`);
+      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId)}` : "";
+      const res = await fetch(`/api/support/${params.id}${orgParam}`);
       if (res.ok) {
         const data = await res.json();
         setTicket(data);
@@ -45,7 +46,7 @@ export default function SupportTicketDetailPage() {
 
   useEffect(() => {
     loadTicket();
-  }, [params.id]);
+  }, [params.id, currentUser]);
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +58,7 @@ export default function SupportTicketDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "add_comment",
+          orgId: currentUser?.orgId,
           comment: {
             authorName: currentUser.name,
             role: currentUser.role.replace(/_/g, " "),
@@ -83,8 +85,9 @@ export default function SupportTicketDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "update_status",
+          orgId: currentUser?.orgId,
           status,
-          resolutionNotes: status === "Resolved" ? resolutionNotes || "Spindle IGBT driver replaced and trial cut passed." : undefined,
+          resolutionNotes: status === "Resolved" ? resolutionNotes || "Issue inspected and resolved." : undefined,
         }),
       });
       if (res.ok) {

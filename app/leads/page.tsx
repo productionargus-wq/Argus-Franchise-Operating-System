@@ -56,10 +56,13 @@ export default function LeadsPage() {
   const loadLeads = async () => {
     try {
       setLoading(true);
-      const url = isHeadOffice ? "/api/leads" : `/api/leads?franchiseId=${currentUser.franchiseId || "FR-CBE"}`;
+      const params = new URLSearchParams();
+      if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+      if (!isHeadOffice && currentUser?.franchiseId) params.set("franchiseId", currentUser.franchiseId);
+      const url = params.toString() ? `/api/leads?${params.toString()}` : "/api/leads";
       const res = await fetch(url);
       const data = await res.json();
-      setLeads(data);
+      setLeads(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -79,9 +82,10 @@ export default function LeadsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...leadForm,
-          franchiseId: currentUser.franchiseId || "FR-CBE",
-          franchiseName: currentUser.franchiseName || "Coimbatore Franchise",
-          ownerName: currentUser.name,
+          orgId: currentUser?.orgId,
+          franchiseId: currentUser?.franchiseId || "",
+          franchiseName: currentUser?.franchiseName || "",
+          ownerName: currentUser?.name,
         }),
       });
       if (res.ok) {
@@ -95,7 +99,12 @@ export default function LeadsPage() {
 
   const handleConvertLead = async (leadId: string) => {
     try {
-      const res = await fetch(`/api/leads/${leadId}/convert`, { method: "POST" });
+      const orgParam = currentUser?.orgId ? `?orgId=${currentUser.orgId}` : "";
+      const res = await fetch(`/api/leads/${leadId}/convert${orgParam}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId: currentUser?.orgId }),
+      });
       if (res.ok) {
         const op = await res.json();
         router.push(`/opportunities/${op.opportunityId}`);
@@ -107,10 +116,11 @@ export default function LeadsPage() {
 
   const handleQualifyLead = async (leadId: string) => {
     try {
-      const res = await fetch(`/api/leads/${leadId}`, {
+      const orgParam = currentUser?.orgId ? `?orgId=${currentUser.orgId}` : "";
+      const res = await fetch(`/api/leads/${leadId}${orgParam}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "Qualified" }),
+        body: JSON.stringify({ status: "Qualified", orgId: currentUser?.orgId }),
       });
       if (res.ok) {
         loadLeads();

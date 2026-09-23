@@ -5,7 +5,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const lead = await dbRepository.getLeadById(params.id);
+    const { searchParams } = new URL(request.url);
+    const orgId = searchParams.get("orgId");
+    const lead = await dbRepository.getLeadById(params.id, orgId);
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     return NextResponse.json(lead);
   } catch (err: any) {
@@ -18,7 +20,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
-    const updated = await dbRepository.updateLead(params.id, body);
+    const { searchParams } = new URL(request.url);
+    const orgId = body.orgId || searchParams.get("orgId");
+    const updated = await dbRepository.updateLead(params.id, body, orgId);
     if (!updated) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     return NextResponse.json(updated);
   } catch (err: any) {

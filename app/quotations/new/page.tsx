@@ -39,12 +39,13 @@ function QuotationBuilderContent() {
     async function loadProducts() {
       try {
         setLoading(true);
-        const res = await fetch("/api/products");
+        const orgParam = currentUser?.orgId ? `?orgId=${currentUser.orgId}` : "";
+        const res = await fetch(`/api/products${orgParam}`);
         const data = await res.json();
-        setProducts(data);
+        setProducts(Array.isArray(data) ? data : []);
 
         // Pre-populate with first product
-        if (data.length > 0) {
+        if (Array.isArray(data) && data.length > 0) {
           const first = data[0];
           const discount = 8;
           const unitPrice = Math.round(first.listPrice * (1 - discount / 100));
@@ -72,7 +73,7 @@ function QuotationBuilderContent() {
       }
     }
     loadProducts();
-  }, []);
+  }, [currentUser]);
 
   const handleAddItem = () => {
     if (products.length === 0) return;
@@ -181,12 +182,13 @@ function QuotationBuilderContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          orgId: currentUser?.orgId,
           opportunityId,
           companyName,
           customerName,
-          franchiseId: currentUser.franchiseId || "FR-CBE",
-          franchiseName: currentUser.franchiseName || "Coimbatore Franchise",
-          createdBy: `${currentUser.name} (${currentUser.role})`,
+          franchiseId: currentUser?.franchiseId || "",
+          franchiseName: currentUser?.franchiseName || "",
+          createdBy: `${currentUser?.name} (${currentUser?.role})`,
           items,
           approvalReason: hasPolicyViolation ? approvalReason : undefined,
         }),

@@ -33,28 +33,26 @@ export default function UsersAndRolesPage() {
   const [newRole, setNewRole] = useState<UserSession["role"]>("franchise_admin");
   const [newFranchiseId, setNewFranchiseId] = useState("");
 
-  const activeOrgId = currentUser.orgId || organization?.orgId || "ORG-ARGUS";
-  const activeOrgName = organization?.name || currentUser.orgName || "Argus CNC Technologies Ltd";
+  const activeOrgId = currentUser.orgId || organization?.orgId || "";
+  const activeOrgName = organization?.name || currentUser.orgName || "Organization";
 
   // Fetch live users and franchises from DB
   const loadData = async () => {
+    if (!activeOrgId) return;
     try {
       const [uRes, fRes] = await Promise.all([
-        fetch(`/api/users?orgId=${activeOrgId}`),
-        fetch("/api/franchises"),
+        fetch(`/api/users?orgId=${encodeURIComponent(activeOrgId)}`),
+        fetch(`/api/franchises?orgId=${encodeURIComponent(activeOrgId)}`),
       ]);
 
       if (uRes.ok) {
         const uData: UserSession[] = await uRes.json();
-        if (uData.length > 0) {
-          // Merge with any local demo users
-          setUsersList(uData);
-        }
+        setUsersList(Array.isArray(uData) ? uData : []);
       }
 
       if (fRes.ok) {
         const fData: Franchise[] = await fRes.json();
-        setFranchises(fData);
+        setFranchises(Array.isArray(fData) ? fData : []);
         if (fData.length > 0 && !newFranchiseId) {
           setNewFranchiseId(fData[0].code);
         }

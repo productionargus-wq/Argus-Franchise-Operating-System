@@ -5,7 +5,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const quote = await dbRepository.getQuotationById(params.id);
+    const { searchParams } = new URL(request.url);
+    const orgId = searchParams.get("orgId");
+    const quote = await dbRepository.getQuotationById(params.id, orgId);
     if (!quote) return NextResponse.json({ error: "Quotation not found" }, { status: 404 });
     return NextResponse.json(quote);
   } catch (error: any) {

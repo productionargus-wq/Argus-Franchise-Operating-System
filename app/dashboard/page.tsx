@@ -45,7 +45,7 @@ export default function FranchiseDashboard() {
   const fetchKpis = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/analytics?franchiseId=${currentUser.franchiseId || "FR-CBE"}&view=franchise`);
+      const res = await fetch(`/api/analytics?franchiseId=${currentUser?.franchiseId || ""}&view=franchise&orgId=${currentUser?.orgId || ""}`);
       if (res.ok) {
         const text = await res.text();
         if (text) {
@@ -74,9 +74,10 @@ export default function FranchiseDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...leadForm,
-          franchiseId: currentUser.franchiseId || "FR-CBE",
-          franchiseName: currentUser.franchiseName || "Coimbatore Franchise",
-          ownerName: currentUser.name,
+          orgId: currentUser?.orgId,
+          franchiseId: currentUser?.franchiseId || "",
+          franchiseName: currentUser?.franchiseName || "",
+          ownerName: currentUser?.name,
         }),
       });
       if (res.ok) {

@@ -148,7 +148,7 @@ export function Navbar({ onToggleSidebar, isSidebarOpen }: NavbarProps) {
             <div className="hidden md:flex items-center gap-2">
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1F2426] text-xs font-medium text-slate-200 border border-[#3A4448]">
                 <Building2 className="w-3.5 h-3.5 text-[#FF6600]" />
-                <span className="font-semibold">{organization?.name || currentUser.orgName || "Argus CNC Technologies Ltd"}</span>
+                <span className="font-semibold">{organization?.name || currentUser.orgName || "Enterprise Workspace"}</span>
               </div>
               {currentUser.franchiseName && (
                 <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#FF6600]/10 text-xs font-medium text-[#FF6600] border border-[#FF6600]/30">

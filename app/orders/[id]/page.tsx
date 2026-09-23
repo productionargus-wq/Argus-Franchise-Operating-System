@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useAuth } from "@/lib/AuthContext";
 import { SalesOrder, PaymentMilestone } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
@@ -23,6 +24,7 @@ import {
 
 export default function OrderDetailPage() {
   const params = useParams();
+  const { currentUser } = useAuth();
   const [order, setOrder] = useState<SalesOrder | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +46,8 @@ export default function OrderDetailPage() {
   const loadOrder = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/orders/${params.id}`);
+      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId)}` : "";
+      const res = await fetch(`/api/orders/${params.id}${orgParam}`);
       if (res.ok) {
         const data = await res.json();
         setOrder(data);
@@ -58,7 +61,7 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     loadOrder();
-  }, [params.id]);
+  }, [params.id, currentUser]);
 
   const handleUpdateStatus = async (newStatus: SalesOrder["orderStatus"]) => {
     if (!order) return;
@@ -66,7 +69,7 @@ export default function OrderDetailPage() {
       const res = await fetch(`/api/orders/${order.orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "update_status", orderStatus: newStatus }),
+        body: JSON.stringify({ action: "update_status", orderStatus: newStatus, orgId: currentUser?.orgId }),
       });
       if (res.ok) {
         loadOrder();
@@ -89,6 +92,7 @@ export default function OrderDetailPage() {
           milestoneName: selectedMilestone.milestoneName,
           amount: paymentAmount,
           ref: paymentRef,
+          orgId: currentUser?.orgId,
         }),
       });
       if (res.ok) {

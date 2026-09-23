@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/lib/AuthContext";
 import { Opportunity } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/Badge";
 import {
@@ -23,6 +24,7 @@ import {
 export default function OpportunityDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { currentUser } = useAuth();
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +46,8 @@ export default function OpportunityDetailPage() {
   const loadOpportunity = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/opportunities/${params.id}`);
+      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId)}` : "";
+      const res = await fetch(`/api/opportunities/${params.id}${orgParam}`);
       if (res.ok) {
         const data = await res.json();
         setOpportunity(data);
@@ -62,7 +65,7 @@ export default function OpportunityDetailPage() {
 
   useEffect(() => {
     loadOpportunity();
-  }, [params.id]);
+  }, [params.id, currentUser]);
 
   const handleUpdateStage = async (newStage: Opportunity["stage"]) => {
     if (!opportunity) return;
@@ -70,7 +73,7 @@ export default function OpportunityDetailPage() {
       const res = await fetch(`/api/opportunities/${opportunity.opportunityId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage: newStage }),
+        body: JSON.stringify({ stage: newStage, orgId: currentUser?.orgId }),
       });
       if (res.ok) {
         loadOpportunity();
@@ -89,12 +92,13 @@ export default function OpportunityDetailPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          orgId: currentUser?.orgId,
           stage: "Demo",
           demo: {
             ...(opportunity.demo || {
               demoId: `DEMO-${Date.now()}`,
-              assignedEngineerId: "usr-cbe-eng",
-              assignedEngineerName: "Ramesh Kumar",
+              assignedEngineerId: currentUser?.id || "usr-eng",
+              assignedEngineerName: currentUser?.name || "Service Engineer",
               product: opportunity.product,
             }),
             status: "Completed",

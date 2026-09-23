@@ -27,12 +27,13 @@ export default function OrdersPage() {
     async function loadOrders() {
       try {
         setLoading(true);
-        const url = isHeadOffice
-          ? "/api/orders"
-          : `/api/orders?franchiseId=${currentUser.franchiseId || "FR-CBE"}`;
+        const params = new URLSearchParams();
+        if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+        if (!isHeadOffice && currentUser?.franchiseId) params.set("franchiseId", currentUser.franchiseId);
+        const url = params.toString() ? `/api/orders?${params.toString()}` : "/api/orders";
         const res = await fetch(url);
         const data = await res.json();
-        setOrders(data);
+        setOrders(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error(e);
       } finally {

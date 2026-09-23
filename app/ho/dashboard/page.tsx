@@ -32,7 +32,8 @@ export default function HeadOfficeDashboard() {
     async function loadHoData() {
       try {
         setLoading(true);
-        const res = await fetch("/api/analytics?view=ho");
+        const orgParam = currentUser?.orgId ? `&orgId=${currentUser.orgId}` : "";
+        const res = await fetch(`/api/analytics?view=ho${orgParam}`);
         if (res.ok) {
           const text = await res.text();
           if (text) {
@@ -49,7 +50,7 @@ export default function HeadOfficeDashboard() {
       }
     }
     loadHoData();
-  }, []);
+  }, [currentUser]);
 
   return (
     <div className="space-y-6">

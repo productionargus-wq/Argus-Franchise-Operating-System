@@ -27,12 +27,13 @@ export default function OpportunitiesPage() {
     async function loadOpps() {
       try {
         setLoading(true);
-        const url = isHeadOffice
-          ? "/api/opportunities"
-          : `/api/opportunities?franchiseId=${currentUser.franchiseId || "FR-CBE"}`;
+        const params = new URLSearchParams();
+        if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+        if (!isHeadOffice && currentUser?.franchiseId) params.set("franchiseId", currentUser.franchiseId);
+        const url = params.toString() ? `/api/opportunities?${params.toString()}` : "/api/opportunities";
         const res = await fetch(url);
         const data = await res.json();
-        setOpportunities(data);
+        setOpportunities(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error(e);
       } finally {

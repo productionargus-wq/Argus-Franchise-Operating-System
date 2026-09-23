@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Franchise } from "@/lib/types";
+import { useAuth } from "@/lib/AuthContext";
 import { StatusBadge } from "@/components/ui/Badge";
 import { OnboardFranchiseModal } from "@/components/franchises/OnboardFranchiseModal";
 import {
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 
 export default function FranchisesManagementPage() {
+  const { currentUser } = useAuth();
   const [franchises, setFranchises] = useState<Franchise[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
@@ -31,9 +33,12 @@ export default function FranchisesManagementPage() {
   const loadFranchises = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/franchises");
+      const url = currentUser?.orgId
+        ? `/api/franchises?orgId=${encodeURIComponent(currentUser.orgId)}`
+        : "/api/franchises";
+      const res = await fetch(url);
       const data = await res.json();
-      setFranchises(data);
+      setFranchises(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -43,7 +48,7 @@ export default function FranchisesManagementPage() {
 
   useEffect(() => {
     loadFranchises();
-  }, []);
+  }, [currentUser]);
 
   const handleFranchiseCreated = () => {
     loadFranchises();

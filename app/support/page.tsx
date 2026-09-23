@@ -29,9 +29,9 @@ export default function SupportPage() {
   // Create ticket modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [ticketForm, setTicketForm] = useState({
-    companyName: "Sri Venkatesh Industries",
-    machineSerial: "ARG-VMC-700-0382023",
-    productName: "ARGUS VMC-700",
+    companyName: "",
+    machineSerial: "",
+    productName: "",
     category: "Breakdown",
     priority: "Critical",
     issueDescription: "",
@@ -40,12 +40,15 @@ export default function SupportPage() {
   const loadTickets = async () => {
     try {
       setLoading(true);
-      const url = isHeadOffice
-        ? "/api/support"
-        : `/api/support?franchiseId=${currentUser.franchiseId || "FR-CBE"}`;
+      const params = new URLSearchParams();
+      if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+      if (!isHeadOffice && currentUser?.franchiseId) {
+        params.set("franchiseId", currentUser.franchiseId);
+      }
+      const url = `/api/support?${params.toString()}`;
       const res = await fetch(url);
       const data = await res.json();
-      setTickets(data);
+      setTickets(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -65,9 +68,10 @@ export default function SupportPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...ticketForm,
+          orgId: currentUser?.orgId,
           franchiseId: currentUser.franchiseId || "FR-CBE",
-          assignedEngineerId: "usr-cbe-eng",
-          assignedEngineerName: "Ramesh Kumar",
+          assignedEngineerId: currentUser?.id || "usr-eng",
+          assignedEngineerName: currentUser.name || "Service Engineer",
         }),
       });
       if (res.ok) {

@@ -3,7 +3,8 @@ import mongoose, { Schema, Model } from "mongoose";
 // FRANCHISE SCHEMA
 const FranchiseSchema = new Schema(
   {
-    code: { type: String, required: true, unique: true, index: true },
+    orgId: { type: String, required: true, index: true },
+    code: { type: String, required: true, index: true },
     name: { type: String, required: true },
     location: { type: String, required: true },
     state: { type: String, default: "Tamil Nadu" },
@@ -27,7 +28,8 @@ const FranchiseSchema = new Schema(
 // PRODUCT SCHEMA
 const ProductSchema = new Schema(
   {
-    sku: { type: String, required: true, unique: true, index: true },
+    orgId: { type: String, required: true, index: true },
+    sku: { type: String, required: true, index: true },
     name: { type: String, required: true },
     category: { type: String, required: true },
     listPrice: { type: Number, default: 0 },
@@ -47,7 +49,8 @@ const ProductSchema = new Schema(
 // CUSTOMER SCHEMA
 const CustomerSchema = new Schema(
   {
-    customerId: { type: String, required: true, unique: true, index: true },
+    orgId: { type: String, required: true, index: true },
+    customerId: { type: String, required: true, index: true },
     companyName: { type: String, required: true },
     contactPerson: { type: String },
     designation: { type: String },
@@ -73,7 +76,8 @@ const CustomerSchema = new Schema(
 // LEAD SCHEMA
 const LeadSchema = new Schema(
   {
-    leadId: { type: String, required: true, unique: true, index: true },
+    orgId: { type: String, required: true, index: true },
+    leadId: { type: String, required: true, index: true },
     customerName: { type: String, required: true },
     companyName: { type: String, required: true },
     phone: { type: String },
@@ -100,6 +104,7 @@ const LeadSchema = new Schema(
 // OPPORTUNITY SCHEMA
 const OpportunitySchema = new Schema(
   {
+    orgId: { type: String, required: true, index: true },
     opportunityId: { type: String, index: true },
     oppId: { type: String, index: true },
     leadId: { type: String, index: true },
@@ -123,6 +128,7 @@ const OpportunitySchema = new Schema(
 // QUOTATION SCHEMA
 const QuotationSchema = new Schema(
   {
+    orgId: { type: String, required: true, index: true },
     quoteId: { type: String, index: true },
     oppId: { type: String, index: true },
     opportunityId: { type: String, index: true },
@@ -152,6 +158,7 @@ const QuotationSchema = new Schema(
 // SALES ORDER SCHEMA
 const OrderSchema = new Schema(
   {
+    orgId: { type: String, required: true, index: true },
     orderId: { type: String, index: true },
     quoteId: { type: String, index: true },
     poNumber: { type: String },
@@ -175,6 +182,7 @@ const OrderSchema = new Schema(
 // INSTALLATION SCHEMA
 const InstallationSchema = new Schema(
   {
+    orgId: { type: String, required: true, index: true },
     installationId: { type: String, index: true },
     orderId: { type: String, index: true },
     customerId: { type: String },
@@ -201,6 +209,7 @@ const InstallationSchema = new Schema(
 // SUPPORT TICKET SCHEMA
 const SupportTicketSchema = new Schema(
   {
+    orgId: { type: String, required: true, index: true },
     ticketId: { type: String, index: true },
     customerId: { type: String },
     customerName: { type: String },
@@ -227,6 +236,7 @@ const SupportTicketSchema = new Schema(
 // RENEWAL SCHEMA
 const RenewalSchema = new Schema(
   {
+    orgId: { type: String, required: true, index: true },
     renewalId: { type: String, index: true },
     customerId: { type: String },
     customerName: { type: String },
@@ -248,6 +258,7 @@ const RenewalSchema = new Schema(
 // COMMISSION SCHEMA
 const CommissionSchema = new Schema(
   {
+    orgId: { type: String, required: true, index: true },
     commissionId: { type: String, index: true },
     franchiseId: { type: String, index: true },
     franchiseName: { type: String },
@@ -266,6 +277,7 @@ const CommissionSchema = new Schema(
 // TERRITORY SCHEMA
 const TerritorySchema = new Schema(
   {
+    orgId: { type: String, required: true, index: true },
     country: { type: String, default: "India" },
     state: { type: String },
     district: { type: String },

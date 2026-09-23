@@ -5,7 +5,15 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    const op = await dbRepository.convertLeadToOpportunity(params.id);
+    const { searchParams } = new URL(request.url);
+    let orgId = searchParams.get("orgId");
+    try {
+      const body = await request.json();
+      if (body?.orgId) orgId = body.orgId;
+    } catch {
+      // Body may be empty
+    }
+    const op = await dbRepository.convertLeadToOpportunity(params.id, orgId);
     if (!op) {
       return NextResponse.json({ error: "Lead could not be converted or not found" }, { status: 400 });
     }

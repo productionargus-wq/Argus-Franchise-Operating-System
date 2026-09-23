@@ -5,7 +5,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const order = await dbRepository.getOrderById(params.id);
+    const { searchParams } = new URL(request.url);
+    const orgId = searchParams.get("orgId");
+    const order = await dbRepository.getOrderById(params.id, orgId);
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
     return NextResponse.json(order);
   } catch (error: any) {
@@ -18,10 +20,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
+    const { searchParams } = new URL(request.url);
+    const orgId = body.orgId || searchParams.get("orgId");
     const { action, milestoneName, amount, ref, orderStatus } = body;
 
     if (action === "update_status" && orderStatus) {
-      const order = await dbRepository.updateOrderStatus(params.id, orderStatus);
+      const order = await dbRepository.updateOrderStatus(params.id, orderStatus, orgId);
       if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
       return NextResponse.json(order);
     }
@@ -30,7 +34,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       const order = await dbRepository.updateOrderMilestone(params.id, milestoneName, {
         amount: Number(amount) || 0,
         ref: ref || `UTR-${Date.now()}`,
-      });
+      }, orgId);
       if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
       return NextResponse.json(order);
     }

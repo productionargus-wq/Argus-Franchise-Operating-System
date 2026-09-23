@@ -26,12 +26,13 @@ export default function QuotationsPage() {
   const loadQuotations = async () => {
     try {
       setLoading(true);
-      const url = isHeadOffice
-        ? "/api/quotations"
-        : `/api/quotations?franchiseId=${currentUser.franchiseId || "FR-CBE"}`;
+      const params = new URLSearchParams();
+      if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+      if (!isHeadOffice && currentUser?.franchiseId) params.set("franchiseId", currentUser.franchiseId);
+      const url = params.toString() ? `/api/quotations?${params.toString()}` : "/api/quotations";
       const res = await fetch(url);
       const data = await res.json();
-      setQuotations(data);
+      setQuotations(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
     } finally {

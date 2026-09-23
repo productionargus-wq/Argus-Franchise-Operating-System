@@ -27,12 +27,15 @@ export default function CustomersPage() {
     async function loadCustomers() {
       try {
         setLoading(true);
-        const url = isHeadOffice
-          ? "/api/customers"
-          : `/api/customers?franchiseId=${currentUser.franchiseId || "FR-CBE"}`;
+        const params = new URLSearchParams();
+        if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+        if (!isHeadOffice && currentUser?.franchiseId) {
+          params.set("franchiseId", currentUser.franchiseId);
+        }
+        const url = `/api/customers?${params.toString()}`;
         const res = await fetch(url);
         const data = await res.json();
-        setCustomers(data);
+        setCustomers(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error(e);
       } finally {

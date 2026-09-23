@@ -6,8 +6,10 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
+    const { searchParams } = new URL(request.url);
+    const orgId = body.orgId || searchParams.get("orgId");
     const { type, channel } = body;
-    const renewal = await dbRepository.triggerRenewalReminder(params.id, type, channel || "WhatsApp");
+    const renewal = await dbRepository.triggerRenewalReminder(params.id, type, channel || "WhatsApp", orgId);
     if (!renewal) return NextResponse.json({ error: "Renewal not found" }, { status: 404 });
     return NextResponse.json(renewal);
   } catch (err: any) {

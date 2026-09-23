@@ -5,7 +5,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const opp = await dbRepository.getOpportunityById(params.id);
+    const { searchParams } = new URL(request.url);
+    const orgId = searchParams.get("orgId");
+    const opp = await dbRepository.getOpportunityById(params.id, orgId);
     if (!opp) return NextResponse.json({ error: "Opportunity not found" }, { status: 404 });
     return NextResponse.json(opp);
   } catch (err: any) {
@@ -18,7 +20,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
-    const updated = await dbRepository.updateOpportunity(params.id, body);
+    const { searchParams } = new URL(request.url);
+    const orgId = body.orgId || searchParams.get("orgId");
+    const updated = await dbRepository.updateOpportunity(params.id, body, orgId);
     if (!updated) return NextResponse.json({ error: "Opportunity not found" }, { status: 404 });
     return NextResponse.json(updated);
   } catch (err: any) {

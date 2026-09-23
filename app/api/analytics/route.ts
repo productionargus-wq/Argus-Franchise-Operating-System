@@ -6,14 +6,15 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const orgId = searchParams.get("orgId");
     const franchiseId = searchParams.get("franchiseId");
     const view = searchParams.get("view"); // "ho" or "franchise"
 
     if (view === "ho" || !franchiseId) {
-      const data = await dbRepository.getHeadOfficeDashboardKPIs();
+      const data = await dbRepository.getHeadOfficeDashboardKPIs(orgId);
       return NextResponse.json(data);
     } else {
-      const data = await dbRepository.getFranchiseDashboardKPIs(franchiseId);
+      const data = await dbRepository.getFranchiseDashboardKPIs(franchiseId, orgId);
       return NextResponse.json(data);
     }
   } catch (error: any) {

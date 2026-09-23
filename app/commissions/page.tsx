@@ -23,12 +23,15 @@ export default function CommissionsPage() {
   const loadCommissions = async () => {
     try {
       setLoading(true);
-      const url = isHeadOffice
-        ? "/api/commissions"
-        : `/api/commissions?franchiseId=${currentUser.franchiseId || "FR-CBE"}`;
+      const params = new URLSearchParams();
+      if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+      if (!isHeadOffice && currentUser?.franchiseId) {
+        params.set("franchiseId", currentUser.franchiseId);
+      }
+      const url = `/api/commissions?${params.toString()}`;
       const res = await fetch(url);
       const data = await res.json();
-      setCommissions(data);
+      setCommissions(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -50,6 +53,7 @@ export default function CommissionsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status,
+          orgId: currentUser?.orgId,
           paymentReference: `NEFT-ARGUS-${Math.floor(10000 + Math.random() * 90000)}`,
         }),
       });

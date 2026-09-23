@@ -40,7 +40,8 @@ export default function QuotationDetailPage() {
   const loadQuote = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/quotations/${params.id}`);
+      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId)}` : "";
+      const res = await fetch(`/api/quotations/${params.id}${orgParam}`);
       if (res.ok) {
         const data = await res.json();
         setQuotation(data);
@@ -54,7 +55,7 @@ export default function QuotationDetailPage() {
 
   useEffect(() => {
     loadQuote();
-  }, [params.id]);
+  }, [params.id, currentUser]);
 
   const handleAuthorize = async (action: "approve" | "reject") => {
     if (!quotation) return;
@@ -67,6 +68,7 @@ export default function QuotationDetailPage() {
           action,
           approverName: `${currentUser.name} (Head Office Super Admin)`,
           reason: remarks,
+          orgId: currentUser?.orgId,
         }),
       });
       if (res.ok) {
@@ -91,6 +93,7 @@ export default function QuotationDetailPage() {
           quoteId: quotation.quoteId,
           poNumber,
           poDate,
+          orgId: currentUser?.orgId,
         }),
       });
       if (res.ok) {

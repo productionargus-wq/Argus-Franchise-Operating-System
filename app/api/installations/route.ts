@@ -6,8 +6,9 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const orgId = searchParams.get("orgId");
     const franchiseId = searchParams.get("franchiseId");
-    const installations = await dbRepository.getInstallations(franchiseId);
+    const installations = await dbRepository.getInstallations(orgId, franchiseId);
     return NextResponse.json(installations);
   } catch (error: any) {
     if (error?.digest === "DYNAMIC_SERVER_USAGE") throw error;

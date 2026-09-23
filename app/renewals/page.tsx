@@ -27,12 +27,15 @@ export default function RenewalsPage() {
   const loadRenewals = async () => {
     try {
       setLoading(true);
-      const url = isHeadOffice
-        ? "/api/renewals"
-        : `/api/renewals?franchiseId=${currentUser.franchiseId || "FR-CBE"}`;
+      const params = new URLSearchParams();
+      if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+      if (!isHeadOffice && currentUser?.franchiseId) {
+        params.set("franchiseId", currentUser.franchiseId);
+      }
+      const url = `/api/renewals?${params.toString()}`;
       const res = await fetch(url);
       const data = await res.json();
-      setRenewals(data);
+      setRenewals(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -53,7 +56,7 @@ export default function RenewalsPage() {
       const res = await fetch(`/api/renewals/${id}/reminder`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, channel }),
+        body: JSON.stringify({ type, channel, orgId: currentUser?.orgId }),
       });
       if (res.ok) {
         setActionSuccess(`Reminder (${type} via ${channel}) dispatched!`);

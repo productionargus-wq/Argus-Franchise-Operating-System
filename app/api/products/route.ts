@@ -3,9 +3,11 @@ import { dbRepository } from "@/lib/dbRepository";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const products = await dbRepository.getProducts();
+    const { searchParams } = new URL(request.url);
+    const orgId = searchParams.get("orgId");
+    const products = await dbRepository.getProducts(orgId);
     return NextResponse.json(products);
   } catch (error: any) {
     if (error?.digest === "DYNAMIC_SERVER_USAGE") throw error;
@@ -17,7 +19,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const newProduct = await dbRepository.createProduct(body);
+    const { searchParams } = new URL(request.url);
+    const orgId = body.orgId || searchParams.get("orgId");
+    const newProduct = await dbRepository.createProduct(body, orgId);
     return NextResponse.json(newProduct, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 400 });

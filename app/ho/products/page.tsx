@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { ProductMasterItem } from "@/lib/types";
+import { useAuth } from "@/lib/AuthContext";
 import { Modal } from "@/components/ui/Modal";
 import {
   Tag,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 
 export default function PriceMasterPage() {
+  const { currentUser } = useAuth();
   const [products, setProducts] = useState<ProductMasterItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -38,9 +40,12 @@ export default function PriceMasterPage() {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/products");
+      const url = currentUser?.orgId
+        ? `/api/products?orgId=${encodeURIComponent(currentUser.orgId)}`
+        : "/api/products";
+      const res = await fetch(url);
       const data = await res.json();
-      setProducts(data);
+      setProducts(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -50,7 +55,7 @@ export default function PriceMasterPage() {
 
   useEffect(() => {
     loadProducts();
-  }, []);
+  }, [currentUser]);
 
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +63,10 @@ export default function PriceMasterPage() {
       const res = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          orgId: currentUser?.orgId,
+        }),
       });
       if (res.ok) {
         setIsAddModalOpen(false);

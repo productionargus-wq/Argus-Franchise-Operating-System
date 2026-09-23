@@ -6,8 +6,9 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const orgId = searchParams.get("orgId");
     const franchiseId = searchParams.get("franchiseId");
-    const tickets = await dbRepository.getSupportTickets(franchiseId);
+    const tickets = await dbRepository.getSupportTickets(orgId, franchiseId);
     return NextResponse.json(tickets);
   } catch (error: any) {
     if (error?.digest === "DYNAMIC_SERVER_USAGE") throw error;
@@ -19,7 +20,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const newTicket = await dbRepository.createSupportTicket(body);
+    const { searchParams } = new URL(request.url);
+    const orgId = body.orgId || searchParams.get("orgId");
+    const newTicket = await dbRepository.createSupportTicket(body, orgId);
     return NextResponse.json(newTicket, { status: 201 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 400 });

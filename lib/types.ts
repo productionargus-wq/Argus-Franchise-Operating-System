@@ -35,6 +35,7 @@ export interface UserSession {
 
 export interface Franchise {
   _id: string;
+  orgId?: string;
   code: string;
   name: string;
   location: string;
@@ -56,6 +57,7 @@ export interface Franchise {
 
 export interface TerritoryMapping {
   _id: string;
+  orgId?: string;
   country: string;
   state: string;
   district: string;
@@ -67,6 +69,7 @@ export interface TerritoryMapping {
 
 export interface ProductMasterItem {
   _id: string;
+  orgId?: string;
   sku: string;
   name: string;
   category: "CNC Machines" | "CNC Accessories" | "Software" | "AMC / Service" | "Spare Parts";
@@ -84,6 +87,7 @@ export interface ProductMasterItem {
 
 export interface Lead {
   _id: string;
+  orgId?: string;
   leadId: string; // e.g. LD-1042
   customerName: string;
   companyName: string;
@@ -122,6 +126,7 @@ export interface DemoDetails {
 
 export interface Opportunity {
   _id: string;
+  orgId?: string;
   opportunityId: string; // e.g. OP-1023
   leadId?: string;
   customerId: string;
@@ -162,6 +167,7 @@ export interface QuotationItem {
 
 export interface Quotation {
   _id: string;
+  orgId?: string;
   quoteId: string; // e.g. QT-9203
   opportunityId: string;
   customerId: string;
@@ -207,6 +213,7 @@ export interface PaymentMilestone {
 
 export interface SalesOrder {
   _id: string;
+  orgId?: string;
   orderId: string; // e.g. SO-1023
   quoteId: string;
   opportunityId: string;
@@ -235,6 +242,7 @@ export interface InstallationChecklist {
 
 export interface Installation {
   _id: string;
+  orgId?: string;
   installationId: string; // e.g. INS-1023
   orderId: string;
   customerId: string;
@@ -265,6 +273,7 @@ export interface Installation {
 
 export interface SupportTicket {
   _id: string;
+  orgId?: string;
   ticketId: string; // e.g. TK-1056
   customerId: string;
   customerName: string;
@@ -295,6 +304,7 @@ export interface SupportTicket {
 
 export interface Renewal {
   _id: string;
+  orgId?: string;
   renewalId: string; // e.g. RN-402
   customerId: string;
   customerName: string;
@@ -316,6 +326,7 @@ export interface Renewal {
 
 export interface CommissionRecord {
   _id: string;
+  orgId?: string;
   commissionId: string; // e.g. COMM-7801
   franchiseId: string;
   franchiseName: string;
@@ -332,6 +343,7 @@ export interface CommissionRecord {
 
 export interface CustomerProfile {
   _id: string;
+  orgId?: string;
   customerId: string; // e.g. CUST-5001
   companyName: string;
   contactPerson: string;

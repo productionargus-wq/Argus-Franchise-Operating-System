@@ -5,7 +5,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const ticket = await dbRepository.getSupportTicketById(params.id);
+    const { searchParams } = new URL(request.url);
+    const orgId = searchParams.get("orgId");
+    const ticket = await dbRepository.getSupportTicketById(params.id, orgId);
     if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     return NextResponse.json(ticket);
   } catch (error: any) {
@@ -18,16 +20,18 @@ export async function GET(request: Request, { params }: { params: { id: string }
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
+    const { searchParams } = new URL(request.url);
+    const orgId = body.orgId || searchParams.get("orgId");
     const { action, comment, status, resolutionNotes } = body;
 
     if (action === "add_comment" && comment) {
-      const ticket = await dbRepository.addTicketComment(params.id, comment);
+      const ticket = await dbRepository.addTicketComment(params.id, comment, orgId);
       if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
       return NextResponse.json(ticket);
     }
 
     if (action === "update_status" && status) {
-      const ticket = await dbRepository.updateTicketStatus(params.id, status, resolutionNotes);
+      const ticket = await dbRepository.updateTicketStatus(params.id, status, resolutionNotes, orgId);
       if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
       return NextResponse.json(ticket);
     }

@@ -5,23 +5,27 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const customer = await dbRepository.getCustomerById(params.id);
+    const { searchParams } = new URL(request.url);
+    const orgId = searchParams.get("orgId");
+    const customer = await dbRepository.getCustomerById(params.id, orgId);
     if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
 
-  // Gather linked records
-  const allOpps = await dbRepository.getOpportunities();
-  const allQuotes = await dbRepository.getQuotations();
-  const allOrders = await dbRepository.getOrders();
-  const allInstallations = await dbRepository.getInstallations();
-  const allTickets = await dbRepository.getSupportTickets();
-  const allRenewals = await dbRepository.getRenewals();
+    const customerOrgId = customer.orgId || orgId;
 
-  const opps = allOpps.filter((o) => o.customerId === customer._id || o.customerId === customer.customerId);
-  const quotes = allQuotes.filter((q) => q.customerId === customer._id || q.customerId === customer.customerId);
-  const orders = allOrders.filter((o) => o.customerId === customer._id || o.customerId === customer.customerId);
-  const installations = allInstallations.filter((i) => i.customerId === customer._id || i.customerId === customer.customerId);
-  const tickets = allTickets.filter((t) => t.customerId === customer._id || t.customerId === customer.customerId);
-  const renewals = allRenewals.filter((r) => r.customerId === customer._id || r.customerId === customer.customerId);
+    // Gather linked records scoped to the customer's organization
+    const allOpps = await dbRepository.getOpportunities(customerOrgId);
+    const allQuotes = await dbRepository.getQuotations(customerOrgId);
+    const allOrders = await dbRepository.getOrders(customerOrgId);
+    const allInstallations = await dbRepository.getInstallations(customerOrgId);
+    const allTickets = await dbRepository.getSupportTickets(customerOrgId);
+    const allRenewals = await dbRepository.getRenewals(customerOrgId);
+
+    const opps = allOpps.filter((o) => o.customerId === customer._id || o.customerId === customer.customerId);
+    const quotes = allQuotes.filter((q) => q.customerId === customer._id || q.customerId === customer.customerId);
+    const orders = allOrders.filter((o) => o.customerId === customer._id || o.customerId === customer.customerId);
+    const installations = allInstallations.filter((i) => i.customerId === customer._id || i.customerId === customer.customerId);
+    const tickets = allTickets.filter((t) => t.customerId === customer._id || t.customerId === customer.customerId);
+    const renewals = allRenewals.filter((r) => r.customerId === customer._id || r.customerId === customer.customerId);
 
   // Dynamic upsell suggestions based on installed base
   const upsells = [

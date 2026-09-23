@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useAuth } from "@/lib/AuthContext";
 import { StatusBadge } from "@/components/ui/Badge";
 import {
   ArrowLeft,
@@ -24,6 +25,7 @@ import {
 
 export default function Customer360Page() {
   const params = useParams();
+  const { currentUser } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
@@ -34,7 +36,8 @@ export default function Customer360Page() {
     async function load360() {
       try {
         setLoading(true);
-        const res = await fetch(`/api/customers/${params.id}`);
+        const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId)}` : "";
+        const res = await fetch(`/api/customers/${params.id}${orgParam}`);
         if (res.ok) {
           const json = await res.json();
           setData(json);
@@ -46,7 +49,7 @@ export default function Customer360Page() {
       }
     }
     load360();
-  }, [params.id]);
+  }, [params.id, currentUser]);
 
   if (loading) {
     return <div className="text-center py-16 text-slate-400 text-xs">Loading Customer 360° Profile...</div>;

@@ -31,11 +31,14 @@ export default function FranchisesManagementPage() {
   const [statusFilter, setStatusFilter] = useState<string>("All");
 
   const loadFranchises = async () => {
+    if (!currentUser?.orgId) {
+      setFranchises([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const url = currentUser?.orgId
-        ? `/api/franchises?orgId=${encodeURIComponent(currentUser.orgId)}`
-        : "/api/franchises";
+      const url = `/api/franchises?orgId=${encodeURIComponent(currentUser.orgId!)}`;
       const res = await fetch(url);
       const data = await res.json();
       setFranchises(Array.isArray(data) ? data : []);
@@ -48,7 +51,7 @@ export default function FranchisesManagementPage() {
 
   useEffect(() => {
     loadFranchises();
-  }, [currentUser]);
+  }, [currentUser?.orgId]);
 
   const handleFranchiseCreated = () => {
     loadFranchises();

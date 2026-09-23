@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
-import { usePathname } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Navbar } from "./Navbar";
 import { Sidebar } from "./Sidebar";
-import { AuthProvider } from "@/lib/AuthContext";
+import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import { NotificationProvider } from "@/lib/NotificationContext";
 
 function MainContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { isAuthenticated, isLoading, currentUser } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Clean full-screen auth layout for unauthenticated flows
@@ -18,8 +20,29 @@ function MainContent({ children }: { children: React.ReactNode }) {
     pathname === "/pending-approval" ||
     pathname === "/access-denied";
 
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !isAuthPage) {
+      router.push("/login");
+    }
+  }, [isLoading, isAuthenticated, isAuthPage, router]);
+
   if (isAuthPage) {
     return <main className="min-h-screen bg-[#F8F9FA]">{children}</main>;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#293033] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-[#FF6600] border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-xs text-slate-300 font-medium">Securing session...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
   }
 
   return (

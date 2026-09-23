@@ -24,14 +24,18 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   useEffect(() => {
+    if (!currentUser?.orgId) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
     async function loadOrders() {
       try {
         setLoading(true);
         const params = new URLSearchParams();
-        if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+        params.set("orgId", currentUser.orgId!);
         if (!isHeadOffice && currentUser?.franchiseId) params.set("franchiseId", currentUser.franchiseId);
-        const url = params.toString() ? `/api/orders?${params.toString()}` : "/api/orders";
-        const res = await fetch(url);
+        const res = await fetch(`/api/orders?${params.toString()}`);
         const data = await res.json();
         setOrders(Array.isArray(data) ? data : []);
       } catch (e) {
@@ -41,7 +45,7 @@ export default function OrdersPage() {
       }
     }
     loadOrders();
-  }, [currentUser, isHeadOffice]);
+  }, [currentUser?.orgId, currentUser?.franchiseId, isHeadOffice]);
 
   const filtered = orders.filter((o) => {
     const matchSearch =

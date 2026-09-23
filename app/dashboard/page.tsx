@@ -63,8 +63,10 @@ export default function FranchiseDashboard() {
   };
 
   useEffect(() => {
-    fetchKpis();
-  }, [currentUser]);
+    if (currentUser?.orgId) {
+      fetchKpis();
+    }
+  }, [currentUser?.orgId, currentUser?.franchiseId]);
 
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();

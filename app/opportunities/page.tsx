@@ -24,14 +24,18 @@ export default function OpportunitiesPage() {
   const [stageFilter, setStageFilter] = useState("ALL");
 
   useEffect(() => {
+    if (!currentUser?.orgId) {
+      setOpportunities([]);
+      setLoading(false);
+      return;
+    }
     async function loadOpps() {
       try {
         setLoading(true);
         const params = new URLSearchParams();
-        if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+        params.set("orgId", currentUser.orgId!);
         if (!isHeadOffice && currentUser?.franchiseId) params.set("franchiseId", currentUser.franchiseId);
-        const url = params.toString() ? `/api/opportunities?${params.toString()}` : "/api/opportunities";
-        const res = await fetch(url);
+        const res = await fetch(`/api/opportunities?${params.toString()}`);
         const data = await res.json();
         setOpportunities(Array.isArray(data) ? data : []);
       } catch (e) {
@@ -41,7 +45,7 @@ export default function OpportunitiesPage() {
       }
     }
     loadOpps();
-  }, [currentUser, isHeadOffice]);
+  }, [currentUser?.orgId, currentUser?.franchiseId, isHeadOffice]);
 
   const filtered = opportunities.filter((o) => {
     const matchSearch =

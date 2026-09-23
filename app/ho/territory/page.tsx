@@ -24,12 +24,15 @@ export default function TerritoryManagementPage() {
   const [conflictResult, setConflictResult] = useState<any>(null);
 
   useEffect(() => {
+    if (!currentUser?.orgId) {
+      setTerritories([]);
+      setLoading(false);
+      return;
+    }
     async function loadTerritories() {
       try {
         setLoading(true);
-        const url = currentUser?.orgId
-          ? `/api/territories?orgId=${encodeURIComponent(currentUser.orgId)}`
-          : "/api/territories";
+        const url = `/api/territories?orgId=${encodeURIComponent(currentUser.orgId!)}`;
         const res = await fetch(url);
         const data = await res.json();
         setTerritories(Array.isArray(data) ? data : []);
@@ -40,12 +43,12 @@ export default function TerritoryManagementPage() {
       }
     }
     loadTerritories();
-  }, [currentUser]);
+  }, [currentUser?.orgId]);
 
   const handleTestConflict = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const orgParam = currentUser?.orgId ? `&orgId=${encodeURIComponent(currentUser.orgId)}` : "";
+      const orgParam = currentUser?.orgId ? `&orgId=${encodeURIComponent(currentUser.orgId!)}` : "";
       const res = await fetch(`/api/territories?pincode=${testPincode}&franchiseId=${testFranchise}${orgParam}`);
       const data = await res.json();
       setConflictResult(data);

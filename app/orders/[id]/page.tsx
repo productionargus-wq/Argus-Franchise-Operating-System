@@ -46,7 +46,7 @@ export default function OrderDetailPage() {
   const loadOrder = async () => {
     try {
       setLoading(true);
-      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId)}` : "";
+      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId!)}` : "";
       const res = await fetch(`/api/orders/${params.id}${orgParam}`);
       if (res.ok) {
         const data = await res.json();

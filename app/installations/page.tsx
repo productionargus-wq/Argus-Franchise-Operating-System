@@ -24,11 +24,16 @@ export default function InstallationsPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   useEffect(() => {
+    if (!currentUser?.orgId) {
+      setInstallations([]);
+      setLoading(false);
+      return;
+    }
     async function loadInstallations() {
       try {
         setLoading(true);
         const params = new URLSearchParams();
-        if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+        params.set("orgId", currentUser.orgId!);
         if (!isHeadOffice && currentUser?.franchiseId) {
           params.set("franchiseId", currentUser.franchiseId);
         }
@@ -43,7 +48,7 @@ export default function InstallationsPage() {
       }
     }
     loadInstallations();
-  }, [currentUser, isHeadOffice]);
+  }, [currentUser?.orgId, currentUser?.franchiseId, isHeadOffice]);
 
   const filtered = installations.filter((i) => {
     const matchSearch =

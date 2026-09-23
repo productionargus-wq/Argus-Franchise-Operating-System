@@ -26,9 +26,9 @@ function QuotationBuilderContent() {
   const [loading, setLoading] = useState(true);
 
   // Quote metadata
-  const [companyName, setCompanyName] = useState(searchParams.get("company") || "Sri Venkatesh Industries");
-  const [customerName, setCustomerName] = useState(searchParams.get("customer") || "Mr. M. Karthik");
-  const [opportunityId, setOpportunityId] = useState(searchParams.get("opId") || "OP-1023");
+  const [companyName, setCompanyName] = useState(searchParams.get("company") || "");
+  const [customerName, setCustomerName] = useState(searchParams.get("customer") || "");
+  const [opportunityId, setOpportunityId] = useState(searchParams.get("opId") || "");
 
   // Items in quote
   const [items, setItems] = useState<QuotationItem[]>([]);
@@ -36,11 +36,15 @@ function QuotationBuilderContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!currentUser?.orgId) {
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
     async function loadProducts() {
       try {
         setLoading(true);
-        const orgParam = currentUser?.orgId ? `?orgId=${currentUser.orgId}` : "";
-        const res = await fetch(`/api/products${orgParam}`);
+        const res = await fetch(`/api/products?orgId=${encodeURIComponent(currentUser.orgId!)}`);
         const data = await res.json();
         setProducts(Array.isArray(data) ? data : []);
 

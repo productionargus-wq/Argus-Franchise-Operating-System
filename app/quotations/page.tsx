@@ -24,13 +24,17 @@ export default function QuotationsPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   const loadQuotations = async () => {
+    if (!currentUser?.orgId) {
+      setQuotations([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+      params.set("orgId", currentUser.orgId!);
       if (!isHeadOffice && currentUser?.franchiseId) params.set("franchiseId", currentUser.franchiseId);
-      const url = params.toString() ? `/api/quotations?${params.toString()}` : "/api/quotations";
-      const res = await fetch(url);
+      const res = await fetch(`/api/quotations?${params.toString()}`);
       const data = await res.json();
       setQuotations(Array.isArray(data) ? data : []);
     } catch (e) {
@@ -42,7 +46,7 @@ export default function QuotationsPage() {
 
   useEffect(() => {
     loadQuotations();
-  }, [currentUser, isHeadOffice]);
+  }, [currentUser?.orgId, currentUser?.franchiseId, isHeadOffice]);
 
   const filtered = quotations.filter((q) => {
     const matchSearch =

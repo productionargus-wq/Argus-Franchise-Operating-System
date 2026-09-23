@@ -24,11 +24,16 @@ export default function CustomersPage() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
+    if (!currentUser?.orgId) {
+      setCustomers([]);
+      setLoading(false);
+      return;
+    }
     async function loadCustomers() {
       try {
         setLoading(true);
         const params = new URLSearchParams();
-        if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+        params.set("orgId", currentUser.orgId!);
         if (!isHeadOffice && currentUser?.franchiseId) {
           params.set("franchiseId", currentUser.franchiseId);
         }
@@ -43,7 +48,7 @@ export default function CustomersPage() {
       }
     }
     loadCustomers();
-  }, [currentUser, isHeadOffice]);
+  }, [currentUser?.orgId, currentUser?.franchiseId, isHeadOffice]);
 
   const filtered = customers.filter((c) => {
     return (

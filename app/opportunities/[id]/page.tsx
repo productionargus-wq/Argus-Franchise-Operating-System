@@ -46,7 +46,7 @@ export default function OpportunityDetailPage() {
   const loadOpportunity = async () => {
     try {
       setLoading(true);
-      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId)}` : "";
+      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId!)}` : "";
       const res = await fetch(`/api/opportunities/${params.id}${orgParam}`);
       if (res.ok) {
         const data = await res.json();

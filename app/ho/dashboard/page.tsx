@@ -29,11 +29,12 @@ export default function HeadOfficeDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!currentUser?.orgId) return;
+    const orgId = currentUser.orgId;
     async function loadHoData() {
       try {
         setLoading(true);
-        const orgParam = currentUser?.orgId ? `&orgId=${currentUser.orgId}` : "";
-        const res = await fetch(`/api/analytics?view=ho${orgParam}`);
+        const res = await fetch(`/api/analytics?view=ho&orgId=${encodeURIComponent(orgId)}`);
         if (res.ok) {
           const text = await res.text();
           if (text) {
@@ -50,7 +51,7 @@ export default function HeadOfficeDashboard() {
       }
     }
     loadHoData();
-  }, [currentUser]);
+  }, [currentUser?.orgId]);
 
   return (
     <div className="space-y-6">
@@ -167,72 +168,57 @@ export default function HeadOfficeDashboard() {
       </div>
 
       {/* Alerts, Approvals & Territory Conflicts Panel */}
+      {/* Dynamic Alerts & Special Approvals Queue */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-[#FF6600]" />
             <h3 className="font-semibold text-sm text-[#293033] tracking-tight">Alerts & Special Approvals Queue</h3>
           </div>
-          <span className="text-xs bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded-full">
-            3 Actions Requiring Head Office Attention
-          </span>
+          {(data?.alerts && data.alerts.length > 0) ? (
+            <span className="text-xs bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded-full">
+              {data.alerts.length} Action{data.alerts.length > 1 ? "s" : ""} Requiring Head Office Attention
+            </span>
+          ) : (
+            <span className="text-xs bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">
+              All Clear
+            </span>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl border border-orange-200 bg-orange-50/50 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#FF6600] uppercase tracking-wider">Price Override</span>
-              <span className="text-[10px] bg-red-500 text-white font-bold px-1.5 py-0.5 rounded">Action Needed</span>
-            </div>
-            <h4 className="text-xs font-bold text-slate-800">Apex Tooling Solutions (QT-9204)</h4>
-            <p className="text-xs text-slate-600">
-              Franchise requested 15% discount on ARG-CL-200 (Policy Max: 10%). Reason: Competitor price matching.
+        {(!data?.alerts || data.alerts.length === 0) ? (
+          <div className="py-8 text-center bg-slate-50/60 rounded-xl border border-slate-100">
+            <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
+            <p className="text-xs font-semibold text-slate-700">No Critical Operational Alerts</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Quotations requiring discount authorization and critical support SLAs will appear here.
             </p>
-            <Link
-              href="/quotations/QT-9204"
-              className="inline-flex items-center gap-1 text-xs font-bold text-[#FF6600] hover:underline pt-1"
-            >
-              <span>Review Commercials & Authorize</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
           </div>
-
-          <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/50 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Territory Conflict</span>
-              <span className="text-[10px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded">Conflict</span>
-            </div>
-            <h4 className="text-xs font-bold text-slate-800">Lead LD-1043 (PIN 641601)</h4>
-            <p className="text-xs text-slate-600">
-              Customer located in Tiruppur boundary overlapping Coimbatore & Salem franchises. Needs territory allocation.
-            </p>
-            <Link
-              href="/leads"
-              className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 hover:underline pt-1"
-            >
-              <span>Resolve Territory Routing</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {data.alerts.map((alt: any) => (
+              <div key={alt.id} className="p-4 rounded-xl border border-orange-200 bg-orange-50/50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#FF6600] uppercase tracking-wider">
+                    {alt.type === "special_approval" ? "Price Override" : "Critical Alert"}
+                  </span>
+                  <span className="text-[10px] bg-red-500 text-white font-bold px-1.5 py-0.5 rounded">
+                    Action Needed
+                  </span>
+                </div>
+                <h4 className="text-xs font-bold text-slate-800">{alt.title}</h4>
+                <p className="text-xs text-slate-600">{alt.desc}</p>
+                <Link
+                  href={alt.link}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[#FF6600] hover:underline pt-1"
+                >
+                  <span>Review & Take Action</span>
+                  <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
+            ))}
           </div>
-
-          <div className="p-4 rounded-xl border border-rose-200 bg-rose-50/50 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-rose-700 uppercase tracking-wider">Support SLA</span>
-              <span className="text-[10px] bg-rose-600 text-white font-bold px-1.5 py-0.5 rounded">2h Remaining</span>
-            </div>
-            <h4 className="text-xs font-bold text-slate-800">TK-1056: Sri Venkatesh Industries</h4>
-            <p className="text-xs text-slate-600">
-              Spindle drive breakdown error E-04 on VMC-700. Critical 4-hour SLA deadline in 2 hours. Ramesh Kumar assigned.
-            </p>
-            <Link
-              href="/support/TK-1056"
-              className="inline-flex items-center gap-1 text-xs font-bold text-rose-700 hover:underline pt-1"
-            >
-              <span>Monitor Support Progress</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

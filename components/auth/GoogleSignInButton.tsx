@@ -67,15 +67,21 @@ export function GoogleSignInButton({
     const initGIS = () => {
       if (typeof window !== "undefined" && window.google?.accounts?.id) {
         try {
-          if (!initializedRef.current) {
+          if (!(window as any).__google_gsi_initialized) {
             window.google.accounts.id.initialize({
               client_id: clientId,
-              callback: handleCredentialResponse,
+              callback: (resp: any) => {
+                if (typeof (window as any).__google_gsi_handler === "function") {
+                  (window as any).__google_gsi_handler(resp);
+                }
+              },
               auto_select: false,
               cancel_on_tap_outside: true,
             });
-            initializedRef.current = true;
+            (window as any).__google_gsi_initialized = true;
           }
+          (window as any).__google_gsi_handler = handleCredentialResponse;
+          initializedRef.current = true;
 
           if (googleBtnContainerRef.current) {
             googleBtnContainerRef.current.innerHTML = "";

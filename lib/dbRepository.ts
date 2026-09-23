@@ -458,16 +458,15 @@ export const dbRepository = {
   // FRANCHISES
   async getFranchises(orgId?: string | null): Promise<Franchise[]> {
     await ensureInitialized();
-    const query = orgId ? { orgId } : {};
-    const docs = await FranchiseModel.find(query).lean();
+    if (!orgId) return [];
+    const docs = await FranchiseModel.find({ orgId }).lean();
     return cleanDocs<Franchise>(docs);
   },
 
   async getFranchiseByCode(code: string, orgId?: string | null): Promise<Franchise | null> {
     await ensureInitialized();
-    const query: any = { code };
-    if (orgId) query.orgId = orgId;
-    const doc = await FranchiseModel.findOne(query).lean();
+    if (!orgId) return null;
+    const doc = await FranchiseModel.findOne({ code, orgId }).lean();
     return doc ? cleanDoc<Franchise>(doc) : null;
   },
 
@@ -566,16 +565,15 @@ export const dbRepository = {
   // PRODUCTS / PRICE MASTER (Per-Organization)
   async getProducts(orgId?: string | null): Promise<ProductMasterItem[]> {
     await ensureInitialized();
-    const query = orgId ? { orgId } : {};
-    const docs = await ProductModel.find(query).lean();
+    if (!orgId) return [];
+    const docs = await ProductModel.find({ orgId }).lean();
     return cleanDocs<ProductMasterItem>(docs);
   },
 
   async getProductBySku(sku: string, orgId?: string | null): Promise<ProductMasterItem | null> {
     await ensureInitialized();
-    const query: any = { sku };
-    if (orgId) query.orgId = orgId;
-    const doc = await ProductModel.findOne(query).lean();
+    if (!orgId) return null;
+    const doc = await ProductModel.findOne({ sku, orgId }).lean();
     return doc ? cleanDoc<ProductMasterItem>(doc) : null;
   },
 
@@ -605,8 +603,8 @@ export const dbRepository = {
   // TERRITORIES
   async getTerritories(orgId?: string | null): Promise<TerritoryMapping[]> {
     await ensureInitialized();
-    const query = orgId ? { orgId } : {};
-    const docs = await TerritoryModel.find(query).lean();
+    if (!orgId) return [];
+    const docs = await TerritoryModel.find({ orgId }).lean();
     return cleanDocs<TerritoryMapping>(docs);
   },
 
@@ -633,8 +631,8 @@ export const dbRepository = {
   // LEADS
   async getLeads(orgId?: string | null, franchiseId?: string | null): Promise<Lead[]> {
     await ensureInitialized();
-    const query: any = {};
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return [];
+    const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await LeadModel.find(query).sort({ createdAt: -1 }).lean();
     return cleanDocs<Lead>(docs);
@@ -642,8 +640,8 @@ export const dbRepository = {
 
   async getLeadById(id: string, orgId?: string | null): Promise<Lead | null> {
     await ensureInitialized();
-    const query: any = idOr(id, { leadId: id });
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return null;
+    const query: any = { ...idOr(id, { leadId: id }), orgId };
     const doc = await LeadModel.findOne(query).lean();
     return doc ? cleanDoc<Lead>(doc) : null;
   },
@@ -781,8 +779,8 @@ export const dbRepository = {
   // OPPORTUNITIES
   async getOpportunities(orgId?: string | null, franchiseId?: string | null): Promise<Opportunity[]> {
     await ensureInitialized();
-    const query: any = {};
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return [];
+    const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await OpportunityModel.find(query).sort({ createdAt: -1 }).lean();
     return cleanDocs<Opportunity>(docs);
@@ -790,8 +788,8 @@ export const dbRepository = {
 
   async getOpportunityById(id: string, orgId?: string | null): Promise<Opportunity | null> {
     await ensureInitialized();
-    const query: any = idOr(id, { opportunityId: id }, { oppId: id });
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return null;
+    const query: any = { ...idOr(id, { opportunityId: id }, { oppId: id }), orgId };
     const doc = await OpportunityModel.findOne(query).lean();
     return doc ? cleanDoc<Opportunity>(doc) : null;
   },
@@ -811,8 +809,8 @@ export const dbRepository = {
   // QUOTATIONS
   async getQuotations(orgId?: string | null, franchiseId?: string | null): Promise<Quotation[]> {
     await ensureInitialized();
-    const query: any = {};
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return [];
+    const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await QuotationModel.find(query).sort({ createdAt: -1 }).lean();
     return cleanDocs<Quotation>(docs);
@@ -820,8 +818,8 @@ export const dbRepository = {
 
   async getQuotationById(id: string, orgId?: string | null): Promise<Quotation | null> {
     await ensureInitialized();
-    const query: any = idOr(id, { quoteId: id });
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return null;
+    const query: any = { ...idOr(id, { quoteId: id }), orgId };
     const doc = await QuotationModel.findOne(query).lean();
     return doc ? cleanDoc<Quotation>(doc) : null;
   },
@@ -924,8 +922,8 @@ export const dbRepository = {
   // SALES ORDERS
   async getOrders(orgId?: string | null, franchiseId?: string | null): Promise<SalesOrder[]> {
     await ensureInitialized();
-    const query: any = {};
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return [];
+    const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await OrderModel.find(query).sort({ createdAt: -1 }).lean();
     return cleanDocs<SalesOrder>(docs);
@@ -933,8 +931,8 @@ export const dbRepository = {
 
   async getOrderById(id: string, orgId?: string | null): Promise<SalesOrder | null> {
     await ensureInitialized();
-    const query: any = idOr(id, { orderId: id });
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return null;
+    const query: any = { ...idOr(id, { orderId: id }), orgId };
     const doc = await OrderModel.findOne(query).lean();
     return doc ? cleanDoc<SalesOrder>(doc) : null;
   },
@@ -1133,8 +1131,8 @@ export const dbRepository = {
   // INSTALLATIONS & TRAINING
   async getInstallations(orgId?: string | null, franchiseId?: string | null): Promise<Installation[]> {
     await ensureInitialized();
-    const query: any = {};
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return [];
+    const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await InstallationModel.find(query).sort({ scheduledDate: 1 }).lean();
     return cleanDocs<Installation>(docs);
@@ -1142,8 +1140,8 @@ export const dbRepository = {
 
   async getInstallationById(id: string, orgId?: string | null): Promise<Installation | null> {
     await ensureInitialized();
-    const query: any = idOr(id, { installationId: id });
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return null;
+    const query: any = { ...idOr(id, { installationId: id }), orgId };
     const doc = await InstallationModel.findOne(query).lean();
     return doc ? cleanDoc<Installation>(doc) : null;
   },
@@ -1163,8 +1161,8 @@ export const dbRepository = {
   // SUPPORT TICKETS
   async getSupportTickets(orgId?: string | null, franchiseId?: string | null): Promise<SupportTicket[]> {
     await ensureInitialized();
-    const query: any = {};
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return [];
+    const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await SupportTicketModel.find(query).sort({ createdAt: -1 }).lean();
     return cleanDocs<SupportTicket>(docs);
@@ -1172,8 +1170,8 @@ export const dbRepository = {
 
   async getSupportTicketById(id: string, orgId?: string | null): Promise<SupportTicket | null> {
     await ensureInitialized();
-    const query: any = idOr(id, { ticketId: id });
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return null;
+    const query: any = { ...idOr(id, { ticketId: id }), orgId };
     const doc = await SupportTicketModel.findOne(query).lean();
     return doc ? cleanDoc<SupportTicket>(doc) : null;
   },
@@ -1259,8 +1257,8 @@ export const dbRepository = {
   // RENEWALS
   async getRenewals(orgId?: string | null, franchiseId?: string | null): Promise<Renewal[]> {
     await ensureInitialized();
-    const query: any = {};
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return [];
+    const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await RenewalModel.find(query).sort({ expiryDate: 1 }).lean();
     return cleanDocs<Renewal>(docs);
@@ -1291,8 +1289,8 @@ export const dbRepository = {
   // COMMISSIONS
   async getCommissions(orgId?: string | null, franchiseId?: string | null): Promise<CommissionRecord[]> {
     await ensureInitialized();
-    const query: any = {};
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return [];
+    const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await CommissionModel.find(query).sort({ createdAt: -1 }).lean();
     return cleanDocs<CommissionRecord>(docs);
@@ -1323,8 +1321,8 @@ export const dbRepository = {
   // CUSTOMERS
   async getCustomers(orgId?: string | null, franchiseId?: string | null): Promise<CustomerProfile[]> {
     await ensureInitialized();
-    const query: any = {};
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return [];
+    const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await CustomerModel.find(query).sort({ companyName: 1 }).lean();
     return cleanDocs<CustomerProfile>(docs);
@@ -1332,8 +1330,8 @@ export const dbRepository = {
 
   async getCustomerById(id: string, orgId?: string | null): Promise<CustomerProfile | null> {
     await ensureInitialized();
-    const query: any = idOr(id, { customerId: id });
-    if (orgId) query.orgId = orgId;
+    if (!orgId) return null;
+    const query: any = { ...idOr(id, { customerId: id }), orgId };
     const doc = await CustomerModel.findOne(query).lean();
     return doc ? cleanDoc<CustomerProfile>(doc) : null;
   },
@@ -1341,8 +1339,36 @@ export const dbRepository = {
   // DASHBOARD KPIS & ANALYTICS
   async getFranchiseDashboardKPIs(franchiseId: string, orgId?: string | null) {
     await ensureInitialized();
-    const query: any = { franchiseId };
-    if (orgId) query.orgId = orgId;
+    if (!orgId) {
+      return {
+        newLeads: { count: 0, trend: "0%" },
+        qualified: { count: 0, trend: "0%" },
+        demos: { count: 0, trend: "0%" },
+        quotationValue: { value: 0, formatted: "₹0.0 L", trend: "0%" },
+        poReceived: { value: 0, formatted: "₹0.0 L", trend: "0%" },
+        paymentPending: { value: 0, formatted: "₹0.0 L", trend: "0%" },
+        installationsPending: { count: 0 },
+        renewalsDue: { value: 0, formatted: "₹0", subtitle: "(This Month)" },
+        commission: { value: 0, formatted: "₹0.00 L" },
+        pipelineFunnel: [
+          { stage: "New Lead", count: 0, fill: "#2563EB" },
+          { stage: "Qualified", count: 0, fill: "#06B6D4" },
+          { stage: "Demo", count: 0, fill: "#F97316" },
+          { stage: "Quotation", count: 0, fill: "#EAB308" },
+          { stage: "PO", count: 0, fill: "#10B981" },
+          { stage: "Won", count: 0, fill: "#1D4ED8" },
+        ],
+        salesTrend: [
+          { month: "Jan", hardware: 0, software: 0 },
+          { month: "Feb", hardware: 0, software: 0 },
+          { month: "Mar", hardware: 0, software: 0 },
+          { month: "Apr", hardware: 0, software: 0 },
+          { month: "May", hardware: 0, software: 0 },
+          { month: "Jun", hardware: 0, software: 0 },
+        ],
+      };
+    }
+    const query: any = { franchiseId, orgId };
 
     const leads = await LeadModel.find(query).lean();
     const opps = await OpportunityModel.find(query).lean();
@@ -1398,7 +1424,27 @@ export const dbRepository = {
 
   async getHeadOfficeDashboardKPIs(orgId?: string | null) {
     await ensureInitialized();
-    const query = orgId ? { orgId } : {};
+    if (!orgId) {
+      return {
+        totalFranchises: 0,
+        totalLeads: 0,
+        totalOpps: 0,
+        totalSales: "₹0.0 L",
+        pendingPayments: "₹0.0 L",
+        installationsPending: 0,
+        activeTickets: 0,
+        renewalsDue: "₹0.0 L",
+        franchiseSalesBreakdown: [],
+        categoryBreakdown: [
+          { category: "CNC Accessories", percent: 0, color: "#2563EB" },
+          { category: "Software", percent: 0, color: "#06B6D4" },
+          { category: "Installation & Service", percent: 0, color: "#F59E0B" },
+          { category: "AMC / Renewal", percent: 0, color: "#8B5CF6" },
+        ],
+        alerts: [],
+      };
+    }
+    const query = { orgId };
 
     const franchises = await FranchiseModel.find(query).lean();
     const leads = await LeadModel.find(query).lean();

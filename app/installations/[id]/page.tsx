@@ -35,7 +35,7 @@ export default function InstallationDetailPage() {
   const loadInstallation = async () => {
     try {
       setLoading(true);
-      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId)}` : "";
+      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId!)}` : "";
       const res = await fetch(`/api/installations/${params.id}${orgParam}`);
       if (res.ok) {
         const data = await res.json();

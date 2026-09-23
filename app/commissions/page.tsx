@@ -21,10 +21,15 @@ export default function CommissionsPage() {
   const [search, setSearch] = useState("");
 
   const loadCommissions = async () => {
+    if (!currentUser?.orgId) {
+      setCommissions([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+      params.set("orgId", currentUser.orgId!);
       if (!isHeadOffice && currentUser?.franchiseId) {
         params.set("franchiseId", currentUser.franchiseId);
       }
@@ -41,7 +46,7 @@ export default function CommissionsPage() {
 
   useEffect(() => {
     loadCommissions();
-  }, [currentUser, isHeadOffice]);
+  }, [currentUser?.orgId, currentUser?.franchiseId, isHeadOffice]);
 
   const handleUpdateStatus = async (
     id: string,

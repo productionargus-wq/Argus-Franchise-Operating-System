@@ -16,7 +16,6 @@ import {
   RefreshCw,
   Coins,
   ShieldAlert,
-  Sliders,
   MapPin,
   Tag,
   ChevronRight,
@@ -136,16 +135,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        {/* Quick Portal View Toggle Link */}
+        {/* Subtle footer */}
         <div className="p-3 border-t border-[#3A4448]/60 bg-[#1F2426]">
-          <Link
-            href={isHeadOffice ? "/dashboard" : "/ho/dashboard"}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded bg-[#293033] hover:bg-[#3A4448] border border-slate-700 text-xs font-medium text-slate-200 hover:text-white transition-colors"
-          >
-            <Sliders className="w-3.5 h-3.5 text-[#FF6600]" />
-            <span>Switch to {isHeadOffice ? "Franchise View" : "Head Office View"}</span>
-          </Link>
-          <div className="text-[10px] text-slate-400 text-center mt-2">
+          <div className="text-[11px] text-slate-400 text-center font-medium">
             ARGUS CNC Partner OS v1.0
           </div>
         </div>

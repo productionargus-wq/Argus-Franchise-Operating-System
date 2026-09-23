@@ -38,11 +38,14 @@ export default function PriceMasterPage() {
   });
 
   const loadProducts = async () => {
+    if (!currentUser?.orgId) {
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const url = currentUser?.orgId
-        ? `/api/products?orgId=${encodeURIComponent(currentUser.orgId)}`
-        : "/api/products";
+      const url = `/api/products?orgId=${encodeURIComponent(currentUser.orgId!)}`;
       const res = await fetch(url);
       const data = await res.json();
       setProducts(Array.isArray(data) ? data : []);
@@ -55,7 +58,7 @@ export default function PriceMasterPage() {
 
   useEffect(() => {
     loadProducts();
-  }, [currentUser]);
+  }, [currentUser?.orgId]);
 
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();

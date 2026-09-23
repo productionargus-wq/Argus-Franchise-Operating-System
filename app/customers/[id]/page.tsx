@@ -36,7 +36,7 @@ export default function Customer360Page() {
     async function load360() {
       try {
         setLoading(true);
-        const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId)}` : "";
+        const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId!)}` : "";
         const res = await fetch(`/api/customers/${params.id}${orgParam}`);
         if (res.ok) {
           const json = await res.json();

@@ -38,10 +38,15 @@ export default function SupportPage() {
   });
 
   const loadTickets = async () => {
+    if (!currentUser?.orgId) {
+      setTickets([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+      params.set("orgId", currentUser.orgId!);
       if (!isHeadOffice && currentUser?.franchiseId) {
         params.set("franchiseId", currentUser.franchiseId);
       }
@@ -58,7 +63,7 @@ export default function SupportPage() {
 
   useEffect(() => {
     loadTickets();
-  }, [currentUser, isHeadOffice]);
+  }, [currentUser?.orgId, currentUser?.franchiseId, isHeadOffice]);
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();

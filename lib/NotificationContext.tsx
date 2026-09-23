@@ -112,30 +112,58 @@ const FRANCHISE_NOTIFICATIONS: NotificationItem[] = [
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  const { isHeadOffice } = useAuth();
+  const { isHeadOffice, currentUser } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
-  // Initialize or re-populate based on the active role
+  // Load isolated notifications strictly for the active organization
   useEffect(() => {
-    if (isHeadOffice) {
-      setNotifications(HO_NOTIFICATIONS);
-    } else {
-      setNotifications(FRANCHISE_NOTIFICATIONS);
+    if (!currentUser?.orgId) {
+      setNotifications([]);
+      return;
     }
-  }, [isHeadOffice]);
+
+    if (currentUser.orgId === "ORG-TEMP") {
+      setNotifications(isHeadOffice ? HO_NOTIFICATIONS : FRANCHISE_NOTIFICATIONS);
+      return;
+    }
+
+    // Real organizations start completely clean
+    try {
+      const stored = localStorage.getItem(`argus_notifs_${currentUser.orgId}`);
+      if (stored) {
+        setNotifications(JSON.parse(stored));
+      } else {
+        setNotifications([]);
+      }
+    } catch {
+      setNotifications([]);
+    }
+  }, [currentUser?.orgId, isHeadOffice]);
+
+  const saveNotifications = (newNotifs: NotificationItem[]) => {
+    setNotifications(newNotifs);
+    if (currentUser?.orgId && currentUser.orgId !== "ORG-TEMP") {
+      try {
+        localStorage.setItem(`argus_notifs_${currentUser.orgId}`, JSON.stringify(newNotifs));
+      } catch (e) {
+        console.error("Failed to persist notifications:", e);
+      }
+    }
+  };
 
   const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, unread: false } : item))
-    );
+    const updated = notifications.map((item) => (item.id === id ? { ...item, unread: false } : item));
+    saveNotifications(updated);
   };
 
   const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((item) => ({ ...item, unread: false })));
+    const updated = notifications.map((item) => ({ ...item, unread: false }));
+    saveNotifications(updated);
   };
 
   const removeNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((item) => item.id !== id));
+    const updated = notifications.filter((item) => item.id !== id);
+    saveNotifications(updated);
   };
 
   const addNotification = (item: Omit<NotificationItem, "id" | "time" | "unread">) => {
@@ -145,7 +173,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       time: "Just now",
       unread: true,
     };
-    setNotifications((prev) => [newNotif, ...prev]);
+    saveNotifications([newNotif, ...notifications]);
   };
 
   const unreadCount = notifications.filter((n) => n.unread).length;

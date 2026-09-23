@@ -1,8 +1,14 @@
+"use client";
+
 import React from "react";
+import { useAuth } from "@/lib/AuthContext";
 import { Clock, CheckCircle2, AlertCircle, FileText, Wrench } from "lucide-react";
 
 export function RecentActivity() {
-  const activities = [
+  const { currentUser } = useAuth();
+  const isTemplateOrg = currentUser?.orgId === "ORG-TEMP";
+
+  const templateActivities = [
     {
       id: 1,
       type: "lead",
@@ -50,6 +56,8 @@ export function RecentActivity() {
     },
   ];
 
+  const activities = isTemplateOrg ? templateActivities : [];
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
@@ -59,25 +67,35 @@ export function RecentActivity() {
         </span>
       </div>
 
-      <div className="divide-y divide-slate-100">
-        {activities.map((act) => {
-          const Icon = act.icon;
-          return (
-            <div key={act.id} className="py-2.5 flex items-start gap-3 text-xs">
-              <div className={`mt-0.5 ${act.color}`}>
-                <Icon className="w-4 h-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="font-bold text-slate-800 truncate">{act.title}</span>
-                  <span className="text-[10px] text-slate-400 whitespace-nowrap">{act.time}</span>
+      {activities.length === 0 ? (
+        <div className="py-8 text-center">
+          <Clock className="w-6 h-6 text-slate-300 mx-auto mb-2" />
+          <p className="text-xs font-semibold text-slate-700">No Recent Activity</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Real-time lead additions, quotes, and order milestones will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-100">
+          {activities.map((act) => {
+            const Icon = act.icon;
+            return (
+              <div key={act.id} className="py-2.5 flex items-start gap-3 text-xs">
+                <div className={`mt-0.5 ${act.color}`}>
+                  <Icon className="w-4 h-4" />
                 </div>
-                <p className="text-slate-600 truncate mt-0.5">{act.desc}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-bold text-slate-800 truncate">{act.title}</span>
+                    <span className="text-[10px] text-slate-400 whitespace-nowrap">{act.time}</span>
+                  </div>
+                  <p className="text-slate-600 truncate mt-0.5">{act.desc}</p>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -40,7 +40,7 @@ export default function QuotationDetailPage() {
   const loadQuote = async () => {
     try {
       setLoading(true);
-      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId)}` : "";
+      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId!)}` : "";
       const res = await fetch(`/api/quotations/${params.id}${orgParam}`);
       if (res.ok) {
         const data = await res.json();

@@ -25,10 +25,15 @@ export default function RenewalsPage() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const loadRenewals = async () => {
+    if (!currentUser?.orgId) {
+      setRenewals([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (currentUser?.orgId) params.set("orgId", currentUser.orgId);
+      params.set("orgId", currentUser.orgId!);
       if (!isHeadOffice && currentUser?.franchiseId) {
         params.set("franchiseId", currentUser.franchiseId);
       }
@@ -45,7 +50,7 @@ export default function RenewalsPage() {
 
   useEffect(() => {
     loadRenewals();
-  }, [currentUser, isHeadOffice]);
+  }, [currentUser?.orgId, currentUser?.franchiseId, isHeadOffice]);
 
   const handleSendReminder = async (
     id: string,

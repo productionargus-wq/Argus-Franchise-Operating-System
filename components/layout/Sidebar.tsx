@@ -29,7 +29,12 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { isHeadOffice, currentUser } = useAuth();
+  const { isHeadOffice, isSuperAdmin, currentUser } = useAuth();
+
+  const superAdminNavItems = [
+    { label: "Organization Approvals", href: "/super-admin", icon: ShieldAlert },
+    { label: "All Organizations", href: "/super-admin", icon: Building2 },
+  ];
 
   const franchiseNavItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -59,7 +64,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     { label: "Users & Roles", href: "/ho/users", icon: Users },
   ];
 
-  const currentNav = isHeadOffice ? headOfficeNavItems : franchiseNavItems;
+  const currentNav = isSuperAdmin
+    ? superAdminNavItems
+    : isHeadOffice
+    ? headOfficeNavItems
+    : franchiseNavItems;
+
+  const portalLabel = isSuperAdmin
+    ? "Super Admin Portal"
+    : isHeadOffice
+    ? "Head Office Portal"
+    : "Franchise Portal";
+
+  const portalDotColor = isSuperAdmin ? "bg-purple-400" : "bg-[#FF6600]";
 
   return (
     <>
@@ -79,8 +96,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* Portal Mode Label */}
         <div className="px-4 py-3 border-b border-[#3A4448]/50 flex items-center justify-between text-[11px] uppercase tracking-wider font-semibold text-slate-400">
-          <span>{isHeadOffice ? "Head Office Portal" : "Franchise Portal"}</span>
-          <span className="w-2 h-2 rounded-full bg-[#FF6600]"></span>
+          <span>{portalLabel}</span>
+          <span className={`w-2 h-2 rounded-full ${portalDotColor}`}></span>
         </div>
 
         {/* Nav Links */}

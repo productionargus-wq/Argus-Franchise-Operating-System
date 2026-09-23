@@ -18,6 +18,7 @@ import {
   CheckCheck,
   Trash2,
   ExternalLink,
+  LogOut,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -28,7 +29,7 @@ interface NavbarProps {
 export function Navbar({ onToggleSidebar, isSidebarOpen }: NavbarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { currentUser, switchRole, availableUsers, isHeadOffice } = useAuth();
+  const { currentUser, switchRole, availableUsers, isHeadOffice, isSuperAdmin, organization, logout } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification } = useNotifications();
 
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
@@ -137,16 +138,23 @@ export function Navbar({ onToggleSidebar, isSidebarOpen }: NavbarProps) {
             </span>
           </Link>
 
-          {/* Current Franchise Badge */}
-          {currentUser.franchiseName ? (
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1F2426] text-xs font-medium text-[#FF6600] border border-[#3A4448]">
-              <Building2 className="w-3.5 h-3.5" />
-              <span>{currentUser.franchiseName}</span>
+          {/* Active Tenant Organization & Role Badge */}
+          {isSuperAdmin ? (
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded bg-purple-500/20 text-xs font-bold text-purple-300 border border-purple-400/30">
+              <Shield className="w-3.5 h-3.5 text-purple-400" />
+              <span>Platform Super Admin</span>
             </div>
           ) : (
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1F2426] text-xs font-medium text-emerald-400 border border-[#3A4448]">
-              <Shield className="w-3.5 h-3.5" />
-              <span>Head Office Central Admin</span>
+            <div className="hidden md:flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1F2426] text-xs font-medium text-slate-200 border border-[#3A4448]">
+                <Building2 className="w-3.5 h-3.5 text-[#FF6600]" />
+                <span className="font-semibold">{organization?.name || currentUser.orgName || "Argus CNC Technologies Ltd"}</span>
+              </div>
+              {currentUser.franchiseName && (
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#FF6600]/10 text-xs font-medium text-[#FF6600] border border-[#FF6600]/30">
+                  <span>{currentUser.franchiseName}</span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -347,6 +355,17 @@ export function Navbar({ onToggleSidebar, isSidebarOpen }: NavbarProps) {
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Sign Out Button */}
+                <div className="p-2 bg-slate-50 border-t border-slate-200">
+                  <button
+                    onClick={logout}
+                    className="w-full py-2 px-3 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
+                  </button>
                 </div>
               </div>
             )}

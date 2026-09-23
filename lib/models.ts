@@ -277,6 +277,28 @@ const TerritorySchema = new Schema(
   { strict: false, timestamps: true }
 );
 
+// ORGANIZATION SCHEMA (Multi-Tenant B2B SaaS)
+const OrganizationSchema = new Schema(
+  {
+    orgId: { type: String, required: true, unique: true, index: true },
+    name: { type: String, required: true },
+    gstin: { type: String, required: true, index: true },
+    adminEmail: { type: String, required: true, index: true },
+    adminName: { type: String, required: true },
+    status: {
+      type: String,
+      default: "PENDING_APPROVAL",
+      enum: ["PENDING_APPROVAL", "APPROVED", "REJECTED", "SUSPENDED"],
+      index: true,
+    },
+    createdAt: { type: String },
+    approvedAt: { type: String },
+    approvedBy: { type: String },
+    rejectionReason: { type: String },
+  },
+  { strict: false, timestamps: true }
+);
+
 // USER SCHEMA
 const UserSchema = new Schema(
   {
@@ -284,14 +306,20 @@ const UserSchema = new Schema(
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, index: true },
     role: { type: String, required: true },
+    orgId: { type: String, index: true },
+    orgName: { type: String },
     franchiseId: { type: String },
     franchiseName: { type: String },
     avatar: { type: String },
+    status: { type: String, default: "active", enum: ["active", "pending_approval", "disabled"] },
   },
   { strict: false, timestamps: true }
 );
 
 // EXPORT MONGOOSE MODELS (Singleton-safe across Next.js reloads)
+export const OrganizationModel: Model<any> =
+  mongoose.models.Organization || mongoose.model("Organization", OrganizationSchema);
+
 export const FranchiseModel: Model<any> =
   mongoose.models.Franchise || mongoose.model("Franchise", FranchiseSchema);
 

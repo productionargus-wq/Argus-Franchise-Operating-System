@@ -13,6 +13,7 @@ import {
   CommissionModel,
   TerritoryModel,
   UserModel,
+  OrganizationModel,
 } from "./models";
 import {
   MOCK_FRANCHISES,
@@ -43,6 +44,7 @@ import {
   CommissionRecord,
   TerritoryMapping,
   UserSession,
+  Organization,
 } from "./types";
 
 let initPromise: Promise<void> | null = null;
@@ -99,10 +101,52 @@ async function ensureInitialized() {
         if ((await RenewalModel.countDocuments()) === 0) await RenewalModel.insertMany(sanitizeList(MOCK_RENEWALS));
         if ((await CommissionModel.countDocuments()) === 0) await CommissionModel.insertMany(sanitizeList(MOCK_COMMISSIONS));
         if ((await TerritoryModel.countDocuments()) === 0) await TerritoryModel.insertMany(sanitizeList(MOCK_TERRITORIES));
-        if ((await UserModel.countDocuments()) === 0) await UserModel.insertMany(sanitizeList(MOCK_USERS));
+
+        // Default Organization Seed
+        const defaultOrg = await OrganizationModel.findOne({ orgId: "ORG-ARGUS" });
+        if (!defaultOrg) {
+          await OrganizationModel.create({
+            orgId: "ORG-ARGUS",
+            name: "Argus CNC Technologies Ltd",
+            gstin: "33AAAAA0000A1Z5",
+            adminEmail: "vikram.ho@arguscnc.com",
+            adminName: "Vikram Rathore",
+            status: "APPROVED",
+            createdAt: "2026-01-01",
+            approvedAt: "2026-01-01",
+            approvedBy: "System Setup",
+          });
+        }
+
+        // Super Admin Account Seed
+        const superAdmin = await UserModel.findOne({ role: "super_admin" });
+        if (!superAdmin) {
+          await UserModel.create({
+            id: "usr-super-admin",
+            name: "Platform Super Admin",
+            email: "superadmin@arguscloud.io",
+            role: "super_admin",
+            orgId: null,
+            orgName: "Platform Administration",
+            avatar: "SA",
+            status: "active",
+          });
+        }
+
+        if ((await UserModel.countDocuments()) <= 1) {
+          const seededUsers = MOCK_USERS.map((u) => ({
+            ...sanitize(u),
+            orgId: "ORG-ARGUS",
+            orgName: "Argus CNC Technologies Ltd",
+            status: "active",
+          }));
+          for (const u of seededUsers) {
+            await UserModel.findOneAndUpdate({ id: u.id }, { $set: u }, { upsert: true });
+          }
+        }
 
         isInitialized = true;
-        console.log("✅ MongoDB Atlas collections synchronized successfully!");
+        console.log("✅ MongoDB Atlas collections & Organization multi-tenant seed synchronized successfully!");
       } catch (e) {
         console.error("Error initializing MongoDB Atlas collections:", e);
       }
@@ -139,6 +183,216 @@ function cleanDocs<T>(docs: any[]): T[] {
 }
 
 export const dbRepository = {
+  // ORGANIZATIONS (Multi-Tenant B2B SaaS)
+  async getOrganizations(status?: string): Promise<Organization[]> {
+    await ensureInitialized();
+    const query = status ? { status } : {};
+    const docs = await OrganizationModel.find(query).sort({ createdAt: -1 }).lean();
+    return cleanDocs<Organization>(docs);
+  },
+
+  async getOrganizationById(orgId: string): Promise<Organization | null> {
+    await ensureInitialized();
+    const doc = await OrganizationModel.findOne(idOr(orgId, { orgId })).lean();
+    return doc ? cleanDoc<Organization>(doc) : null;
+  },
+
+  async registerOrganization(data: {
+    name: string;
+    gstin: string;
+    adminEmail: string;
+    adminName: string;
+    avatar?: string;
+  }): Promise<{ organization: Organization; adminUser: UserSession }> {
+    await ensureInitialized();
+    const existingOrg = await OrganizationModel.findOne({
+      $or: [{ gstin: data.gstin.trim().toUpperCase() }, { adminEmail: data.adminEmail.trim().toLowerCase() }],
+    });
+    if (existingOrg) {
+      if (existingOrg.gstin === data.gstin.trim().toUpperCase()) {
+        throw new Error(`An organization with GSTIN ${data.gstin} is already registered.`);
+      }
+      throw new Error(`The email ${data.adminEmail} is already registered as an organization administrator.`);
+    }
+
+    const orgCount = await OrganizationModel.countDocuments();
+    const orgSlug = data.name.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase();
+    const orgId = `ORG-${orgSlug || "CORP"}-${100 + orgCount + 1}`;
+    const initials = data.adminName
+      ? data.adminName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+      : "HO";
+
+    const newOrg = await OrganizationModel.create({
+      orgId,
+      name: data.name.trim(),
+      gstin: data.gstin.trim().toUpperCase(),
+      adminEmail: data.adminEmail.trim().toLowerCase(),
+      adminName: data.adminName.trim(),
+      status: "PENDING_APPROVAL",
+      createdAt: new Date().toISOString().split("T")[0],
+    });
+
+    const adminUser = await UserModel.create({
+      id: `usr-ho-${Date.now().toString().slice(-6)}`,
+      name: data.adminName.trim(),
+      email: data.adminEmail.trim().toLowerCase(),
+      role: "head_office_admin",
+      orgId,
+      orgName: data.name.trim(),
+      franchiseId: null,
+      avatar: data.avatar || initials,
+      status: "pending_approval",
+    });
+
+    return {
+      organization: cleanDoc<Organization>(newOrg),
+      adminUser: cleanDoc<UserSession>(adminUser),
+    };
+  },
+
+  async approveOrganization(orgId: string, approvedBy: string): Promise<Organization | null> {
+    await ensureInitialized();
+    const org = await OrganizationModel.findOneAndUpdate(
+      idOr(orgId, { orgId }),
+      {
+        $set: {
+          status: "APPROVED",
+          approvedAt: new Date().toISOString().split("T")[0],
+          approvedBy,
+        },
+      },
+      { new: true }
+    ).lean();
+
+    if (org) {
+      await UserModel.updateMany(
+        { orgId: (org as any).orgId, role: "head_office_admin" },
+        { $set: { status: "active" } }
+      );
+    }
+    return org ? cleanDoc<Organization>(org) : null;
+  },
+
+  async rejectOrganization(orgId: string, rejectedBy: string, reason?: string): Promise<Organization | null> {
+    await ensureInitialized();
+    const org = await OrganizationModel.findOneAndUpdate(
+      idOr(orgId, { orgId }),
+      {
+        $set: {
+          status: "REJECTED",
+          approvedBy: rejectedBy,
+          rejectionReason: reason || "Organization details could not be verified.",
+        },
+      },
+      { new: true }
+    ).lean();
+
+    if (org) {
+      await UserModel.updateMany(
+        { orgId: (org as any).orgId },
+        { $set: { status: "disabled" } }
+      );
+    }
+    return org ? cleanDoc<Organization>(org) : null;
+  },
+
+  // USERS & MULTI-TENANT AUTH
+  async getUserByEmail(email: string): Promise<{ user: UserSession; organization: Organization | null } | null> {
+    await ensureInitialized();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check if Super Admin email via env or database
+    const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "superadmin@arguscloud.io,philipmatthew26@gmail.com")
+      .split(",")
+      .map((e) => e.trim().toLowerCase());
+
+    if (superAdminEmails.includes(normalizedEmail)) {
+      let superUser = await UserModel.findOne({ email: normalizedEmail }).lean();
+      if (!superUser) {
+        const created = await UserModel.create({
+          id: `usr-super-${Date.now().toString().slice(-4)}`,
+          name: normalizedEmail.split("@")[0].toUpperCase() + " (Super Admin)",
+          email: normalizedEmail,
+          role: "super_admin",
+          orgId: null,
+          orgName: "Platform Administration",
+          avatar: "SA",
+          status: "active",
+        });
+        superUser = created.toObject();
+      }
+      return { user: cleanDoc<UserSession>(superUser), organization: null };
+    }
+
+    const doc: any = await UserModel.findOne({ email: normalizedEmail }).lean();
+    if (!doc) return null;
+
+    let org: Organization | null = null;
+    if (doc.orgId) {
+      const orgDoc = await OrganizationModel.findOne({ orgId: doc.orgId }).lean();
+      org = orgDoc ? cleanDoc<Organization>(orgDoc) : null;
+    }
+
+    return { user: cleanDoc<UserSession>(doc), organization: org };
+  },
+
+  async getUsersByOrg(orgId?: string | null): Promise<UserSession[]> {
+    await ensureInitialized();
+    const query = orgId ? { orgId } : {};
+    const docs = await UserModel.find(query).lean();
+    return cleanDocs<UserSession>(docs);
+  },
+
+  async createOrganizationPersonnel(
+    orgId: string,
+    data: {
+      name: string;
+      email: string;
+      role: UserSession["role"];
+      franchiseId?: string | null;
+      franchiseName?: string;
+    }
+  ): Promise<UserSession> {
+    await ensureInitialized();
+    const org: any = await OrganizationModel.findOne({ orgId });
+    if (!org) throw new Error("Organization not found.");
+    if (org.status !== "APPROVED") throw new Error("Organization is not approved yet.");
+
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const existing = await UserModel.findOne({ email: normalizedEmail });
+    if (existing) {
+      throw new Error(`A user with email ${normalizedEmail} already exists in the system.`);
+    }
+
+    const initials = data.name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+
+    const newUser = await UserModel.create({
+      id: `usr-${orgId.toLowerCase().slice(-4)}-${Date.now().toString().slice(-4)}`,
+      name: data.name.trim(),
+      email: normalizedEmail,
+      role: data.role,
+      orgId,
+      orgName: org.name,
+      franchiseId: data.franchiseId || null,
+      franchiseName: data.franchiseName || undefined,
+      avatar: initials || "U",
+      status: "active",
+    });
+
+    return cleanDoc<UserSession>(newUser);
+  },
+
+  async deleteUser(userId: string, orgId: string): Promise<boolean> {
+    await ensureInitialized();
+    const res = await UserModel.deleteOne({ ...idOr(userId, { id: userId }), orgId });
+    return (res.deletedCount || 0) > 0;
+  },
+
   // FRANCHISES
   async getFranchises(): Promise<Franchise[]> {
     await ensureInitialized();

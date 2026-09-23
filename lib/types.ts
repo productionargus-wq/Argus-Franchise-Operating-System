@@ -1,18 +1,36 @@
 export type UserRole =
+  | "super_admin"
   | "head_office_admin"
   | "franchise_admin"
   | "franchise_sales"
   | "service_engineer"
   | "finance_accounts";
 
+export interface Organization {
+  _id?: string;
+  orgId: string;
+  name: string;
+  gstin: string;
+  adminEmail: string;
+  adminName: string;
+  status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "SUSPENDED";
+  createdAt: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  rejectionReason?: string;
+}
+
 export interface UserSession {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  orgId?: string | null; // null for Super Admin
+  orgName?: string | null;
   franchiseId: string | null; // null for Head Office
   franchiseName?: string;
   avatar?: string;
+  status?: "active" | "pending_approval" | "disabled";
 }
 
 export interface Franchise {

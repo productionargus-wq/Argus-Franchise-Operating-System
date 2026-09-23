@@ -5,6 +5,8 @@ import { Franchise } from "@/lib/types";
 import { useAuth } from "@/lib/AuthContext";
 import { StatusBadge } from "@/components/ui/Badge";
 import { OnboardFranchiseModal } from "@/components/franchises/OnboardFranchiseModal";
+import { EditFranchiseModal } from "@/components/franchises/EditFranchiseModal";
+import { DeleteFranchiseModal } from "@/components/franchises/DeleteFranchiseModal";
 import {
   Building2,
   Calendar,
@@ -20,6 +22,8 @@ import {
   SlidersHorizontal,
   TrendingUp,
   ShieldCheck,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 export default function FranchisesManagementPage() {
@@ -29,6 +33,12 @@ export default function FranchisesManagementPage() {
   const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
+
+  // Edit & Delete state
+  const [editingFranchise, setEditingFranchise] = useState<Franchise | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [deletingFranchise, setDeletingFranchise] = useState<Franchise | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const loadFranchises = async () => {
     if (!currentUser?.orgId) {
@@ -55,6 +65,28 @@ export default function FranchisesManagementPage() {
 
   const handleFranchiseCreated = () => {
     loadFranchises();
+  };
+
+  const handleOpenEdit = (fr: Franchise) => {
+    setEditingFranchise(fr);
+    setIsEditModalOpen(true);
+  };
+
+  const handleOpenDelete = (fr: Franchise) => {
+    setDeletingFranchise(fr);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleFranchiseUpdated = (updated: Franchise) => {
+    setFranchises((prev) =>
+      prev.map((f) => (f._id === updated._id || f.code === updated.code ? updated : f))
+    );
+  };
+
+  const handleFranchiseDeleted = (franchiseId: string) => {
+    setFranchises((prev) =>
+      prev.filter((f) => f._id !== franchiseId && f.code !== franchiseId)
+    );
   };
 
   // Filtered franchises
@@ -234,7 +266,23 @@ export default function FranchisesManagementPage() {
                       <span>{fr.location}, {fr.state}</span>
                     </p>
                   </div>
-                  <StatusBadge status={fr.status} />
+                  <div className="flex items-center gap-1.5">
+                    <StatusBadge status={fr.status} />
+                    <button
+                      onClick={() => handleOpenEdit(fr)}
+                      className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-[#FF6600] transition-colors cursor-pointer"
+                      title="Edit Franchise"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleOpenDelete(fr)}
+                      className="p-1.5 rounded-md hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                      title="Delete Franchise"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Agreement & Contact */}
@@ -330,6 +378,20 @@ export default function FranchisesManagementPage() {
         isOpen={isOnboardModalOpen}
         onClose={() => setIsOnboardModalOpen(false)}
         onFranchiseCreated={handleFranchiseCreated}
+      />
+
+      <EditFranchiseModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        franchise={editingFranchise}
+        onFranchiseUpdated={handleFranchiseUpdated}
+      />
+
+      <DeleteFranchiseModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        franchise={deletingFranchise}
+        onFranchiseDeleted={handleFranchiseDeleted}
       />
     </div>
   );

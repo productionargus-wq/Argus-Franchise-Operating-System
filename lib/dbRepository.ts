@@ -562,6 +562,81 @@ export const dbRepository = {
     return { franchise: newFranchise, adminUser: adminUserData };
   },
 
+  async updateFranchise(
+    id: string,
+    data: Partial<Franchise>,
+    orgId?: string | null
+  ): Promise<Franchise | null> {
+    await ensureInitialized();
+    if (!orgId) return null;
+
+    const territoryDistricts = Array.isArray(data.territoryDistricts)
+      ? data.territoryDistricts
+      : typeof data.territoryDistricts === "string" && data.territoryDistricts
+      ? (data.territoryDistricts as string).split(",").map((s) => s.trim()).filter(Boolean)
+      : undefined;
+
+    const pincodes = Array.isArray(data.pincodes)
+      ? data.pincodes
+      : typeof data.pincodes === "string" && data.pincodes
+      ? (data.pincodes as string).split(",").map((s) => s.trim()).filter(Boolean)
+      : undefined;
+
+    const updateFields: any = { ...data };
+    delete updateFields._id;
+    delete updateFields.orgId;
+    if (territoryDistricts !== undefined) updateFields.territoryDistricts = territoryDistricts;
+    if (pincodes !== undefined) updateFields.pincodes = pincodes;
+    if (data.annualTarget !== undefined) updateFields.annualTarget = Number(data.annualTarget) || 0;
+    if (data.achievedSales !== undefined) updateFields.achievedSales = Number(data.achievedSales) || 0;
+    if (data.collections !== undefined) updateFields.collections = Number(data.collections) || 0;
+    if (data.commissionEarned !== undefined) updateFields.commissionEarned = Number(data.commissionEarned) || 0;
+    if (data.commissionPaid !== undefined) updateFields.commissionPaid = Number(data.commissionPaid) || 0;
+
+    const query = {
+      ...idOr(id, { code: id }),
+      orgId,
+    };
+
+    const updated = await FranchiseModel.findOneAndUpdate(
+      query,
+      { $set: updateFields },
+      { new: true }
+    ).lean() as any;
+
+    if (!updated) return null;
+
+    if (data.name && updated.code) {
+      await TerritoryModel.updateMany(
+        { assignedFranchiseId: updated.code, orgId },
+        { $set: { assignedFranchiseName: data.name } }
+      );
+    }
+
+    return cleanDoc<Franchise>(updated);
+  },
+
+  async deleteFranchise(id: string, orgId?: string | null): Promise<boolean> {
+    await ensureInitialized();
+    if (!orgId) return false;
+
+    const query = {
+      ...idOr(id, { code: id }),
+      orgId,
+    };
+
+    const franchise = await FranchiseModel.findOne(query).lean() as any;
+    if (!franchise) return false;
+
+    await FranchiseModel.deleteOne(query);
+
+    if (franchise.code) {
+      await TerritoryModel.deleteMany({ assignedFranchiseId: franchise.code, orgId });
+    }
+
+    return true;
+  },
+
   // PRODUCTS / PRICE MASTER (Per-Organization)
   async getProducts(orgId?: string | null): Promise<ProductMasterItem[]> {
     await ensureInitialized();

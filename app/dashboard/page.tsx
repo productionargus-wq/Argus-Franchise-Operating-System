@@ -8,6 +8,7 @@ import { SalesTrendChart } from "@/components/dashboard/SalesTrendChart";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { Modal } from "@/components/ui/Modal";
+import { ScreenLoader } from "@/components/ui/ScreenLoader";
 import {
   Users,
   Target,
@@ -95,6 +96,15 @@ export default function FranchiseDashboard() {
     }
   };
 
+  if (loading || !kpiData) {
+    return (
+      <ScreenLoader
+        message="Loading dashboard..."
+        submessage="Fetching real-time franchise KPIs and pipeline metrics"
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
@@ -102,7 +112,7 @@ export default function FranchiseDashboard() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-extrabold text-[#293033] tracking-tight">
-              Welcome, {currentUser.franchiseName || "Coimbatore Franchise"}
+              Welcome, {currentUser?.franchiseName || currentUser?.orgName || currentUser?.name || "Franchise Partner"}
             </h1>
             <span className="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2 py-0.5 rounded-full">
               Active Portal
@@ -123,65 +133,65 @@ export default function FranchiseDashboard() {
         </div>
       </div>
 
-      {/* 8 KPI Cards (Matching Section 3.1 & Reference Mockup) */}
+      {/* 8 KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           title="New Leads"
-          value={kpiData?.newLeads?.count ?? 38}
+          value={kpiData?.newLeads?.count ?? 0}
           icon={Users}
-          trend={kpiData?.newLeads?.trend ?? "+ 27%"}
+          trend={kpiData?.newLeads?.trend ?? "0%"}
           isPositiveTrend={true}
           colorScheme="sky"
         />
         <KpiCard
           title="Qualified"
-          value={kpiData?.qualified?.count ?? 24}
+          value={kpiData?.qualified?.count ?? 0}
           icon={Target}
-          trend={kpiData?.qualified?.trend ?? "+ 14%"}
+          trend={kpiData?.qualified?.trend ?? "0%"}
           isPositiveTrend={true}
           colorScheme="emerald"
         />
         <KpiCard
           title="Demos"
-          value={kpiData?.demos?.count ?? 12}
+          value={kpiData?.demos?.count ?? 0}
           icon={CheckCircle2}
-          trend={kpiData?.demos?.trend ?? "+ 33%"}
+          trend={kpiData?.demos?.trend ?? "0%"}
           isPositiveTrend={true}
           colorScheme="indigo"
         />
         <KpiCard
           title="Quotations"
-          value={kpiData?.quotationValue?.formatted ?? "₹8.6 L"}
+          value={kpiData?.quotationValue?.formatted ?? "₹0.0 L"}
           icon={FileText}
-          trend={kpiData?.quotationValue?.trend ?? "+ 18%"}
+          trend={kpiData?.quotationValue?.trend ?? "0%"}
           isPositiveTrend={true}
           colorScheme="rose"
         />
         <KpiCard
           title="PO Received"
-          value={kpiData?.poReceived?.formatted ?? "₹3.4 L"}
+          value={kpiData?.poReceived?.formatted ?? "₹0.0 L"}
           icon={ShoppingCart}
-          trend={kpiData?.poReceived?.trend ?? "+ 21%"}
+          trend={kpiData?.poReceived?.trend ?? "0%"}
           isPositiveTrend={true}
           colorScheme="teal"
         />
         <KpiCard
           title="Payment Pending"
-          value={kpiData?.paymentPending?.formatted ?? "₹1.2 L"}
+          value={kpiData?.paymentPending?.formatted ?? "₹0.0 L"}
           icon={Clock}
-          trend={kpiData?.paymentPending?.trend ?? "- 5%"}
+          trend={kpiData?.paymentPending?.trend ?? "0%"}
           isPositiveTrend={false}
           colorScheme="amber"
         />
         <KpiCard
           title="Installations Pending"
-          value={kpiData?.installationsPending?.count ?? 4}
+          value={kpiData?.installationsPending?.count ?? 0}
           icon={Wrench}
           colorScheme="rose"
         />
         <KpiCard
           title="Renewals"
-          value={kpiData?.renewalsDue?.formatted ?? "₹72,000"}
+          value={kpiData?.renewalsDue?.formatted ?? "₹0"}
           icon={RefreshCw}
           subtitle="(This Month)"
           colorScheme="emerald"

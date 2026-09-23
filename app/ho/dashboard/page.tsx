@@ -7,6 +7,7 @@ import { KpiCard } from "@/components/dashboard/KpiCard";
 import { FranchiseSalesBarChart } from "@/components/dashboard/FranchiseSalesBarChart";
 import { ProductCategoryDonutChart } from "@/components/dashboard/ProductCategoryDonutChart";
 import { StatusBadge } from "@/components/ui/Badge";
+import { ScreenLoader } from "@/components/ui/ScreenLoader";
 import {
   Building2,
   Users,
@@ -53,6 +54,15 @@ export default function HeadOfficeDashboard() {
     loadHoData();
   }, [currentUser?.orgId]);
 
+  if (loading || !data) {
+    return (
+      <ScreenLoader
+        message="Loading central command dashboard..."
+        submessage="Aggregating franchise performance and health metrics"
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Head Office Header */}
@@ -67,7 +77,7 @@ export default function HeadOfficeDashboard() {
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Real-time aggregate oversight across all {data?.totalFranchises ?? "all"} franchise territories, approvals, quotas and SLA health.
+            Real-time aggregate oversight across all {data?.totalFranchises ?? 0} franchise territories, approvals, quotas and SLA health.
           </p>
         </div>
 
@@ -89,69 +99,69 @@ export default function HeadOfficeDashboard() {
         </div>
       </div>
 
-      {/* Multi-Franchise KPI Grid (Matching Section 3.2 & Mockup 2) */}
+      {/* Multi-Franchise KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           title="Franchises"
-          value={data?.totalFranchises ?? 12}
+          value={data?.totalFranchises ?? 0}
           icon={Building2}
-          trend="+ 2"
+          trend="+ 0"
           isPositiveTrend={true}
           colorScheme="blue"
         />
         <KpiCard
           title="Total Leads"
-          value={data?.totalLeads ?? 428}
+          value={data?.totalLeads ?? 0}
           icon={Users}
-          trend="+ 18%"
+          trend="0%"
           isPositiveTrend={true}
           colorScheme="sky"
         />
         <KpiCard
           title="Opportunities"
-          value={data?.totalOpps ?? 186}
+          value={data?.totalOpps ?? 0}
           icon={Target}
-          trend="+ 16%"
+          trend="0%"
           isPositiveTrend={true}
           colorScheme="emerald"
         />
         <KpiCard
           title="Total Sales"
-          value={data?.totalSales ?? "₹48.7 L"}
+          value={data?.totalSales ?? "₹0.0 L"}
           icon={DollarSign}
-          trend="+ 22%"
+          trend="0%"
           isPositiveTrend={true}
           colorScheme="purple"
         />
         <KpiCard
           title="Pending Payments"
-          value={data?.pendingPayments ?? "₹12.4 L"}
+          value={data?.pendingPayments ?? "₹0.0 L"}
           icon={Clock}
-          trend="- 8%"
+          trend="0%"
           isPositiveTrend={false}
           colorScheme="indigo"
         />
         <KpiCard
           title="Installations"
-          value={data?.installationsPending ?? 67}
+          value={data?.installationsPending ?? 0}
           icon={Wrench}
-          trend="+ 25%"
+          trend="0%"
           isPositiveTrend={true}
           colorScheme="teal"
         />
         <KpiCard
           title="Support Tickets"
-          value={data?.activeTickets ?? 134}
+          value={data?.activeTickets ?? 0}
           icon={LifeBuoy}
-          trend="- 12%"
+          trend="0%"
           isPositiveTrend={false}
           colorScheme="rose"
         />
         <KpiCard
           title="Renewals (Due)"
-          value={data?.renewalsDue ?? "₹8.9 L"}
+          value={data?.renewalsDue ?? "₹0.0 L"}
           icon={RefreshCw}
-          trend="+ 30%"
+          trend="0%"
           isPositiveTrend={true}
           colorScheme="amber"
         />

@@ -1,6 +1,6 @@
 "use client";
-
 import React, { useState } from "react";
+import { useAuth } from "@/lib/AuthContext";
 
 export interface FranchiseSalesData {
   name: string;
@@ -21,9 +21,31 @@ const DEFAULT_SALES_DATA: FranchiseSalesData[] = [
 ];
 
 export function FranchiseSalesBarChart({
-  data = DEFAULT_SALES_DATA,
+  data,
 }: FranchiseSalesBarChartProps) {
+  const { currentUser } = useAuth();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  const isTemplate = currentUser?.orgId === "ORG-TEMP";
+  const chartData = (data && data.length > 0) ? data : (isTemplate ? DEFAULT_SALES_DATA : []);
+
+  if (chartData.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-base text-[#293033] tracking-tight">
+            Franchise-wise Sales
+          </h3>
+          <span className="text-xs font-semibold text-slate-400">
+            Monthly Revenue Delivered
+          </span>
+        </div>
+        <div className="h-48 flex items-center justify-center text-slate-400 text-xs">
+          No franchise sales recorded yet
+        </div>
+      </div>
+    );
+  }
 
   // SVG Chart Geometry
   const chartWidth = 560;
@@ -40,7 +62,7 @@ export function FranchiseSalesBarChart({
   const yTicks = [20, 15, 10, 5, 0];
 
   const barWidth = 36;
-  const barSpacing = innerWidth / data.length;
+  const barSpacing = innerWidth / chartData.length;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs">
@@ -96,7 +118,7 @@ export function FranchiseSalesBarChart({
           })}
 
           {/* Bars & X-Axis Labels */}
-          {data.map((item, index) => {
+          {chartData.map((item, index) => {
             const barHeight = Math.max(
               4,
               (Number(item.salesLakhs) / maxScale) * innerHeight

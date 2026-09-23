@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useAuth } from "@/lib/AuthContext";
 
 export interface MonthlySalesData {
   month: string;
@@ -21,10 +22,21 @@ const DEFAULT_SALES_TREND: MonthlySalesData[] = [
   { month: "Dec", hardware: 8.5, software: 6.5 },
 ];
 
+const EMPTY_SALES_TREND: MonthlySalesData[] = [
+  { month: "Jan", hardware: 0, software: 0 },
+  { month: "Feb", hardware: 0, software: 0 },
+  { month: "Mar", hardware: 0, software: 0 },
+  { month: "Apr", hardware: 0, software: 0 },
+  { month: "May", hardware: 0, software: 0 },
+  { month: "Jun", hardware: 0, software: 0 },
+];
+
 export function SalesTrendChart({ data }: SalesTrendChartProps) {
+  const { currentUser } = useAuth();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const chartData = data && data.length > 0 ? data : DEFAULT_SALES_TREND;
+  const fallbackTrend = currentUser?.orgId === "ORG-TEMP" ? DEFAULT_SALES_TREND : EMPTY_SALES_TREND;
+  const chartData = data && data.length > 0 ? data : fallbackTrend;
 
   // Chart Geometry
   const chartWidth = 560;

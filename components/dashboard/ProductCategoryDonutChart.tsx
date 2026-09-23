@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useAuth } from "@/lib/AuthContext";
 
 export interface CategoryData {
   category: string;
@@ -20,9 +21,28 @@ const DEFAULT_CATEGORY_DATA: CategoryData[] = [
 ];
 
 export function ProductCategoryDonutChart({
-  data = DEFAULT_CATEGORY_DATA,
+  data,
 }: ProductCategoryDonutChartProps) {
+  const { currentUser } = useAuth();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  const isTemplate = currentUser?.orgId === "ORG-TEMP";
+  const chartData = (data && data.length > 0) ? data : (isTemplate ? DEFAULT_CATEGORY_DATA : []);
+
+  if (chartData.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs flex flex-col justify-between">
+        <div>
+          <h3 className="font-bold text-base text-[#293033] tracking-tight mb-4">
+            Product Category Sales
+          </h3>
+          <div className="h-48 flex items-center justify-center text-slate-400 text-xs">
+            No category sales recorded yet
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // SVG Donut Calculations
   const size = 200;
@@ -46,7 +66,7 @@ export function ProductCategoryDonutChart({
               viewBox={`0 0 ${size} ${size}`}
               className="w-full h-full transform -rotate-90 select-none"
             >
-              {data.map((item, index) => {
+              {chartData.map((item, index) => {
                 const strokeDasharray = `${(item.percent / 100) * circumference} ${circumference}`;
                 const strokeDashoffset = -((cumulativePercent / 100) * circumference);
                 cumulativePercent += item.percent;
@@ -73,13 +93,13 @@ export function ProductCategoryDonutChart({
 
             {/* Inner Center Cutout Display */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              {hoveredIndex !== null ? (
+              {hoveredIndex !== null && chartData[hoveredIndex] ? (
                 <>
                   <span className="text-xl font-black text-slate-800 leading-tight">
-                    {data[hoveredIndex].percent}%
+                    {chartData[hoveredIndex].percent}%
                   </span>
                   <span className="text-[10px] font-semibold text-slate-500 text-center px-2 line-clamp-1">
-                    {data[hoveredIndex].category}
+                    {chartData[hoveredIndex].category}
                   </span>
                 </>
               ) : (
@@ -90,7 +110,7 @@ export function ProductCategoryDonutChart({
 
           {/* Right-Side Legend Matching Reference Mockup */}
           <div className="flex-1 w-full space-y-3.5">
-            {data.map((item, index) => {
+            {chartData.map((item, index) => {
               const isHovered = hoveredIndex === index;
               return (
                 <div

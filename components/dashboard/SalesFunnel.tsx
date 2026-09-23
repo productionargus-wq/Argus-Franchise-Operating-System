@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useAuth } from "@/lib/AuthContext";
 
 export interface FunnelStage {
   stage: string;
@@ -21,10 +22,21 @@ const DEFAULT_STAGES: FunnelStage[] = [
   { stage: "Won", count: 4, fill: "#1D4ED8" },
 ];
 
+const EMPTY_STAGES: FunnelStage[] = [
+  { stage: "New Lead", count: 0, fill: "#2563EB" },
+  { stage: "Qualified", count: 0, fill: "#06B6D4" },
+  { stage: "Demo", count: 0, fill: "#F97316" },
+  { stage: "Quotation", count: 0, fill: "#EAB308" },
+  { stage: "PO", count: 0, fill: "#10B981" },
+  { stage: "Won", count: 0, fill: "#1D4ED8" },
+];
+
 export function SalesFunnel({ stages }: SalesFunnelProps) {
+  const { currentUser } = useAuth();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const data = stages && stages.length > 0 ? stages : DEFAULT_STAGES;
+  const fallbackStages = currentUser?.orgId === "ORG-TEMP" ? DEFAULT_STAGES : EMPTY_STAGES;
+  const data = stages && stages.length > 0 ? stages : fallbackStages;
 
   // Funnel Geometry
   const width = 210;

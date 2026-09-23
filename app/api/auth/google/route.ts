@@ -49,9 +49,13 @@ export async function POST(request: Request) {
     }
 
     // 2. LOGIN WORKFLOW
+    console.log(`[Google Auth] Received sign-in request for email: "${normalizedEmail}"`);
     const authData = await dbRepository.getUserByEmail(normalizedEmail);
 
     if (!authData) {
+      console.warn(
+        `[Google Auth] 403 Forbidden: Email "${normalizedEmail}" was not found in 'super_admins' collection nor in 'users' collection.`
+      );
       return NextResponse.json(
         {
           error: `Access Denied: The Google account (${normalizedEmail}) is not registered in our system. Please contact your organization administrator or register your organization.`,
@@ -63,6 +67,7 @@ export async function POST(request: Request) {
     }
 
     const { user, organization } = authData;
+    console.log(`[Google Auth] Authentication successful for "${normalizedEmail}". Role: ${user.role}`);
 
     // Super Admin Flow
     if (user.role === "super_admin") {

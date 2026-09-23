@@ -25,6 +25,10 @@ export default function LoginPage() {
       router.push(result.redirectUrl);
     } else {
       if (result.code === "UNREGISTERED") {
+        setErrorMessage(
+          result.error ||
+            `Access Denied: The Google account (${email}) is not registered in our system.`
+        );
         router.push(`/access-denied?email=${encodeURIComponent(email)}`);
       } else {
         setErrorMessage(result.error || "Failed to sign in. Please verify your credentials.");

@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     if (!authData) {
       return NextResponse.json(
         {
-          error: `Access Denied: The Google account (${normalizedEmail}) is not registered with any organization. Please contact your Head Office Administrator to be invited, or register your organization.`,
+          error: `Access Denied: The Google account (${normalizedEmail}) is not registered in our system. Please contact your organization administrator or register your organization.`,
           code: "UNREGISTERED",
           email: normalizedEmail,
         },

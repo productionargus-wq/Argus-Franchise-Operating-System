@@ -26,7 +26,7 @@ function AccessDeniedContent() {
           </h3>
         </div>
         <p className="text-xs text-slate-600 leading-relaxed max-w-sm">
-          The Google account <strong className="text-slate-900 font-mono font-bold">{email}</strong> is not associated with any approved organization in the Argus network.
+          The Google account <strong className="text-slate-900 font-mono font-bold">{email}</strong> is not registered in our system.
         </p>
       </div>
 
@@ -38,7 +38,7 @@ function AccessDeniedContent() {
             <span>Are you a Franchise Admin or Service Engineer?</span>
           </div>
           <p className="text-slate-500 pl-5">
-            Contact your organization Head Office Admin. They must add your email in their <strong>Users & Roles</strong> directory before you can sign in.
+            Contact your organization Head Office Admin. They must add your Google email in their <strong>Users & Roles</strong> directory before you can sign in.
           </p>
         </div>
 
@@ -49,6 +49,16 @@ function AccessDeniedContent() {
           </div>
           <p className="text-slate-500 pl-5">
             Register your company details and GSTIN. Once approved by the Super Admin, your account will be activated.
+          </p>
+        </div>
+
+        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+          <div className="font-bold text-slate-800 flex items-center gap-1.5">
+            <ShieldAlert className="w-3.5 h-3.5 text-purple-600" />
+            <span>Are you the Platform Super Admin?</span>
+          </div>
+          <p className="text-slate-500 pl-5">
+            Ensure this exact email address is added to the <strong className="text-slate-700">super_admins</strong> collection in your MongoDB database.
           </p>
         </div>
       </div>

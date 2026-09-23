@@ -316,7 +316,21 @@ const UserSchema = new Schema(
   { strict: false, timestamps: true }
 );
 
+// SUPER ADMIN SCHEMA (Dedicated collection for Super Admins)
+const SuperAdminSchema = new Schema(
+  {
+    email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
+    name: { type: String, default: "Super Admin" },
+    active: { type: Boolean, default: true },
+    role: { type: String, default: "super_admin" },
+  },
+  { collection: "super_admins", strict: false, timestamps: true }
+);
+
 // EXPORT MONGOOSE MODELS (Singleton-safe across Next.js reloads)
+export const SuperAdminModel: Model<any> =
+  mongoose.models.SuperAdmin || mongoose.model("SuperAdmin", SuperAdminSchema);
+
 export const OrganizationModel: Model<any> =
   mongoose.models.Organization || mongoose.model("Organization", OrganizationSchema);
 
@@ -358,3 +372,4 @@ export const TerritoryModel: Model<any> =
 
 export const UserModel: Model<any> =
   mongoose.models.User || mongoose.model("User", UserSchema);
+

@@ -14,6 +14,7 @@ import {
   TerritoryModel,
   UserModel,
   OrganizationModel,
+  SuperAdminModel,
 } from "./models";
 import {
   MOCK_FRANCHISES,
@@ -118,20 +119,9 @@ async function ensureInitialized() {
           });
         }
 
-        // Super Admin Account Seed
-        const superAdmin = await UserModel.findOne({ role: "super_admin" });
-        if (!superAdmin) {
-          await UserModel.create({
-            id: "usr-super-admin",
-            name: "Platform Super Admin",
-            email: "superadmin@arguscloud.io",
-            role: "super_admin",
-            orgId: null,
-            orgName: "Platform Administration",
-            avatar: "SA",
-            status: "active",
-          });
-        }
+        // Super admins are strictly managed in the dedicated super_admins collection.
+        // Clean up any legacy super_admin records in UserModel.
+        await UserModel.deleteMany({ role: "super_admin" });
 
         if ((await UserModel.countDocuments()) <= 1) {
           const seededUsers = MOCK_USERS.map((u) => ({
@@ -301,30 +291,35 @@ export const dbRepository = {
     await ensureInitialized();
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Check if Super Admin email via env or database
-    const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "superadmin@arguscloud.io,philipmatthew26@gmail.com")
-      .split(",")
-      .map((e) => e.trim().toLowerCase());
+    // 1. Check SuperAdmin in dedicated super_admins collection
+    // No hardcoded emails: Only emails explicitly inserted into the super_admins collection can access Super Admin
+    const superAdminDoc: any = await SuperAdminModel.findOne({
+      email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, "i") },
+      active: { $ne: false },
+    }).lean();
 
-    if (superAdminEmails.includes(normalizedEmail)) {
-      let superUser = await UserModel.findOne({ email: normalizedEmail }).lean();
-      if (!superUser) {
-        const created = await UserModel.create({
-          id: `usr-super-${Date.now().toString().slice(-4)}`,
-          name: normalizedEmail.split("@")[0].toUpperCase() + " (Super Admin)",
-          email: normalizedEmail,
-          role: "super_admin",
-          orgId: null,
-          orgName: "Platform Administration",
-          avatar: "SA",
-          status: "active",
-        });
-        superUser = created.toObject();
-      }
-      return { user: cleanDoc<UserSession>(superUser), organization: null };
+    if (superAdminDoc) {
+      const superUser: UserSession = {
+        id: superAdminDoc._id?.toString() || `usr-super-${normalizedEmail.replace(/[^a-z0-9]/g, "")}`,
+        name: superAdminDoc.name || normalizedEmail.split("@")[0].toUpperCase() + " (Super Admin)",
+        email: normalizedEmail,
+        role: "super_admin",
+        orgId: null,
+        orgName: "Platform Administration",
+        franchiseId: null,
+        avatar: "SA",
+        status: "active",
+      };
+      return { user: superUser, organization: null };
     }
 
-    const doc: any = await UserModel.findOne({ email: normalizedEmail }).lean();
+    // 2. Check regular organization UserModel (Head Office Admin, Franchise Admin, Engineers, etc.)
+    // Note: super_admin role can never originate from UserModel
+    const doc: any = await UserModel.findOne({
+      email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, "i") },
+      role: { $ne: "super_admin" },
+    }).lean();
+
     if (!doc) return null;
 
     let org: Organization | null = null;
@@ -334,6 +329,30 @@ export const dbRepository = {
     }
 
     return { user: cleanDoc<UserSession>(doc), organization: org };
+  },
+
+  async getSuperAdmins(): Promise<any[]> {
+    await ensureInitialized();
+    const docs = await SuperAdminModel.find().lean();
+    return cleanDocs(docs);
+  },
+
+  async addSuperAdmin(email: string, name?: string): Promise<any> {
+    await ensureInitialized();
+    const normalized = email.trim().toLowerCase();
+    const created = await SuperAdminModel.findOneAndUpdate(
+      { email: normalized },
+      {
+        $set: {
+          email: normalized,
+          name: name || normalized.split("@")[0],
+          active: true,
+          role: "super_admin",
+        },
+      },
+      { upsert: true, new: true }
+    ).lean();
+    return cleanDoc(created);
   },
 
   async getUsersByOrg(orgId?: string | null): Promise<UserSession[]> {

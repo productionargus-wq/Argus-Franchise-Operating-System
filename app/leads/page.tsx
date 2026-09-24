@@ -35,6 +35,8 @@ export default function LeadsPage() {
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addModalError, setAddModalError] = useState<string | null>(null);
+  const [submittingLead, setSubmittingLead] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
   const [followUpDate, setFollowUpDate] = useState("");
@@ -80,6 +82,8 @@ export default function LeadsPage() {
 
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAddModalError(null);
+    setSubmittingLead(true);
     try {
       const res = await fetch("/api/leads", {
         method: "POST",
@@ -94,10 +98,28 @@ export default function LeadsPage() {
       });
       if (res.ok) {
         setIsAddModalOpen(false);
+        setLeadForm({
+          customerName: "",
+          companyName: "",
+          phone: "",
+          email: "",
+          source: "Exhibition",
+          industry: "Auto Components",
+          productInterest: "ARG-VMC-700",
+          pincode: "641001",
+          district: "Coimbatore",
+          notes: "",
+        });
         loadLeads();
+      } else {
+        const data = await res.json();
+        setAddModalError(data.error || "Failed to create lead. Please check inputs.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setAddModalError(err.message || "Failed to communicate with server.");
+    } finally {
+      setSubmittingLead(false);
     }
   };
 
@@ -405,6 +427,18 @@ export default function LeadsPage() {
       {/* Add Lead Modal */}
       <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Lead" maxWidth="lg">
         <form onSubmit={handleCreateLead} className="space-y-4">
+          {addModalError && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs flex items-center justify-between">
+              <span>{addModalError}</span>
+              <button
+                type="button"
+                onClick={() => setAddModalError(null)}
+                className="text-red-400 hover:text-red-600 text-xs font-bold ml-2"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Company Name *</label>
@@ -518,9 +552,10 @@ export default function LeadsPage() {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-semibold bg-[#FF6600] hover:bg-[#E65C00] text-white rounded-lg shadow-xs"
+              disabled={submittingLead}
+              className="px-4 py-2 text-xs font-semibold bg-[#FF6600] hover:bg-[#E65C00] disabled:opacity-50 text-white rounded-lg shadow-xs cursor-pointer"
             >
-              Create Lead
+              {submittingLead ? "Creating..." : "Create Lead"}
             </button>
           </div>
         </form>

@@ -42,6 +42,8 @@ export default function FranchiseDashboard() {
     district: "Coimbatore",
   });
   const [formSuccess, setFormSuccess] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [submittingLead, setSubmittingLead] = useState(false);
 
   const fetchKpis = async () => {
     try {
@@ -71,6 +73,8 @@ export default function FranchiseDashboard() {
 
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    setSubmittingLead(true);
     try {
       const res = await fetch("/api/leads", {
         method: "POST",
@@ -90,9 +94,15 @@ export default function FranchiseDashboard() {
           setIsAddLeadModalOpen(false);
           fetchKpis();
         }, 1200);
+      } else {
+        const data = await res.json();
+        setFormError(data.error || "Failed to create lead. Please check details.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setFormError(err.message || "Failed to communicate with server.");
+    } finally {
+      setSubmittingLead(false);
     }
   };
 
@@ -231,6 +241,18 @@ export default function FranchiseDashboard() {
           </div>
         ) : (
           <form onSubmit={handleCreateLead} className="space-y-4">
+            {formError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs flex items-center justify-between">
+                <span>{formError}</span>
+                <button
+                  type="button"
+                  onClick={() => setFormError(null)}
+                  className="text-red-400 hover:text-red-600 text-xs font-bold ml-2"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Company Name *</label>
@@ -333,9 +355,10 @@ export default function FranchiseDashboard() {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-xs font-semibold bg-[#FF6600] hover:bg-[#E65C00] text-white rounded-lg shadow-xs"
+                disabled={submittingLead}
+                className="px-4 py-2 text-xs font-semibold bg-[#FF6600] hover:bg-[#E65C00] disabled:opacity-50 text-white rounded-lg shadow-xs cursor-pointer"
               >
-                Submit Lead
+                {submittingLead ? "Submitting..." : "Submit Lead"}
               </button>
             </div>
           </form>

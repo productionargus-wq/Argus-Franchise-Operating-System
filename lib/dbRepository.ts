@@ -90,6 +90,31 @@ async function ensureInitialized() {
           OrganizationModel.updateMany({ orgId: "ORG-ARGUS" }, { $set: { orgId: TEMP_ORG, name: "Demo CNC Systems (Template)" } }),
         ]);
 
+        // Multi-tenant index migration: ensure old global single-field unique indexes are replaced with compound { orgId: 1, ... }
+        const indexMigrations = [
+          { model: LeadModel, indexName: "leadId_1", field: "leadId" },
+          { model: CustomerModel, indexName: "customerId_1", field: "customerId" },
+          { model: OrderModel, indexName: "orderId_1", field: "orderId" },
+          { model: InstallationModel, indexName: "installationId_1", field: "installationId" },
+          { model: RenewalModel, indexName: "renewalId_1", field: "renewalId" },
+          { model: SupportTicketModel, indexName: "ticketId_1", field: "ticketId" },
+          { model: ProductModel, indexName: "sku_1", field: "sku" },
+          { model: CommissionModel, indexName: "commissionId_1", field: "commissionId" },
+          { model: FranchiseModel, indexName: "code_1", field: "code" },
+        ];
+        for (const item of indexMigrations) {
+          try {
+            const indexes = await item.model.collection.indexes();
+            const hasOldUnique = indexes.find((i: any) => i.name === item.indexName && i.unique);
+            if (hasOldUnique) {
+              await item.model.collection.dropIndex(item.indexName);
+              await item.model.collection.createIndex({ orgId: 1, [item.field]: 1 }, { unique: true });
+            }
+          } catch (e) {
+            // Ignore if index doesn't exist or already dropped
+          }
+        }
+
         const franchiseCount = await FranchiseModel.countDocuments();
         if (franchiseCount < 12) {
           for (const fr of MOCK_FRANCHISES) {
@@ -724,8 +749,19 @@ export const dbRepository = {
   async createLead(data: Partial<Lead>, orgId?: string | null): Promise<Lead> {
     await ensureInitialized();
     const activeOrgId = data.orgId || orgId || "ORG-TEMP";
-    const count = await LeadModel.countDocuments({ orgId: activeOrgId });
-    const leadId = `LD-${1040 + count + 1}`;
+    let leadId = data.leadId;
+    if (!leadId) {
+      const count = await LeadModel.countDocuments({ orgId: activeOrgId });
+      let candidate = `LD-${1040 + count + 1}`;
+      let exists = await LeadModel.findOne({ orgId: activeOrgId, leadId: candidate });
+      let offset = 1;
+      while (exists) {
+        candidate = `LD-${1040 + count + 1 + offset}`;
+        exists = await LeadModel.findOne({ orgId: activeOrgId, leadId: candidate });
+        offset++;
+      }
+      leadId = candidate;
+    }
 
     const conflictCheck = data.pincode
       ? await this.checkTerritoryConflict(data.pincode, data.franchiseId || "FR-CBE", activeOrgId)

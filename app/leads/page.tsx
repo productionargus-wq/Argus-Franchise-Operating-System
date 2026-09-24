@@ -19,6 +19,7 @@ import {
   UserCheck,
   Building,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 
 export default function LeadsPage() {
@@ -40,6 +41,9 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
   const [followUpDate, setFollowUpDate] = useState("");
+  const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // New lead form
   const [leadForm, setLeadForm] = useState({
@@ -170,6 +174,29 @@ export default function LeadsPage() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!leadToDelete || !currentUser?.orgId) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/leads/${leadToDelete._id}?orgId=${encodeURIComponent(currentUser.orgId)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setIsDeleteModalOpen(false);
+        setLeadToDelete(null);
+        loadLeads();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete lead");
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || "Failed to delete lead");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -414,6 +441,18 @@ export default function LeadsPage() {
                         >
                           <Mail className="w-4 h-4" />
                         </a>
+
+                        {/* Delete Lead */}
+                        <button
+                          onClick={() => {
+                            setLeadToDelete(lead);
+                            setIsDeleteModalOpen(true);
+                          }}
+                          className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                          title="Delete Lead"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -593,6 +632,37 @@ export default function LeadsPage() {
               className="px-4 py-2 text-xs font-semibold bg-[#FF6600] hover:bg-[#E65C00] text-white rounded-lg"
             >
               Save Schedule
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Lead Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Delete Lead"
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-600">
+            Are you sure you want to delete lead <strong className="text-slate-900">{leadToDelete?.leadId}</strong> ({leadToDelete?.companyName})? This action cannot be undone.
+          </p>
+          <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={handleConfirmDelete}
+              className="px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg shadow-xs cursor-pointer"
+            >
+              {deleting ? "Deleting..." : "Delete Lead"}
             </button>
           </div>
         </div>

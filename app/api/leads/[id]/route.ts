@@ -29,3 +29,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: err.message }, { status: 400 });
   }
 }
+
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const orgId = searchParams.get("orgId");
+    if (!orgId) return NextResponse.json({ error: "orgId is required" }, { status: 400 });
+    const success = await dbRepository.deleteLead(params.id, orgId);
+    if (!success) return NextResponse.json({ error: "Lead not found or could not be deleted" }, { status: 404 });
+    return NextResponse.json({ success: true, message: "Lead deleted successfully" });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 400 });
+  }
+}

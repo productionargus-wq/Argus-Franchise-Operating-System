@@ -810,6 +810,17 @@ export const dbRepository = {
     return updated ? cleanDoc<Lead>(updated) : null;
   },
 
+  async deleteLead(id: string, orgId?: string | null): Promise<boolean> {
+    await ensureInitialized();
+    if (!orgId) return false;
+    const query: any = {
+      ...idOr(id, { leadId: id }),
+      orgId,
+    };
+    const res = await LeadModel.deleteOne(query);
+    return (res.deletedCount || 0) > 0;
+  },
+
   async convertLeadToOpportunity(leadId: string, orgId?: string | null): Promise<Opportunity | null> {
     await ensureInitialized();
     const lead = await this.getLeadById(leadId, orgId);

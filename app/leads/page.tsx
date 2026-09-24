@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
-import { Lead } from "@/lib/types";
+import { Lead, Franchise } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import {
@@ -44,6 +44,7 @@ export default function LeadsPage() {
   const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [franchisesList, setFranchisesList] = useState<Franchise[]>([]);
 
   // New lead form
   const [leadForm, setLeadForm] = useState({
@@ -54,10 +55,20 @@ export default function LeadsPage() {
     source: "Exhibition",
     industry: "Auto Components",
     productInterest: "ARG-VMC-700",
-    pincode: "641001",
-    district: "Coimbatore",
+    pincode: "",
+    district: "",
+    franchiseId: "",
     notes: "",
   });
+
+  useEffect(() => {
+    if (currentUser?.orgId) {
+      fetch(`/api/franchises?orgId=${encodeURIComponent(currentUser.orgId)}`)
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => setFranchisesList(Array.isArray(data) ? data : []))
+        .catch((e) => console.error(e));
+    }
+  }, [currentUser?.orgId]);
 
   const loadLeads = async () => {
     if (!currentUser?.orgId) {
@@ -88,6 +99,12 @@ export default function LeadsPage() {
     e.preventDefault();
     setAddModalError(null);
     setSubmittingLead(true);
+    const selectedFr = franchisesList.find((f) => f.code === leadForm.franchiseId);
+    const assignedFranchiseId = isHeadOffice ? (leadForm.franchiseId || "") : (currentUser?.franchiseId || "");
+    const assignedFranchiseName = isHeadOffice
+      ? (selectedFr?.name || "")
+      : (currentUser?.franchiseName || "");
+
     try {
       const res = await fetch("/api/leads", {
         method: "POST",
@@ -95,9 +112,11 @@ export default function LeadsPage() {
         body: JSON.stringify({
           ...leadForm,
           orgId: currentUser?.orgId,
-          franchiseId: currentUser?.franchiseId || "",
-          franchiseName: currentUser?.franchiseName || "",
-          ownerName: currentUser?.name,
+          franchiseId: assignedFranchiseId,
+          franchiseName: assignedFranchiseName,
+          ownerName: isHeadOffice
+            ? (selectedFr?.contactPerson ? `${selectedFr.name} Sales` : currentUser?.name)
+            : currentUser?.name,
         }),
       });
       if (res.ok) {
@@ -110,8 +129,9 @@ export default function LeadsPage() {
           source: "Exhibition",
           industry: "Auto Components",
           productInterest: "ARG-VMC-700",
-          pincode: "641001",
-          district: "Coimbatore",
+          pincode: "",
+          district: "",
+          franchiseId: "",
           notes: "",
         });
         loadLeads();
@@ -563,11 +583,35 @@ export default function LeadsPage() {
               <label className="block text-xs font-semibold text-slate-700 mb-1">District</label>
               <input
                 type="text"
+                placeholder="e.g. Chennai"
                 value={leadForm.district}
                 onChange={(e) => setLeadForm({ ...leadForm, district: e.target.value })}
                 className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
               />
             </div>
+
+            {isHeadOffice && (
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Assign Franchise Partner
+                </label>
+                <select
+                  value={leadForm.franchiseId}
+                  onChange={(e) => setLeadForm({ ...leadForm, franchiseId: e.target.value })}
+                  className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+                >
+                  <option value="">Auto-Route by PIN Code</option>
+                  {franchisesList.map((fr) => (
+                    <option key={fr.code} value={fr.code}>
+                      {fr.name} ({fr.code}) - {fr.location}, {fr.state}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Leave as &quot;Auto-Route by PIN Code&quot; to automatically assign based on territory boundary rules.
+                </p>
+              </div>
+            )}
           </div>
 
           <div>

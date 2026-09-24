@@ -38,8 +38,8 @@ export default function FranchiseDashboard() {
     source: "Direct Call",
     industry: "Auto Components",
     productInterest: "ARG-VMC-700",
-    pincode: "641001",
-    district: "Coimbatore",
+    pincode: "",
+    district: "",
   });
   const [formSuccess, setFormSuccess] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);

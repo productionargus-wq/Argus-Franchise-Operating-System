@@ -631,11 +631,43 @@ export const dbRepository = {
 
     if (!updated) return null;
 
-    if (data.name && updated.code) {
-      await TerritoryModel.updateMany(
-        { assignedFranchiseId: updated.code, orgId },
-        { $set: { assignedFranchiseName: data.name } }
-      );
+    if (updated.code) {
+      // 1. Synchronize TerritoryModel for this franchise
+      const territoryUpdate: any = {};
+      if (data.name) territoryUpdate.assignedFranchiseName = data.name.trim();
+      if (pincodes !== undefined) territoryUpdate.pincodeRange = pincodes;
+      if (data.state) territoryUpdate.state = data.state;
+      if (territoryDistricts !== undefined && territoryDistricts.length > 0) {
+        territoryUpdate.district = territoryDistricts[0];
+      }
+      if (Object.keys(territoryUpdate).length > 0) {
+        await TerritoryModel.updateMany(
+          { assignedFranchiseId: updated.code, orgId },
+          { $set: territoryUpdate }
+        );
+      }
+
+      // 2. Synchronize UserModel for Franchise Admin
+      const userUpdate: any = {};
+      if (data.contactPerson) userUpdate.name = data.contactPerson.trim();
+      if (data.email) userUpdate.email = data.email.trim().toLowerCase();
+      if (data.name) userUpdate.franchiseName = data.name.trim();
+      if (data.contactPerson) {
+        const initials = data.contactPerson
+          .split(" ")
+          .map((n: string) => n[0])
+          .filter(Boolean)
+          .join("")
+          .slice(0, 2)
+          .toUpperCase();
+        if (initials) userUpdate.avatar = initials;
+      }
+      if (Object.keys(userUpdate).length > 0) {
+        await UserModel.updateMany(
+          { franchiseId: updated.code, orgId, role: "franchise_admin" },
+          { $set: userUpdate }
+        );
+      }
     }
 
     return cleanDoc<Franchise>(updated);
@@ -763,8 +795,31 @@ export const dbRepository = {
       leadId = candidate;
     }
 
-    const conflictCheck = data.pincode
-      ? await this.checkTerritoryConflict(data.pincode, data.franchiseId || "FR-CBE", activeOrgId)
+    // 1. Determine Franchise Assignment dynamically
+    let assignedFranchiseId = data.franchiseId || "";
+    let assignedFranchiseName = data.franchiseName || "";
+
+    // If franchiseId is provided, look up franchise name if missing
+    if (assignedFranchiseId && !assignedFranchiseName) {
+      const fr: any = await FranchiseModel.findOne({ code: assignedFranchiseId, orgId: activeOrgId }).lean();
+      if (fr) assignedFranchiseName = fr.name;
+    }
+
+    // Auto-route by PIN code if franchiseId is not provided
+    if (!assignedFranchiseId && data.pincode) {
+      const territoryMatch: any = await TerritoryModel.findOne({
+        pincodeRange: data.pincode.trim(),
+        orgId: activeOrgId,
+      }).lean();
+      if (territoryMatch && territoryMatch.assignedFranchiseId) {
+        assignedFranchiseId = territoryMatch.assignedFranchiseId;
+        assignedFranchiseName = territoryMatch.assignedFranchiseName;
+      }
+    }
+
+    // Territory conflict check (only if both pincode and assigned franchise exist)
+    const conflictCheck = (data.pincode && assignedFranchiseId)
+      ? await this.checkTerritoryConflict(data.pincode, assignedFranchiseId, activeOrgId)
       : { hasConflict: false };
 
     const newLead: Partial<Lead> = {
@@ -777,13 +832,13 @@ export const dbRepository = {
       source: data.source || "Website",
       industry: data.industry || "Auto Components",
       state: data.state || "Tamil Nadu",
-      district: data.district || "Coimbatore",
-      pincode: data.pincode || "641001",
+      district: data.district || "",
+      pincode: data.pincode || "",
       productInterest: data.productInterest || "ARG-VMC-700",
-      ownerId: data.ownerId || "usr-cbe-sales",
-      ownerName: data.ownerName || "Karthik M",
-      franchiseId: data.franchiseId || "FR-CBE",
-      franchiseName: data.franchiseName || "Coimbatore Franchise",
+      ownerId: data.ownerId || (assignedFranchiseId ? `usr-${assignedFranchiseId.toLowerCase().replace(/[^a-z0-9]/g, "")}-sales` : "usr-ho-sales"),
+      ownerName: data.ownerName || (assignedFranchiseName ? `${assignedFranchiseName}` : "Head Office Direct"),
+      franchiseId: assignedFranchiseId || undefined,
+      franchiseName: assignedFranchiseName || "Head Office Direct",
       status: "New",
       nextFollowUpDate: data.nextFollowUpDate || new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0],
       territoryConflict: conflictCheck.hasConflict,

@@ -280,7 +280,7 @@ export function EditFranchiseModal({
               value={form.contactPerson}
               onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
               className="w-full text-xs px-3 py-2 bg-white text-slate-900 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
-              placeholder="e.g. Sundaramurthy K"
+              placeholder="e.g. Managing Partner / Full Name"
             />
           </div>
 

@@ -673,25 +673,324 @@ export const dbRepository = {
     return cleanDoc<Franchise>(updated);
   },
 
-  async deleteFranchise(id: string, orgId?: string | null): Promise<boolean> {
+  async getFranchiseDeleteImpact(id: string, orgId?: string | null): Promise<{
+    franchise: {
+      code: string;
+      name: string;
+      location: string;
+      state: string;
+      contactPerson: string;
+      email: string;
+      pincodes: string[];
+    };
+    adminUsersCount: number;
+    adminUsers: Array<{ name: string; email: string; role: string }>;
+    incompleteLeadsCount: number;
+    openOpportunitiesCount: number;
+    territoriesCount: number;
+    otherFranchises: Array<{ code: string; name: string; location: string; state: string }>;
+    recommendedTarget: { code: string; name: string; location: string; state: string; reason?: string } | null;
+  } | null> {
     await ensureInitialized();
-    if (!orgId) return false;
+    if (!orgId) return null;
 
     const query = {
       ...idOr(id, { code: id }),
       orgId,
     };
 
-    const franchise = await FranchiseModel.findOne(query).lean() as any;
-    if (!franchise) return false;
+    const franchise = (await FranchiseModel.findOne(query).lean()) as any;
+    if (!franchise) return null;
 
-    await FranchiseModel.deleteOne(query);
+    // 1. Franchise Admin and Staff users in UserModel
+    const userQuery: any = {
+      orgId,
+      $or: [
+        { franchiseId: franchise.code },
+        ...(franchise.email ? [{ email: franchise.email.toLowerCase().trim() }] : []),
+        { id: `usr-${franchise.code.toLowerCase().replace(/[^a-z0-9]/g, "")}-admin` },
+      ],
+    };
+    const adminUsersDocs: any[] = await UserModel.find(userQuery).lean();
+    const adminUsers = adminUsersDocs.map((u) => ({
+      name: u.name || "Franchise Staff",
+      email: u.email || "",
+      role: u.role || "franchise_admin",
+    }));
 
-    if (franchise.code) {
-      await TerritoryModel.deleteMany({ assignedFranchiseId: franchise.code, orgId });
+    // 2. Incomplete Leads (New, Contacted, Qualified)
+    const incompleteLeadsCount = await LeadModel.countDocuments({
+      orgId,
+      franchiseId: franchise.code,
+      status: { $in: ["New", "Contacted", "Qualified"] },
+    });
+
+    // 3. Open pipeline opportunities
+    const openOpportunitiesCount = await OpportunityModel.countDocuments({
+      orgId,
+      franchiseId: franchise.code,
+      stage: { $nin: ["Closed Won", "Closed Lost"] },
+    });
+
+    // 4. Exclusive Territories / PIN ranges
+    const territoriesCount = await TerritoryModel.countDocuments({
+      orgId,
+      assignedFranchiseId: franchise.code,
+    });
+
+    // 5. Other franchises in the same organization
+    const otherDocs: any[] = await FranchiseModel.find({
+      orgId,
+      code: { $ne: franchise.code },
+    }).lean();
+
+    const otherFranchises = otherDocs.map((f) => ({
+      code: f.code,
+      name: f.name,
+      location: f.location,
+      state: f.state,
+    }));
+
+    // 6. Proximity Engine: determine recommended nearest franchise
+    let recommendedTarget: { code: string; name: string; location: string; state: string; reason?: string } | null = null;
+    if (otherDocs.length > 0) {
+      const deletedPincodes: string[] = Array.isArray(franchise.pincodes) ? franchise.pincodes : [];
+      const deletedPrefixes = new Set(
+        deletedPincodes
+          .map((p) => String(p).trim().slice(0, 3))
+          .filter((p) => p.length === 3)
+      );
+
+      let highestScore = -1;
+      let bestCandidate: any = null;
+      let bestReason = "";
+
+      for (const candidate of otherDocs) {
+        let score = 0;
+        const reasons: string[] = [];
+
+        // Check PIN code prefix overlap
+        const candidatePincodes: string[] = Array.isArray(candidate.pincodes) ? candidate.pincodes : [];
+        const candidatePrefixes = new Set(
+          candidatePincodes
+            .map((p) => String(p).trim().slice(0, 3))
+            .filter((p) => p.length === 3)
+        );
+
+        for (const dp of Array.from(deletedPrefixes)) {
+          if (candidatePrefixes.has(dp)) {
+            score += 25;
+            reasons.push(`matching postal sorting region (${dp}xxx)`);
+            break;
+          }
+        }
+
+        // District overlap
+        const deletedDistricts = (franchise.territoryDistricts || []).map((d: string) => d.toLowerCase().trim());
+        const candidateDistricts = (candidate.territoryDistricts || []).map((d: string) => d.toLowerCase().trim());
+        const hasSharedDistrict = deletedDistricts.some((d: string) => candidateDistricts.includes(d));
+        if (hasSharedDistrict) {
+          score += 15;
+          reasons.push("overlapping territory districts");
+        }
+
+        // City / Location match
+        if (
+          candidate.location &&
+          franchise.location &&
+          candidate.location.toLowerCase().trim() === franchise.location.toLowerCase().trim()
+        ) {
+          score += 10;
+          reasons.push(`same city (${candidate.location})`);
+        }
+
+        // State match
+        if (
+          candidate.state &&
+          franchise.state &&
+          candidate.state.toLowerCase().trim() === franchise.state.toLowerCase().trim()
+        ) {
+          score += 5;
+          if (reasons.length === 0) {
+            reasons.push(`same state (${candidate.state})`);
+          }
+        }
+
+        if (score > highestScore) {
+          highestScore = score;
+          bestCandidate = candidate;
+          bestReason = reasons.join(", ") || "Active regional partner";
+        }
+      }
+
+      if (bestCandidate) {
+        recommendedTarget = {
+          code: bestCandidate.code,
+          name: bestCandidate.name,
+          location: bestCandidate.location,
+          state: bestCandidate.state,
+          reason: bestReason,
+        };
+      }
     }
 
-    return true;
+    return {
+      franchise: {
+        code: franchise.code,
+        name: franchise.name,
+        location: franchise.location,
+        state: franchise.state,
+        contactPerson: franchise.contactPerson,
+        email: franchise.email,
+        pincodes: franchise.pincodes || [],
+      },
+      adminUsersCount: adminUsers.length,
+      adminUsers,
+      incompleteLeadsCount,
+      openOpportunitiesCount,
+      territoriesCount,
+      otherFranchises,
+      recommendedTarget,
+    };
+  },
+
+  async deleteFranchiseWithRerouting(
+    id: string,
+    targetFranchiseId?: string,
+    orgId?: string | null
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    reroutedLeadsCount?: number;
+    deletedUsersCount?: number;
+    targetFranchiseName?: string;
+  }> {
+    await ensureInitialized();
+    if (!orgId) return { success: false, error: "orgId is required" };
+
+    const query = {
+      ...idOr(id, { code: id }),
+      orgId,
+    };
+
+    const franchise = (await FranchiseModel.findOne(query).lean()) as any;
+    if (!franchise) return { success: false, error: "Franchise not found" };
+
+    // 1. Resolve Target Franchise for Lead Rerouting
+    let targetFranchise: any = null;
+
+    if (targetFranchiseId && targetFranchiseId !== "HO" && targetFranchiseId !== "NONE") {
+      targetFranchise = await FranchiseModel.findOne({
+        orgId,
+        code: targetFranchiseId,
+      }).lean();
+    }
+
+    // If no target explicitly provided or not HO, auto-detect nearest
+    if (!targetFranchise && targetFranchiseId !== "HO") {
+      const impact = await this.getFranchiseDeleteImpact(id, orgId);
+      if (impact?.recommendedTarget?.code) {
+        targetFranchise = await FranchiseModel.findOne({
+          orgId,
+          code: impact.recommendedTarget.code,
+        }).lean();
+      }
+    }
+
+    const targetCode = targetFranchise?.code || "";
+    const targetName = targetFranchise?.name || "Head Office Direct";
+    const targetOwner = targetFranchise
+      ? targetFranchise.contactPerson || `${targetFranchise.name} Sales`
+      : "Head Office Sales";
+
+    // 2. Reroute Incomplete / Active Leads
+    const rerouteFilter = {
+      orgId,
+      franchiseId: franchise.code,
+      status: { $in: ["New", "Contacted", "Qualified"] },
+    };
+    const leadsToReroute: any[] = await LeadModel.find(rerouteFilter).lean();
+    const reroutedLeadsCount = leadsToReroute.length;
+
+    if (reroutedLeadsCount > 0) {
+      await LeadModel.updateMany(rerouteFilter, {
+        $set: {
+          franchiseId: targetCode,
+          franchiseName: targetName,
+          ownerName: targetOwner,
+        },
+      });
+
+      // Append timestamped audit note to each rerouted lead
+      for (const ld of leadsToReroute) {
+        const auditLog = `\n[System Notice: Rerouted from terminated franchise "${franchise.name}" (${franchise.code}) to "${targetName}" on ${new Date().toLocaleDateString("en-IN")}]`;
+        const updatedNotes = (ld.notes || "") + auditLog;
+        await LeadModel.updateOne({ _id: ld._id }, { $set: { notes: updatedNotes } });
+      }
+    }
+
+    // 3. Mark Converted / Closed leads with archived franchise indicator
+    await LeadModel.updateMany(
+      {
+        orgId,
+        franchiseId: franchise.code,
+        status: { $nin: ["New", "Contacted", "Qualified"] },
+      },
+      {
+        $set: {
+          franchiseName: `${franchise.name} (Terminated)`,
+        },
+      }
+    );
+
+    // 4. Reassign Open Opportunities to target partner
+    await OpportunityModel.updateMany(
+      {
+        orgId,
+        franchiseId: franchise.code,
+        stage: { $nin: ["Closed Won", "Closed Lost"] },
+      },
+      {
+        $set: {
+          franchiseId: targetCode,
+          franchiseName: targetName,
+          assignedTo: targetOwner,
+        },
+      }
+    );
+
+    // 5. Delete Franchise Admin & Staff Users from UserModel
+    const userQuery: any = {
+      orgId,
+      $or: [
+        { franchiseId: franchise.code },
+        ...(franchise.email ? [{ email: franchise.email.toLowerCase().trim() }] : []),
+        { id: `usr-${franchise.code.toLowerCase().replace(/[^a-z0-9]/g, "")}-admin` },
+      ],
+    };
+    const userDelResult = await UserModel.deleteMany(userQuery);
+    const deletedUsersCount = userDelResult.deletedCount || 0;
+
+    // 6. Delete Exclusive Territories
+    await TerritoryModel.deleteMany({ assignedFranchiseId: franchise.code, orgId });
+
+    // 7. Clean up non-paid Commissions
+    await CommissionModel.deleteMany({ franchiseId: franchise.code, orgId, status: { $ne: "Paid" } });
+
+    // 8. Delete the Franchise itself
+    await FranchiseModel.deleteOne(query);
+
+    return {
+      success: true,
+      reroutedLeadsCount,
+      deletedUsersCount,
+      targetFranchiseName: targetName,
+    };
+  },
+
+  async deleteFranchise(id: string, orgId?: string | null): Promise<boolean> {
+    const res = await this.deleteFranchiseWithRerouting(id, undefined, orgId);
+    return res.success;
   },
 
   // PRODUCTS / PRICE MASTER (Per-Organization)

@@ -14,6 +14,15 @@ export async function GET(
       return NextResponse.json({ error: "orgId is required" }, { status: 400 });
     }
 
+    const checkImpact = searchParams.get("impact") === "true";
+    if (checkImpact) {
+      const impact = await dbRepository.getFranchiseDeleteImpact(params.id, orgId);
+      if (!impact) {
+        return NextResponse.json({ error: "Franchise not found" }, { status: 404 });
+      }
+      return NextResponse.json(impact);
+    }
+
     const franchise = await dbRepository.getFranchiseByCode(params.id, orgId);
     if (!franchise) {
       return NextResponse.json({ error: "Franchise not found" }, { status: 404 });
@@ -70,15 +79,20 @@ export async function DELETE(
       return NextResponse.json({ error: "orgId is required" }, { status: 400 });
     }
 
-    const success = await dbRepository.deleteFranchise(params.id, orgId);
-    if (!success) {
+    const targetFranchiseId = searchParams.get("targetFranchiseId") || undefined;
+    const result = await dbRepository.deleteFranchiseWithRerouting(params.id, targetFranchiseId, orgId);
+    if (!result.success) {
       return NextResponse.json(
-        { error: "Franchise not found or could not be deleted" },
+        { error: result.error || "Franchise not found or could not be deleted" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, message: "Franchise deleted successfully" });
+    return NextResponse.json({
+      success: true,
+      message: "Franchise deleted and active leads rerouted successfully",
+      ...result,
+    });
   } catch (error: any) {
     if (error?.digest === "DYNAMIC_SERVER_USAGE") throw error;
     console.error(`Failed to delete franchise ${params.id}:`, error);

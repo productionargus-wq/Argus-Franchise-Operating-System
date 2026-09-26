@@ -1522,6 +1522,28 @@ export const dbRepository = {
     return updated ? cleanDoc<Quotation>(updated) : null;
   },
 
+  async deleteQuotation(id: string, orgId?: string | null): Promise<boolean> {
+    await ensureInitialized();
+    if (!orgId) return false;
+    const query: any = { ...idOr(id, { quoteId: id }), orgId };
+    const quote = (await QuotationModel.findOne(query).lean()) as any;
+    if (!quote) return false;
+
+    const quoteIds = [quote.quoteId, quote._id?.toString(), id].filter(Boolean);
+
+    // Also remove any orders, commissions and installations created from this quotation
+    const orders: any[] = await OrderModel.find({ orgId, quoteId: { $in: quoteIds } }).lean();
+    const orderIds = orders.map((o) => [o.orderId, o._id?.toString()]).flat().filter(Boolean);
+    if (orderIds.length > 0) {
+      await InstallationModel.deleteMany({ orgId, orderId: { $in: orderIds } });
+      await CommissionModel.deleteMany({ orgId, orderId: { $in: orderIds } });
+      await OrderModel.deleteMany({ orgId, quoteId: { $in: quoteIds } });
+    }
+
+    const res = await QuotationModel.deleteOne(query);
+    return (res.deletedCount || 0) > 0;
+  },
+
   // SALES ORDERS
   async getOrders(orgId?: string | null, franchiseId?: string | null): Promise<SalesOrder[]> {
     await ensureInitialized();

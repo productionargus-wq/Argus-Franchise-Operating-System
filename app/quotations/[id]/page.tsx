@@ -19,6 +19,8 @@ import {
   ShoppingCart,
   Send,
   Printer,
+  Trash2,
+  RefreshCw,
 } from "lucide-react";
 
 export default function QuotationDetailPage() {
@@ -28,6 +30,10 @@ export default function QuotationDetailPage() {
   const [quotation, setQuotation] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Delete Quotation state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   // Approval / Rejection state
   const [remarks, setRemarks] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
@@ -36,6 +42,31 @@ export default function QuotationDetailPage() {
   const [isPoModalOpen, setIsPoModalOpen] = useState(false);
   const [poNumber, setPoNumber] = useState("");
   const [poDate, setPoDate] = useState(new Date().toISOString().split("T")[0]);
+
+  const handleDeleteQuotation = async () => {
+    if (!quotation || !currentUser?.orgId) return;
+    setDeleting(true);
+    try {
+      const id = quotation._id || quotation.quoteId;
+      const res = await fetch(
+        `/api/quotations/${encodeURIComponent(id)}?orgId=${encodeURIComponent(currentUser.orgId)}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (res.ok) {
+        router.push("/quotations");
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete quotation");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to delete quotation");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const loadQuote = async () => {
     try {
@@ -165,6 +196,16 @@ export default function QuotationDetailPage() {
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Print PDF</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="px-3 py-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+            title="Delete Quotation"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete</span>
           </button>
         </div>
       </div>
@@ -427,6 +468,75 @@ export default function QuotationDetailPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Quotation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          if (!deleting) setIsDeleteModalOpen(false);
+        }}
+        title="Delete Quotation"
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-3.5 bg-red-50 border border-red-200 rounded-lg">
+            <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div className="text-xs text-red-800">
+              <p className="font-semibold text-red-900 mb-1">
+                Confirm Quotation Deletion
+              </p>
+              <p>
+                Are you sure you want to permanently delete quotation{" "}
+                <strong className="text-red-950 font-bold">{quotation.quoteId}</strong>? This action cannot be undone.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-1.5 text-slate-600">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400 font-medium">Customer / Company:</span>
+              <span className="font-bold text-slate-800">{quotation.companyName}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">Grand Total:</span>
+              <span className="font-bold text-slate-900">₹{quotation.grandTotal?.toLocaleString("en-IN")}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">Current Status:</span>
+              <span className="font-semibold text-slate-800">{quotation.status}</span>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={handleDeleteQuotation}
+              className="px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg shadow-xs cursor-pointer flex items-center gap-1.5"
+            >
+              {deleting ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Quotation</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

@@ -426,6 +426,17 @@ export const dbRepository = {
   async getUsersByOrg(orgId?: string | null): Promise<UserSession[]> {
     await ensureInitialized();
     if (!orgId) return [];
+
+    const activeFranchises = await FranchiseModel.find({ orgId }).select("code").lean();
+    const activeCodes = new Set(activeFranchises.map((f: any) => f.code));
+
+    // Self-healing: automatically purge any orphaned franchise staff accounts whose franchise was deleted in the past
+    await UserModel.deleteMany({
+      orgId,
+      role: { $in: ["franchise_admin", "franchise_sales", "service_engineer"] },
+      franchiseId: { $nin: Array.from(activeCodes) },
+    });
+
     const docs = await UserModel.find({ orgId }).lean();
     return cleanDocs<UserSession>(docs);
   },
@@ -1413,6 +1424,25 @@ export const dbRepository = {
   async getQuotations(orgId?: string | null, franchiseId?: string | null): Promise<Quotation[]> {
     await ensureInitialized();
     if (!orgId) return [];
+
+    // Self-healing: clean up quotations of deleted franchises and sync franchise names
+    const activeFranchises = await FranchiseModel.find({ orgId }).select("code name").lean();
+    const activeCodes = new Set(activeFranchises.map((f: any) => f.code));
+
+    if (activeCodes.size > 0) {
+      await QuotationModel.deleteMany({
+        orgId,
+        franchiseId: { $exists: true, $ne: "", $nin: Array.from(activeCodes) },
+      });
+
+      for (const fr of activeFranchises) {
+        await QuotationModel.updateMany(
+          { orgId, franchiseId: fr.code, franchiseName: { $ne: fr.name } },
+          { $set: { franchiseName: fr.name } }
+        );
+      }
+    }
+
     const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await QuotationModel.find(query).sort({ createdAt: -1 }).lean();

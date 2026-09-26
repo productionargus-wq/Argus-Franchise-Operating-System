@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
-import { Lead, Franchise } from "@/lib/types";
+import { Lead, Franchise, ProductMasterItem } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import {
@@ -46,6 +46,7 @@ export default function LeadsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [franchisesList, setFranchisesList] = useState<Franchise[]>([]);
+  const [productsList, setProductsList] = useState<ProductMasterItem[]>([]);
 
   // Edit lead state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -87,6 +88,20 @@ export default function LeadsPage() {
       fetch(`/api/franchises?orgId=${encodeURIComponent(currentUser.orgId)}`)
         .then((r) => (r.ok ? r.json() : []))
         .then((data) => setFranchisesList(Array.isArray(data) ? data : []))
+        .catch((e) => console.error(e));
+
+      fetch(`/api/products?orgId=${encodeURIComponent(currentUser.orgId)}`)
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => {
+          const list = Array.isArray(data) ? data : [];
+          setProductsList(list);
+          if (list.length > 0) {
+            setLeadForm((prev) => ({
+              ...prev,
+              productInterest: prev.productInterest || list[0].sku,
+            }));
+          }
+        })
         .catch((e) => console.error(e));
     }
   }, [currentUser?.orgId]);
@@ -708,7 +723,35 @@ export default function LeadsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Machine Interest & Requirements</label>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700">
+                Product Interest & Requirements
+              </label>
+              <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                <span className="text-[11px] font-medium text-slate-500 whitespace-nowrap">Product:</span>
+                <select
+                  value={leadForm.productInterest}
+                  onChange={(e) => setLeadForm({ ...leadForm, productInterest: e.target.value })}
+                  className="text-xs py-1 px-2.5 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-[#FF6600] text-slate-800 font-medium"
+                >
+                  {productsList.length > 0 ? (
+                    productsList.map((p) => (
+                      <option key={p.sku || p._id} value={p.sku}>
+                        {p.sku} - {p.name}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="ARG-VMC-700">ARG-VMC-700 (High-Speed VMC)</option>
+                      <option value="ARG-VMC-1000">ARG-VMC-1000 (Heavy-Duty VMC)</option>
+                      <option value="ARG-HMC-630">ARG-HMC-630 (Horizontal Machining)</option>
+                      <option value="ARG-LATHE-300">ARG-LATHE-300 (CNC Turning Lathe)</option>
+                      <option value="ARG-5AXIS-500">ARG-5AXIS-500 (5-Axis Precision)</option>
+                    </>
+                  )}
+                </select>
+              </div>
+            </div>
             <textarea
               rows={3}
               placeholder="Spindle specifications, part drawing details, expected delivery..."
@@ -928,7 +971,7 @@ export default function LeadsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Machine Interest & Requirements</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Product Interest & Requirements</label>
             <textarea
               rows={3}
               placeholder="Spindle specifications, part drawing details, expected delivery..."

@@ -868,9 +868,50 @@ export const dbRepository = {
     await ensureInitialized();
     const query: any = idOr(id, { leadId: id });
     if (orgId) query.orgId = orgId;
+
+    const existing: any = await LeadModel.findOne(query).lean();
+    if (!existing) return null;
+
+    const activeOrgId = existing.orgId || orgId;
+    const sanitizedUpdates: any = { ...updates };
+    delete sanitizedUpdates._id;
+
+    const newPincode = sanitizedUpdates.pincode !== undefined ? sanitizedUpdates.pincode : existing.pincode;
+    let newFranchiseId = sanitizedUpdates.franchiseId !== undefined ? sanitizedUpdates.franchiseId : existing.franchiseId;
+    let newFranchiseName = sanitizedUpdates.franchiseName !== undefined ? sanitizedUpdates.franchiseName : existing.franchiseName;
+
+    if (newFranchiseId && (!newFranchiseName || sanitizedUpdates.franchiseId !== existing.franchiseId)) {
+      const fr: any = await FranchiseModel.findOne({ code: newFranchiseId, orgId: activeOrgId }).lean();
+      if (fr) {
+        newFranchiseName = fr.name;
+        sanitizedUpdates.franchiseName = fr.name;
+      }
+    }
+
+    if (!newFranchiseId && newPincode) {
+      const territoryMatch: any = await TerritoryModel.findOne({
+        pincodeRange: String(newPincode).trim(),
+        orgId: activeOrgId,
+      }).lean();
+      if (territoryMatch && territoryMatch.assignedFranchiseId) {
+        newFranchiseId = territoryMatch.assignedFranchiseId;
+        newFranchiseName = territoryMatch.assignedFranchiseName;
+        sanitizedUpdates.franchiseId = newFranchiseId;
+        sanitizedUpdates.franchiseName = newFranchiseName;
+      }
+    }
+
+    if (newPincode && newFranchiseId) {
+      const conflictCheck = await this.checkTerritoryConflict(newPincode, newFranchiseId, activeOrgId);
+      sanitizedUpdates.territoryConflict = conflictCheck.hasConflict;
+      sanitizedUpdates.conflictNotes = conflictCheck.hasConflict
+        ? `PIN ${newPincode} matches territory assigned to ${(conflictCheck as any).assignedTo}`
+        : undefined;
+    }
+
     const updated = await LeadModel.findOneAndUpdate(
       query,
-      { $set: updates },
+      { $set: sanitizedUpdates },
       { new: true }
     ).lean();
     return updated ? cleanDoc<Lead>(updated) : null;

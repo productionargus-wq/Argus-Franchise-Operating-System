@@ -20,6 +20,7 @@ import {
   Building,
   RefreshCw,
   Trash2,
+  Edit,
 } from "lucide-react";
 
 export default function LeadsPage() {
@@ -45,6 +46,26 @@ export default function LeadsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [franchisesList, setFranchisesList] = useState<Franchise[]>([]);
+
+  // Edit lead state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [leadToEdit, setLeadToEdit] = useState<Lead | null>(null);
+  const [submittingEdit, setSubmittingEdit] = useState(false);
+  const [editModalError, setEditModalError] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    customerName: "",
+    companyName: "",
+    phone: "",
+    email: "",
+    source: "Exhibition",
+    industry: "Auto Components",
+    productInterest: "ARG-VMC-700",
+    pincode: "",
+    district: "",
+    franchiseId: "",
+    status: "New" as Lead["status"],
+    notes: "",
+  });
 
   // New lead form
   const [leadForm, setLeadForm] = useState({
@@ -217,6 +238,69 @@ export default function LeadsPage() {
       alert(e.message || "Failed to delete lead");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleOpenEditModal = (lead: Lead) => {
+    setLeadToEdit(lead);
+    setEditForm({
+      customerName: lead.customerName || "",
+      companyName: lead.companyName || "",
+      phone: lead.phone || "",
+      email: lead.email || "",
+      source: lead.source || "Exhibition",
+      industry: lead.industry || "Auto Components",
+      productInterest: lead.productInterest || "ARG-VMC-700",
+      pincode: lead.pincode || "",
+      district: lead.district || "",
+      franchiseId: lead.franchiseId || "",
+      status: (lead.status as Lead["status"]) || "New",
+      notes: lead.notes || "",
+    });
+    setEditModalError(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadToEdit || !currentUser?.orgId) return;
+    setSubmittingEdit(true);
+    setEditModalError(null);
+    try {
+      let assignedFranchiseName = leadToEdit.franchiseName;
+      if (editForm.franchiseId) {
+        const selectedFr = franchisesList.find((f) => f.code === editForm.franchiseId);
+        if (selectedFr) {
+          assignedFranchiseName = selectedFr.name;
+        }
+      }
+
+      const payload: any = {
+        ...editForm,
+        franchiseName: assignedFranchiseName,
+        orgId: currentUser.orgId,
+      };
+
+      const targetId = leadToEdit._id || leadToEdit.leadId;
+      const res = await fetch(`/api/leads/${targetId}?orgId=${encodeURIComponent(currentUser.orgId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        setLeadToEdit(null);
+        loadLeads();
+      } else {
+        const data = await res.json();
+        setEditModalError(data.error || "Failed to update lead.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setEditModalError(err.message || "Failed to communicate with server.");
+    } finally {
+      setSubmittingEdit(false);
     }
   };
 
@@ -462,6 +546,15 @@ export default function LeadsPage() {
                           <Mail className="w-4 h-4" />
                         </a>
 
+                        {/* Edit Lead */}
+                        <button
+                          onClick={() => handleOpenEditModal(lead)}
+                          className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-[#FF6600] transition-colors cursor-pointer"
+                          title="Edit Lead"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+
                         {/* Delete Lead */}
                         <button
                           onClick={() => {
@@ -679,6 +772,189 @@ export default function LeadsPage() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Edit Lead Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={`Edit Lead: ${leadToEdit?.leadId || ""}`}
+        maxWidth="lg"
+      >
+        <form onSubmit={handleUpdateLead} className="space-y-4">
+          {editModalError && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{editModalError}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Company Name *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Precision Engineering Ltd"
+                value={editForm.companyName}
+                onChange={(e) => setEditForm({ ...editForm, companyName: e.target.value })}
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Person *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Senthil Kumar"
+                value={editForm.customerName}
+                onChange={(e) => setEditForm({ ...editForm, customerName: e.target.value })}
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number *</label>
+              <input
+                type="tel"
+                required
+                placeholder="+91 98420 12345"
+                value={editForm.phone}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+              <input
+                type="email"
+                placeholder="contact@company.com"
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
+              <select
+                value={editForm.status}
+                onChange={(e) => setEditForm({ ...editForm, status: e.target.value as Lead["status"] })}
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              >
+                <option value="New">New</option>
+                <option value="Contacted">Contacted</option>
+                <option value="Qualified">Qualified</option>
+                <option value="In Negotiation">In Negotiation</option>
+                <option value="Converted">Converted</option>
+                <option value="Disqualified">Disqualified</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Source</label>
+              <select
+                value={editForm.source}
+                onChange={(e) => setEditForm({ ...editForm, source: e.target.value })}
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              >
+                <option value="Exhibition">Exhibition</option>
+                <option value="Website">Website</option>
+                <option value="Referral">Referral</option>
+                <option value="Direct Call">Direct Call</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Industry</label>
+              <select
+                value={editForm.industry}
+                onChange={(e) => setEditForm({ ...editForm, industry: e.target.value })}
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              >
+                <option value="Auto Components">Auto Components</option>
+                <option value="Aerospace">Aerospace</option>
+                <option value="Tool & Die">Tool & Die</option>
+                <option value="General Engg">General Engg</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Product Interest</label>
+              <input
+                type="text"
+                placeholder="e.g. ARG-VMC-700"
+                value={editForm.productInterest}
+                onChange={(e) => setEditForm({ ...editForm, productInterest: e.target.value })}
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">PIN Code (Territory Routing)</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. 641001"
+                value={editForm.pincode}
+                onChange={(e) => setEditForm({ ...editForm, pincode: e.target.value })}
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">District</label>
+              <input
+                type="text"
+                placeholder="e.g. Coimbatore"
+                value={editForm.district}
+                onChange={(e) => setEditForm({ ...editForm, district: e.target.value })}
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+
+            {isHeadOffice && (
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Assign Franchise Partner
+                </label>
+                <select
+                  value={editForm.franchiseId}
+                  onChange={(e) => setEditForm({ ...editForm, franchiseId: e.target.value })}
+                  className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+                >
+                  <option value="">Auto-Route by PIN Code</option>
+                  {franchisesList.map((fr) => (
+                    <option key={fr.code} value={fr.code}>
+                      {fr.name} ({fr.code}) - {fr.location}, {fr.state}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Machine Interest & Requirements</label>
+            <textarea
+              rows={3}
+              placeholder="Spindle specifications, part drawing details, expected delivery..."
+              value={editForm.notes}
+              onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+              className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+            ></textarea>
+          </div>
+
+          <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submittingEdit}
+              className="px-4 py-2 text-xs font-semibold bg-[#FF6600] hover:bg-[#E65C00] disabled:opacity-50 text-white rounded-lg shadow-xs cursor-pointer"
+            >
+              {submittingEdit ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
       </Modal>
 
       {/* Delete Lead Confirmation Modal */}

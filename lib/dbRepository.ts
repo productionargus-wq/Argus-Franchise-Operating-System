@@ -917,6 +917,40 @@ export const dbRepository = {
     return updated ? cleanDoc<Lead>(updated) : null;
   },
 
+  async getLeadRelatedCounts(id: string, orgId?: string | null): Promise<{
+    opportunitiesCount: number;
+    demosCount: number;
+    quotationsCount: number;
+    ordersCount: number;
+  }> {
+    await ensureInitialized();
+    if (!orgId) return { opportunitiesCount: 0, demosCount: 0, quotationsCount: 0, ordersCount: 0 };
+    const query: any = { ...idOr(id, { leadId: id }), orgId };
+    const lead = await LeadModel.findOne(query).lean() as any;
+    if (!lead) return { opportunitiesCount: 0, demosCount: 0, quotationsCount: 0, ordersCount: 0 };
+
+    const leadIds = [lead.leadId, lead._id?.toString(), id].filter(Boolean);
+    const opps: any[] = await OpportunityModel.find({ orgId, leadId: { $in: leadIds } }).lean();
+    const opportunitiesCount = opps.length;
+    const demosCount = opps.filter((op) => op.demo && typeof op.demo === "object" && Object.keys(op.demo).length > 0).length;
+
+    const oppIds = opps.map((o) => [o.opportunityId, o.oppId, o._id?.toString()]).flat().filter(Boolean);
+    const quotes: any[] = oppIds.length > 0
+      ? await QuotationModel.find({
+          orgId,
+          $or: [{ oppId: { $in: oppIds } }, { opportunityId: { $in: oppIds } }],
+        }).lean()
+      : [];
+    const quotationsCount = quotes.length;
+
+    const quoteIds = quotes.map((q) => [q.quoteId, q._id?.toString()]).flat().filter(Boolean);
+    const ordersCount = quoteIds.length > 0
+      ? await OrderModel.countDocuments({ orgId, quoteId: { $in: quoteIds } })
+      : 0;
+
+    return { opportunitiesCount, demosCount, quotationsCount, ordersCount };
+  },
+
   async deleteLead(id: string, orgId?: string | null): Promise<boolean> {
     await ensureInitialized();
     if (!orgId) return false;
@@ -924,6 +958,47 @@ export const dbRepository = {
       ...idOr(id, { leadId: id }),
       orgId,
     };
+    const lead = await LeadModel.findOne(query).lean() as any;
+    if (!lead) return false;
+
+    const leadIds = [lead.leadId, lead._id?.toString(), id].filter(Boolean);
+
+    // 1. Find all related opportunities
+    const opps: any[] = await OpportunityModel.find({ orgId, leadId: { $in: leadIds } }).lean();
+    const oppIds = opps.map((o) => [o.opportunityId, o.oppId, o._id?.toString()]).flat().filter(Boolean);
+
+    // 2. Cascade delete quotations and orders linked to these opportunities
+    if (oppIds.length > 0) {
+      const quotes: any[] = await QuotationModel.find({
+        orgId,
+        $or: [{ oppId: { $in: oppIds } }, { opportunityId: { $in: oppIds } }],
+      }).lean();
+      const quoteIds = quotes.map((q) => [q.quoteId, q._id?.toString()]).flat().filter(Boolean);
+
+      // Cascade delete sales orders and installations
+      if (quoteIds.length > 0) {
+        const orders: any[] = await OrderModel.find({ orgId, quoteId: { $in: quoteIds } }).lean();
+        const orderIds = orders.map((o) => [o.orderId, o._id?.toString()]).flat().filter(Boolean);
+
+        if (orderIds.length > 0) {
+          await InstallationModel.deleteMany({ orgId, orderId: { $in: orderIds } });
+          await CommissionModel.deleteMany({ orgId, orderId: { $in: orderIds } });
+        }
+
+        await OrderModel.deleteMany({ orgId, quoteId: { $in: quoteIds } });
+      }
+
+      // Delete quotations
+      await QuotationModel.deleteMany({
+        orgId,
+        $or: [{ oppId: { $in: oppIds } }, { opportunityId: { $in: oppIds } }],
+      });
+    }
+
+    // 3. Cascade delete opportunities (demos and stage histories are embedded inside opportunity)
+    await OpportunityModel.deleteMany({ orgId, leadId: { $in: leadIds } });
+
+    // 4. Delete the lead itself
     const res = await LeadModel.deleteOne(query);
     return (res.deletedCount || 0) > 0;
   },

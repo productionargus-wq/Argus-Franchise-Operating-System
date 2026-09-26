@@ -7,6 +7,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
   try {
     const { searchParams } = new URL(request.url);
     const orgId = searchParams.get("orgId");
+    if (searchParams.get("related") === "true") {
+      const counts = await dbRepository.getLeadRelatedCounts(params.id, orgId);
+      return NextResponse.json(counts);
+    }
     const lead = await dbRepository.getLeadById(params.id, orgId);
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     return NextResponse.json(lead);

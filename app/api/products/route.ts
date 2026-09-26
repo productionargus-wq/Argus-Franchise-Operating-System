@@ -27,3 +27,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: err.message }, { status: 400 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    const orgId = searchParams.get("orgId");
+    if (!id || !orgId) {
+      return NextResponse.json({ error: "id and orgId required" }, { status: 400 });
+    }
+    const success = await dbRepository.deleteProduct(id, orgId);
+    return NextResponse.json({ success });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 400 });
+  }
+}

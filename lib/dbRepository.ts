@@ -732,6 +732,17 @@ export const dbRepository = {
     return cleanDoc<ProductMasterItem>(created);
   },
 
+  async deleteProduct(id: string, orgId?: string | null): Promise<boolean> {
+    await ensureInitialized();
+    if (!orgId) return false;
+    const query = {
+      ...idOr(id, { sku: id }),
+      orgId,
+    };
+    const res = await ProductModel.deleteOne(query);
+    return (res.deletedCount || 0) > 0;
+  },
+
   // TERRITORIES
   async getTerritories(orgId?: string | null): Promise<TerritoryMapping[]> {
     await ensureInitialized();

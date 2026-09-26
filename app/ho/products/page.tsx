@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   AlertTriangle,
   Lock,
+  Trash2,
 } from "lucide-react";
 
 export default function PriceMasterPage() {
@@ -20,6 +21,9 @@ export default function PriceMasterPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<ProductMasterItem | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // New product form
   const [form, setForm] = useState({
@@ -77,6 +81,31 @@ export default function PriceMasterPage() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!productToDelete || !currentUser?.orgId) return;
+    setDeleting(true);
+    try {
+      const id = productToDelete._id || productToDelete.sku;
+      const res = await fetch(
+        `/api/products?id=${encodeURIComponent(id)}&orgId=${encodeURIComponent(currentUser.orgId)}`,
+        { method: "DELETE" }
+      );
+      if (res.ok) {
+        setIsDeleteModalOpen(false);
+        setProductToDelete(null);
+        loadProducts();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete product");
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert("Failed to delete product");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -139,14 +168,21 @@ export default function PriceMasterPage() {
                 <th>Max Allowed Disc %</th>
                 <th>GST %</th>
                 <th>Installation Fee</th>
-                <th className="text-right">Price Control Status</th>
+                <th>Price Control Status</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-8 text-slate-400">
+                  <td colSpan={11} className="text-center py-8 text-slate-400">
                     Loading price master...
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={11} className="text-center py-8 text-slate-400">
+                    No products found in master catalog.
                   </td>
                 </tr>
               ) : (
@@ -180,10 +216,23 @@ export default function PriceMasterPage() {
                     <td className="text-xs text-slate-600">
                       ₹{prod.installationCharge.toLocaleString("en-IN")}
                     </td>
-                    <td className="text-right">
+                    <td>
                       <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 text-xs font-bold px-2 py-0.5 rounded-full">
                         <Lock className="w-3 h-3" /> Locked by HO
                       </span>
+                    </td>
+                    <td className="text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProductToDelete(prod);
+                          setIsDeleteModalOpen(true);
+                        }}
+                        className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors cursor-pointer inline-flex items-center justify-center"
+                        title="Delete Product SKU"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -317,6 +366,37 @@ export default function PriceMasterPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Product Master Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Delete Product Master SKU"
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-600">
+            Are you sure you want to delete SKU <strong className="text-slate-900">{productToDelete?.sku}</strong> ({productToDelete?.name})? This action cannot be undone.
+          </p>
+          <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={handleConfirmDelete}
+              className="px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg shadow-xs cursor-pointer"
+            >
+              {deleting ? "Deleting..." : "Delete SKU"}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

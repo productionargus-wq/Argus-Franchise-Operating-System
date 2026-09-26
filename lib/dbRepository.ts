@@ -845,7 +845,7 @@ export const dbRepository = {
       state: data.state || "Tamil Nadu",
       district: data.district || "",
       pincode: data.pincode || "",
-      productInterest: data.productInterest || "ARG-VMC-700",
+      productInterest: data.productInterest || "General Equipment",
       ownerId: data.ownerId || (assignedFranchiseId ? `usr-${assignedFranchiseId.toLowerCase().replace(/[^a-z0-9]/g, "")}-sales` : "usr-ho-sales"),
       ownerName: data.ownerName || (assignedFranchiseName ? `${assignedFranchiseName}` : "Head Office Direct"),
       franchiseId: assignedFranchiseId || undefined,

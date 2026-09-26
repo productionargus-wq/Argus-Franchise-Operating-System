@@ -60,7 +60,7 @@ export default function LeadsPage() {
     email: "",
     source: "Exhibition",
     industry: "Auto Components",
-    productInterest: "ARG-VMC-700",
+    productInterest: "",
     pincode: "",
     district: "",
     franchiseId: "",
@@ -76,7 +76,7 @@ export default function LeadsPage() {
     email: "",
     source: "Exhibition",
     industry: "Auto Components",
-    productInterest: "ARG-VMC-700",
+    productInterest: "",
     pincode: "",
     district: "",
     franchiseId: "",
@@ -98,7 +98,9 @@ export default function LeadsPage() {
           if (list.length > 0) {
             setLeadForm((prev) => ({
               ...prev,
-              productInterest: prev.productInterest || list[0].sku,
+              productInterest: prev.productInterest && list.some((p) => p.sku === prev.productInterest || p.name === prev.productInterest)
+                ? prev.productInterest
+                : (list[0].sku || list[0].name || ""),
             }));
           }
         })
@@ -164,7 +166,7 @@ export default function LeadsPage() {
           email: "",
           source: "Exhibition",
           industry: "Auto Components",
-          productInterest: "ARG-VMC-700",
+          productInterest: productsList[0]?.sku || productsList[0]?.name || "",
           pincode: "",
           district: "",
           franchiseId: "",
@@ -256,6 +258,28 @@ export default function LeadsPage() {
     }
   };
 
+  const handleOpenAddModal = async () => {
+    setAddModalError(null);
+    if (currentUser?.orgId) {
+      try {
+        const res = await fetch(`/api/products?orgId=${encodeURIComponent(currentUser.orgId)}`);
+        const data = await res.json();
+        const list: ProductMasterItem[] = Array.isArray(data) ? data : [];
+        setProductsList(list);
+        setLeadForm((prev) => {
+          const currentValid = prev.productInterest && list.some((p) => p.sku === prev.productInterest || p.name === prev.productInterest);
+          return {
+            ...prev,
+            productInterest: currentValid ? prev.productInterest : (list[0]?.sku || list[0]?.name || ""),
+          };
+        });
+      } catch (err) {
+        console.error("Error refreshing products:", err);
+      }
+    }
+    setIsAddModalOpen(true);
+  };
+
   const handleOpenEditModal = (lead: Lead) => {
     setLeadToEdit(lead);
     setEditForm({
@@ -265,7 +289,7 @@ export default function LeadsPage() {
       email: lead.email || "",
       source: lead.source || "Exhibition",
       industry: lead.industry || "Auto Components",
-      productInterest: lead.productInterest || "ARG-VMC-700",
+      productInterest: lead.productInterest || (productsList[0]?.sku || productsList[0]?.name || ""),
       pincode: lead.pincode || "",
       district: lead.district || "",
       franchiseId: lead.franchiseId || "",
@@ -347,7 +371,7 @@ export default function LeadsPage() {
         </div>
 
         <button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={handleOpenAddModal}
           className="px-4 py-2 bg-[#FF6600] hover:bg-[#E65C00] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
@@ -731,23 +755,24 @@ export default function LeadsPage() {
                 <span className="text-[11px] font-medium text-slate-500 whitespace-nowrap">Product:</span>
                 <select
                   value={leadForm.productInterest}
+                  required
                   onChange={(e) => setLeadForm({ ...leadForm, productInterest: e.target.value })}
                   className="text-xs py-1 px-2.5 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-[#FF6600] text-slate-800 font-medium"
                 >
                   {productsList.length > 0 ? (
-                    productsList.map((p) => (
-                      <option key={p.sku || p._id} value={p.sku}>
-                        {p.sku} - {p.name}
-                      </option>
-                    ))
+                    productsList.map((p) => {
+                      const val = p.sku || p.name;
+                      const label = p.sku && p.name && p.sku !== p.name
+                        ? `${p.sku} - ${p.name}`
+                        : (p.name || p.sku);
+                      return (
+                        <option key={p._id || p.sku} value={val}>
+                          {label}
+                        </option>
+                      );
+                    })
                   ) : (
-                    <>
-                      <option value="ARG-VMC-700">ARG-VMC-700 (High-Speed VMC)</option>
-                      <option value="ARG-VMC-1000">ARG-VMC-1000 (Heavy-Duty VMC)</option>
-                      <option value="ARG-HMC-630">ARG-HMC-630 (Horizontal Machining)</option>
-                      <option value="ARG-LATHE-300">ARG-LATHE-300 (CNC Turning Lathe)</option>
-                      <option value="ARG-5AXIS-500">ARG-5AXIS-500 (5-Axis Precision)</option>
-                    </>
+                    <option value="">No products in catalog</option>
                   )}
                 </select>
               </div>
@@ -919,13 +944,34 @@ export default function LeadsPage() {
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Product Interest</label>
-              <input
-                type="text"
-                placeholder="e.g. ARG-VMC-700"
-                value={editForm.productInterest}
-                onChange={(e) => setEditForm({ ...editForm, productInterest: e.target.value })}
-                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
-              />
+              {productsList.length > 0 ? (
+                <select
+                  value={editForm.productInterest}
+                  onChange={(e) => setEditForm({ ...editForm, productInterest: e.target.value })}
+                  className="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-[#FF6600]"
+                >
+                  <option value="">-- Select Product --</option>
+                  {productsList.map((p) => {
+                    const val = p.sku || p.name;
+                    const label = p.sku && p.name && p.sku !== p.name
+                      ? `${p.sku} - ${p.name}`
+                      : (p.name || p.sku);
+                    return (
+                      <option key={p._id || p.sku} value={val}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  placeholder="e.g. Industrial Machine"
+                  value={editForm.productInterest}
+                  onChange={(e) => setEditForm({ ...editForm, productInterest: e.target.value })}
+                  className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+                />
+              )}
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">PIN Code (Territory Routing)</label>

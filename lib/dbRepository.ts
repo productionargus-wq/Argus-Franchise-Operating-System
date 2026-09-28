@@ -1519,7 +1519,7 @@ export const dbRepository = {
 
     const targetOppId = data.opportunityId || data.oppId;
     if (targetOppId && (!companyName || !customerName || !franchiseId || !franchiseName)) {
-      const opp = await OpportunityModel.findOne({
+      const opp: any = await OpportunityModel.findOne({
         orgId: activeOrgId,
         ...idOr(targetOppId, { opportunityId: targetOppId }, { oppId: targetOppId }),
       }).lean();

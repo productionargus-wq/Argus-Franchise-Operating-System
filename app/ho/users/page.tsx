@@ -124,7 +124,7 @@ export default function UsersAndRolesPage() {
     try {
       setDeleting(true);
       setError(null);
-      const targetId = userToDelete.id || userToDelete._id || userToDelete.email;
+      const targetId = userToDelete.id || userToDelete.email;
       const res = await fetch(
         `/api/users?userId=${encodeURIComponent(targetId)}&orgId=${encodeURIComponent(activeOrgId)}`,
         { method: "DELETE" }

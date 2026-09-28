@@ -21,6 +21,7 @@ export interface Organization {
 }
 
 export interface UserSession {
+  _id?: string;
   id: string;
   name: string;
   email: string;

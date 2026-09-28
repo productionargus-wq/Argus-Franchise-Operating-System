@@ -387,24 +387,24 @@ export default function QuotationDetailPage() {
                     <div className="font-bold text-slate-900">{item.name}</div>
                     <div className="text-[11px] text-[#FF6600] font-semibold">{item.sku}</div>
                   </td>
-                  <td className="text-slate-600">₹{item.listPrice.toLocaleString("en-IN")}</td>
+                  <td className="text-slate-600">₹{(item.listPrice || 0).toLocaleString("en-IN")}</td>
                   <td>
                     <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
-                      {item.appliedDiscountPercent}%
+                      {item.appliedDiscountPercent || 0}%
                     </span>
                   </td>
                   <td className="font-semibold text-slate-900">
-                    ₹{item.unitPrice.toLocaleString("en-IN")}
+                    ₹{(item.unitPrice || 0).toLocaleString("en-IN")}
                   </td>
-                  <td>{item.quantity}</td>
+                  <td>{item.quantity || 1}</td>
                   <td className="text-slate-600">
-                    ₹{Math.round(item.unitPrice * item.quantity * 0.18).toLocaleString("en-IN")}
+                    ₹{Math.round((item.unitPrice || 0) * (item.quantity || 1) * 0.18).toLocaleString("en-IN")}
                   </td>
                   <td className="text-slate-600">
-                    ₹{(item.installationCharge * item.quantity).toLocaleString("en-IN")}
+                    ₹{((item.installationCharge || 0) * (item.quantity || 1)).toLocaleString("en-IN")}
                   </td>
                   <td className="font-bold text-slate-900 text-right">
-                    ₹{item.total.toLocaleString("en-IN")}
+                    ₹{(item.total || 0).toLocaleString("en-IN")}
                   </td>
                 </tr>
               ))}
@@ -416,23 +416,23 @@ export default function QuotationDetailPage() {
             <div className="w-72 space-y-2 text-xs">
               <div className="flex justify-between text-slate-600">
                 <span>Subtotal:</span>
-                <span className="font-semibold">₹{quotation.subtotal.toLocaleString("en-IN")}</span>
+                <span className="font-semibold">₹{(quotation.subtotal || 0).toLocaleString("en-IN")}</span>
               </div>
               <div className="flex justify-between text-red-600">
                 <span>Total Discount Applied:</span>
-                <span className="font-semibold">-₹{quotation.totalDiscount.toLocaleString("en-IN")}</span>
+                <span className="font-semibold">-₹{(quotation.totalDiscount || 0).toLocaleString("en-IN")}</span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>GST Tax (18%):</span>
-                <span className="font-semibold">₹{quotation.taxAmount.toLocaleString("en-IN")}</span>
+                <span className="font-semibold">₹{(quotation.taxAmount || 0).toLocaleString("en-IN")}</span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Installation & Commissioning:</span>
-                <span className="font-semibold">₹{quotation.installationTotal.toLocaleString("en-IN")}</span>
+                <span className="font-semibold">₹{(quotation.installationTotal || 0).toLocaleString("en-IN")}</span>
               </div>
               <div className="pt-2 border-t border-slate-300 flex justify-between text-base font-black text-[#293033]">
                 <span>Grand Total:</span>
-                <span className="text-[#FF6600]">₹{quotation.grandTotal.toLocaleString("en-IN")}</span>
+                <span className="text-[#FF6600]">₹{(quotation.grandTotal || 0).toLocaleString("en-IN")}</span>
               </div>
             </div>
           </div>
@@ -473,7 +473,7 @@ export default function QuotationDetailPage() {
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
             <span className="font-bold text-slate-700 block">Quotation Value:</span>
             <span className="text-lg font-black text-emerald-700">
-              ₹{quotation.grandTotal.toLocaleString("en-IN")}
+              ₹{(quotation.grandTotal || 0).toLocaleString("en-IN")}
             </span>
           </div>
 

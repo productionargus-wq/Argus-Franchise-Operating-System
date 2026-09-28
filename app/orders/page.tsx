@@ -137,11 +137,11 @@ export default function OrdersPage() {
                 </tr>
               ) : (
                 filtered.map((order) => {
-                  const totalPaid = order.paymentSchedule.reduce(
-                    (acc, m) => acc + m.receivedAmount,
-                    0
-                  );
-                  const percentPaid = Math.round((totalPaid / order.orderValue) * 100);
+                  const totalPaid = Array.isArray(order.paymentSchedule)
+                    ? order.paymentSchedule.reduce((acc, m) => acc + (m.receivedAmount || 0), 0)
+                    : 0;
+                  const orderVal = order.orderValue || 0;
+                  const percentPaid = orderVal ? Math.round((totalPaid / orderVal) * 100) : 0;
 
                   return (
                     <tr key={order._id} className="hover:bg-slate-50/80 transition-colors">
@@ -158,7 +158,7 @@ export default function OrdersPage() {
                         <div className="text-[11px] text-slate-400">{order.poDate}</div>
                       </td>
                       <td className="font-black text-slate-900">
-                        ₹{order.orderValue.toLocaleString("en-IN")}
+                        ₹{orderVal.toLocaleString("en-IN")}
                       </td>
                       <td>
                         <div className="space-y-1">

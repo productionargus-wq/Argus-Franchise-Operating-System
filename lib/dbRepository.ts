@@ -209,6 +209,19 @@ async function ensureInitialized() {
           { $set: { status: "Approved" } }
         );
 
+        // Auto-heal: Ensure all orders have both amount and dueAmount on milestones
+        const rawOrders = await OrderModel.find({ "paymentSchedule.amount": { $exists: false } }).lean();
+        for (const ord of rawOrders) {
+          if (ord.paymentSchedule && Array.isArray(ord.paymentSchedule)) {
+            const updatedSched = ord.paymentSchedule.map((m: any) => ({
+              ...m,
+              amount: m.amount ?? m.dueAmount ?? 0,
+              dueAmount: m.dueAmount ?? m.amount ?? 0,
+            }));
+            await OrderModel.updateOne({ _id: ord._id }, { $set: { paymentSchedule: updatedSched } });
+          }
+        }
+
         isInitialized = true;
         console.log("✅ MongoDB Atlas collections & Organization multi-tenant seed synchronized successfully with ORG-TEMP!");
       } catch (e) {
@@ -1663,6 +1676,7 @@ export const dbRepository = {
         {
           milestoneName: "20% Advance with PO",
           percentage: 20,
+          amount: advanceAmount,
           dueAmount: advanceAmount,
           receivedAmount: 0,
           status: "Pending",
@@ -1671,6 +1685,7 @@ export const dbRepository = {
         {
           milestoneName: "70% Before Machine Dispatch",
           percentage: 70,
+          amount: dispatchAmount,
           dueAmount: dispatchAmount,
           receivedAmount: 0,
           status: "Pending",
@@ -1679,6 +1694,7 @@ export const dbRepository = {
         {
           milestoneName: "10% Post Installation & Sign-Off",
           percentage: 10,
+          amount: installAmount,
           dueAmount: installAmount,
           receivedAmount: 0,
           status: "Pending",

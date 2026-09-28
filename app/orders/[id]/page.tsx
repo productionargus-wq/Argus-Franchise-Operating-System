@@ -204,7 +204,7 @@ export default function OrderDetailPage() {
         <div className="p-4 rounded-xl border border-slate-200 bg-white">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Order Contract Value</span>
           <span className="text-base font-black text-slate-900 mt-0.5 block">
-            ₹{order.orderValue.toLocaleString("en-IN")}
+            ₹{(order.orderValue || 0).toLocaleString("en-IN")}
           </span>
           <span className="text-xs text-slate-500 mt-1 block">Includes 18% GST & Install</span>
         </div>
@@ -212,17 +212,17 @@ export default function OrderDetailPage() {
         <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50">
           <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">Total Received</span>
           <span className="text-base font-black text-emerald-800 mt-0.5 block">
-            ₹{totalPaid.toLocaleString("en-IN")}
+            ₹{(totalPaid || 0).toLocaleString("en-IN")}
           </span>
           <span className="text-xs text-emerald-600 mt-1 block">
-            {Math.round((totalPaid / order.orderValue) * 100)}% Collected
+            {order.orderValue ? Math.round(((totalPaid || 0) / order.orderValue) * 100) : 0}% Collected
           </span>
         </div>
 
         <div className="p-4 rounded-xl border border-orange-200 bg-orange-50/50">
           <span className="text-[11px] font-bold text-[#FF6600] uppercase tracking-wider block">Outstanding Balance</span>
           <span className="text-base font-black text-[#FF6600] mt-0.5 block">
-            ₹{(order.orderValue - totalPaid).toLocaleString("en-IN")}
+            ₹{Math.max(0, (order.orderValue || 0) - (totalPaid || 0)).toLocaleString("en-IN")}
           </span>
           <span className="text-xs text-slate-500 mt-1 block">Post install milestone</span>
         </div>
@@ -244,6 +244,7 @@ export default function OrderDetailPage() {
         <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
           {order.paymentSchedule.map((milestone, idx) => {
             const isPaid = milestone.status === "Received";
+            const milestoneAmount = milestone.amount ?? milestone.dueAmount ?? 0;
 
             return (
               <div
@@ -258,7 +259,7 @@ export default function OrderDetailPage() {
                     <StatusBadge status={milestone.status} />
                   </div>
                   <div className="text-xl font-black text-slate-900 mt-2">
-                    ₹{milestone.amount.toLocaleString("en-IN")}
+                    ₹{milestoneAmount.toLocaleString("en-IN")}
                   </div>
                   <div className="text-xs text-slate-500 mt-1">
                     {milestone.percentage}% of order value | Due: {milestone.dueDate}
@@ -270,21 +271,21 @@ export default function OrderDetailPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-1 text-emerald-700 font-bold">
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Received ₹{milestone.receivedAmount.toLocaleString("en-IN")}</span>
+                        <span>Received ₹{(milestone.receivedAmount || 0).toLocaleString("en-IN")}</span>
                       </div>
                       <span className="text-[10px] text-slate-500 block">
-                        Ref: {milestone.referenceNumber} on {milestone.receivedDate}
+                        Ref: {milestone.referenceNumber || milestone.paymentReference || "Direct"} on {milestone.receivedDate || "N/A"}
                       </span>
                     </div>
                   ) : (
                     <button
                       onClick={() => {
                         setSelectedMilestone(milestone);
-                        setPaymentAmount(milestone.amount);
+                        setPaymentAmount(milestoneAmount);
                         setPaymentRef(`UTR-HDFC-${Math.floor(100000 + Math.random() * 900000)}`);
                         setIsPaymentModalOpen(true);
                       }}
-                      className="w-full py-2 bg-[#FF6600] hover:bg-[#E65C00] text-white font-bold rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1"
+                      className="w-full py-2 bg-[#FF6600] hover:bg-[#E65C00] text-white font-bold rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Record Payment Receipt</span>

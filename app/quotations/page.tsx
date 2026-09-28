@@ -194,12 +194,12 @@ export default function QuotationsPage() {
                       </div>
                       <div className="text-[11px] text-slate-400">{quote.items.length} item(s)</div>
                     </td>
-                    <td className="font-medium text-slate-700">₹{quote.subtotal.toLocaleString("en-IN")}</td>
+                    <td className="font-medium text-slate-700">₹{(quote.subtotal || 0).toLocaleString("en-IN")}</td>
                     <td className="font-medium text-red-600">
-                      -₹{quote.totalDiscount.toLocaleString("en-IN")}
+                      -₹{(quote.totalDiscount || 0).toLocaleString("en-IN")}
                     </td>
                     <td className="font-black text-slate-900">
-                      ₹{quote.grandTotal.toLocaleString("en-IN")}
+                      ₹{(quote.grandTotal || 0).toLocaleString("en-IN")}
                     </td>
                     <td>
                       {quote.requiresSpecialApproval && quote.status === "Pending_Approval" ? (

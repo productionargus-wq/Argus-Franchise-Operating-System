@@ -104,7 +104,7 @@ export default function CommissionsPage() {
             Total Accrued Commission
           </span>
           <span className="text-2xl font-black text-slate-900 mt-1 block">
-            ₹{totalCalculated.toLocaleString("en-IN")}
+            ₹{(totalCalculated || 0).toLocaleString("en-IN")}
           </span>
           <span className="text-xs text-slate-500 mt-0.5 block">From verified customer payments</span>
         </div>
@@ -114,7 +114,7 @@ export default function CommissionsPage() {
             Settled / Paid to Franchise
           </span>
           <span className="text-2xl font-black text-emerald-800 mt-1 block">
-            ₹{totalPaid.toLocaleString("en-IN")}
+            ₹{(totalPaid || 0).toLocaleString("en-IN")}
           </span>
           <span className="text-xs text-emerald-600 mt-0.5 block">Transferred via NEFT/RTGS</span>
         </div>
@@ -124,7 +124,7 @@ export default function CommissionsPage() {
             Payable & Pending Approval
           </span>
           <span className="text-2xl font-black text-amber-800 mt-1 block">
-            ₹{(totalCalculated - totalPaid).toLocaleString("en-IN")}
+            ₹{Math.max(0, (totalCalculated || 0) - (totalPaid || 0)).toLocaleString("en-IN")}
           </span>
           <span className="text-xs text-amber-600 mt-0.5 block">Pending Head Office finance sign-off</span>
         </div>
@@ -181,15 +181,15 @@ export default function CommissionsPage() {
                       </div>
                     </td>
                     <td className="font-medium text-slate-800">
-                      ₹{comm.eligibleRevenue.toLocaleString("en-IN")}
+                      ₹{(comm.eligibleRevenue || 0).toLocaleString("en-IN")}
                     </td>
                     <td>
                       <span className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded text-xs">
-                        {comm.commissionRate}%
+                        {comm.commissionRate || 0}%
                       </span>
                     </td>
                     <td className="font-black text-emerald-700">
-                      ₹{comm.calculatedAmount.toLocaleString("en-IN")}
+                      ₹{(comm.calculatedAmount || 0).toLocaleString("en-IN")}
                     </td>
                     <td>
                       <StatusBadge status={comm.status} />

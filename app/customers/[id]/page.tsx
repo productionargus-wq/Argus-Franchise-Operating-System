@@ -21,6 +21,9 @@ import {
   Calendar,
   Clock,
   ArrowUpRight,
+  Plus,
+  Trash2,
+  X,
 } from "lucide-react";
 
 export default function Customer360Page() {
@@ -32,24 +35,92 @@ export default function Customer360Page() {
     "overview" | "opportunities" | "quotations" | "orders" | "support" | "renewals" | "upsell"
   >("overview");
 
-  useEffect(() => {
-    async function load360() {
-      try {
-        setLoading(true);
-        const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId!)}` : "";
-        const res = await fetch(`/api/customers/${params.id}${orgParam}`);
-        if (res.ok) {
-          const json = await res.json();
-          setData(json);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
+  // Custom upsell modal state
+  const [showAddUpsell, setShowAddUpsell] = useState(false);
+  const [savingUpsell, setSavingUpsell] = useState(false);
+  const [upsellForm, setUpsellForm] = useState({
+    title: "",
+    sku: "",
+    estimatedValue: "",
+    readiness: "High Interest",
+    reason: "",
+  });
+
+  const load360 = async () => {
+    try {
+      setLoading(true);
+      const orgParam = currentUser?.orgId ? `?orgId=${encodeURIComponent(currentUser.orgId!)}` : "";
+      const res = await fetch(`/api/customers/${params.id}${orgParam}`);
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
       }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     load360();
   }, [params.id, currentUser]);
+
+  const handleAddCustomUpsell = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!data?.customer) return;
+    setSavingUpsell(true);
+    try {
+      const existing = Array.isArray(data.customer.customUpsells) ? data.customer.customUpsells : [];
+      const newEntry = {
+        title: upsellForm.title,
+        sku: upsellForm.sku || `UP-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+        estimatedValue: Number(upsellForm.estimatedValue) || 100000,
+        readiness: upsellForm.readiness,
+        reason: upsellForm.reason,
+      };
+      const updatedList = [...existing, newEntry];
+      const res = await fetch(`/api/customers/${data.customer.customerId || data.customer._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customUpsells: updatedList,
+          orgId: currentUser?.orgId,
+        }),
+      });
+      if (res.ok) {
+        setShowAddUpsell(false);
+        setUpsellForm({ title: "", sku: "", estimatedValue: "", readiness: "High Interest", reason: "" });
+        load360();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingUpsell(false);
+    }
+  };
+
+  const handleDeleteCustomUpsell = async (sku: string) => {
+    if (!data?.customer) return;
+    if (!confirm("Are you sure you want to remove this custom upsell opportunity?")) return;
+    try {
+      const existing = Array.isArray(data.customer.customUpsells) ? data.customer.customUpsells : [];
+      const updatedList = existing.filter((u: any) => u.sku !== sku);
+      const res = await fetch(`/api/customers/${data.customer.customerId || data.customer._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customUpsells: updatedList,
+          orgId: currentUser?.orgId,
+        }),
+      });
+      if (res.ok) {
+        load360();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   if (loading) {
     return <div className="text-center py-16 text-slate-400 text-xs">Loading Customer 360° Profile...</div>;
@@ -359,43 +430,202 @@ export default function Customer360Page() {
       )}
 
       {activeTab === "upsell" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {upsells.map((up: any) => (
-            <div
-              key={up.sku}
-              className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs flex flex-col justify-between space-y-3 text-xs"
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-[#FF6600] uppercase tracking-wider">
-                    {up.sku}
-                  </span>
-                  <span className="text-[10px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.5 rounded">
-                    {up.readiness}
-                  </span>
-                </div>
-                <h4 className="font-bold text-slate-900 text-sm mt-1">{up.title}</h4>
-                <p className="text-slate-600 mt-1 leading-relaxed">{up.reason}</p>
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-gradient-to-r from-orange-50/70 to-purple-50/50 rounded-xl border border-orange-100">
+            <div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#FF6600]" />
+                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+                  Dynamic Account Upsell & Fleet Expansion Matrix
+                </h3>
+                <span className="text-[10px] font-bold bg-[#FF6600]/10 text-[#FF6600] px-2 py-0.5 rounded-full">
+                  {upsells.length} Opportunities
+                </span>
               </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] text-slate-400 block uppercase">Est. Revenue</span>
-                  <span className="font-black text-slate-900 text-sm">
-                    ₹{up.estimatedValue.toLocaleString("en-IN")}
-                  </span>
-                </div>
-
-                <Link
-                  href={`/quotations/new?company=${encodeURIComponent(customer.companyName)}&customer=${encodeURIComponent(customer.contactPerson)}`}
-                  className="px-3 py-1.5 bg-[#FF6600] hover:bg-[#E65C00] text-white font-bold rounded-lg transition-colors flex items-center gap-1"
-                >
-                  <span>Pitch Quote</span>
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Targeted recommendations computed dynamically from {customer.companyName}&apos;s installed machinery, active catalog items, and service history.
+              </p>
             </div>
-          ))}
+            <button
+              type="button"
+              onClick={() => setShowAddUpsell(true)}
+              className="px-3.5 py-1.5 bg-[#FF6600] hover:bg-[#E65C00] text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-2xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Custom Upsell</span>
+            </button>
+          </div>
+
+          {upsells.length === 0 ? (
+            <div className="py-12 bg-white rounded-xl border border-slate-200 text-center space-y-2">
+              <Sparkles className="w-6 h-6 text-slate-300 mx-auto" />
+              <p className="text-xs font-bold text-slate-700">No active upsell opportunities generated yet.</p>
+              <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+                Add products to your organization catalog or click &quot;Add Custom Upsell&quot; to pitch specialized upgrades.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {upsells.map((up: any) => (
+                <div
+                  key={up.sku}
+                  className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs flex flex-col justify-between space-y-3 text-xs"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-[#FF6600] uppercase tracking-wider">
+                        {up.sku}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            up.readiness === "High Interest" || up.readiness === "High Priority"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : up.readiness === "Due Soon"
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-purple-100 text-purple-800"
+                          }`}
+                        >
+                          {up.readiness}
+                        </span>
+                        {up.isCustom && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCustomUpsell(up.sku)}
+                            title="Delete custom upsell"
+                            className="text-slate-400 hover:text-red-600 transition-colors p-0.5"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <h4 className="font-bold text-slate-900 text-sm mt-1">{up.title}</h4>
+                    <p className="text-slate-600 mt-1 leading-relaxed">{up.reason}</p>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block uppercase">Est. Revenue</span>
+                      <span className="font-black text-slate-900 text-sm">
+                        ₹{(up.estimatedValue || 0).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+
+                    <Link
+                      href={`/quotations/new?company=${encodeURIComponent(customer.companyName)}&customer=${encodeURIComponent(customer.contactPerson || customer.companyName)}&sku=${encodeURIComponent(up.sku)}`}
+                      className="px-3 py-1.5 bg-[#FF6600] hover:bg-[#E65C00] text-white font-bold rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
+                    >
+                      <span>Pitch Quote</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modal: Add Custom Upsell */}
+      {showAddUpsell && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-black text-sm text-[#293033] flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-[#FF6600]" />
+                <span>Add Custom Upsell Opportunity</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddUpsell(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCustomUpsell} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Opportunity / Product Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 5th Axis High-Speed Rotary Package"
+                  value={upsellForm.title}
+                  onChange={(e) => setUpsellForm({ ...upsellForm, title: e.target.value })}
+                  className="w-full p-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">SKU / Code (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. UP-5AXIS"
+                    value={upsellForm.sku}
+                    onChange={(e) => setUpsellForm({ ...upsellForm, sku: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Estimated Value (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="e.g. 350000"
+                    value={upsellForm.estimatedValue}
+                    onChange={(e) => setUpsellForm({ ...upsellForm, estimatedValue: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Readiness Stage</label>
+                <select
+                  value={upsellForm.readiness}
+                  onChange={(e) => setUpsellForm({ ...upsellForm, readiness: e.target.value })}
+                  className="w-full p-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+                >
+                  <option value="High Interest">High Interest</option>
+                  <option value="In Evaluation">In Evaluation</option>
+                  <option value="Due Soon">Due Soon</option>
+                  <option value="Negotiating">Negotiating</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Rationale / Strategic Fit *</label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder={`Describe why ${customer.companyName} would benefit from this upgrade...`}
+                  value={upsellForm.reason}
+                  onChange={(e) => setUpsellForm({ ...upsellForm, reason: e.target.value })}
+                  className="w-full p-2 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddUpsell(false)}
+                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg transition-colors font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingUpsell}
+                  className="px-4 py-1.5 bg-[#FF6600] hover:bg-[#E65C00] text-white text-xs font-bold rounded-lg transition-colors shadow-2xs"
+                >
+                  {savingUpsell ? "Saving..." : "Save Opportunity"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

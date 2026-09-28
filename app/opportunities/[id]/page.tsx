@@ -306,7 +306,7 @@ export default function OpportunityDetailPage() {
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Assigned Application Engineer</label>
                 <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
-                  {opportunity.demo?.assignedEngineerName || "Ramesh Kumar"}
+                  {opportunity.demo?.assignedEngineerName || "Field Applications Specialist"}
                 </div>
               </div>
             </div>

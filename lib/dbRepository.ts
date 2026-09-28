@@ -295,10 +295,10 @@ function normalizeInstallation(doc: any): Installation {
   if (inst) {
     inst.checklist = normalizeInstallationChecklist(inst.checklist);
     if (!inst.assignedEngineerName) {
-      inst.assignedEngineerName = (inst as any).serviceEngineerName || "Ramesh Kumar";
+      inst.assignedEngineerName = (inst as any).serviceEngineerName || "Field Service Specialist";
     }
     if (!inst.assignedEngineerId) {
-      inst.assignedEngineerId = (inst as any).serviceEngineerId || "usr-cbe-eng";
+      inst.assignedEngineerId = (inst as any).serviceEngineerId || "";
     }
     if (!inst.trainingDetails) {
       inst.trainingDetails = {
@@ -1798,6 +1798,22 @@ export const dbRepository = {
 
     // Auto-create Installation record in Atlas
     const instCount = await InstallationModel.countDocuments({ orgId: activeOrgId });
+
+    // Look up real service engineer for this franchise/org
+    const serviceEng =
+      (await UserModel.findOne({
+        orgId: activeOrgId,
+        role: "service_engineer",
+        ...(quote.franchiseId ? { franchiseId: quote.franchiseId } : {}),
+      }).lean()) ||
+      (await UserModel.findOne({
+        orgId: activeOrgId,
+        role: "service_engineer",
+      }).lean());
+
+    const assignedEngId = (serviceEng as any)?.id || (serviceEng as any)?._id?.toString() || "usr-eng";
+    const assignedEngName = (serviceEng as any)?.name || "Field Service Specialist";
+
     await InstallationModel.create({
       orgId: activeOrgId,
       installationId: `INS-${100 + instCount + 1}`,
@@ -1810,10 +1826,10 @@ export const dbRepository = {
       machineSerial: `ARG-VMC-${Math.floor(100 + Math.random() * 900)}-${new Date().getFullYear()}`,
       productName: quote.items[0]?.name || "ARGUS VMC-700",
       siteReadinessStatus: "Pending",
-      assignedEngineerId: "usr-cbe-eng",
-      assignedEngineerName: "Ramesh Kumar",
-      serviceEngineerId: "usr-cbe-eng",
-      serviceEngineerName: "Ramesh Kumar",
+      assignedEngineerId: assignedEngId,
+      assignedEngineerName: assignedEngName,
+      serviceEngineerId: assignedEngId,
+      serviceEngineerName: assignedEngName,
       scheduledDate: new Date(Date.now() + 25 * 86400000).toISOString().split("T")[0],
       status: "Scheduled",
       checklist: {
@@ -1962,22 +1978,37 @@ export const dbRepository = {
 
     const slaHours = data.priority === "Critical" ? 4 : data.priority === "High" ? 8 : 24;
 
+    // Look up real service engineer for this franchise/org
+    const serviceEng =
+      (await UserModel.findOne({
+        orgId: activeOrgId,
+        role: "service_engineer",
+        ...(data.franchiseId ? { franchiseId: data.franchiseId } : {}),
+      }).lean()) ||
+      (await UserModel.findOne({
+        orgId: activeOrgId,
+        role: "service_engineer",
+      }).lean());
+
+    const fallbackEngId = (serviceEng as any)?.id || (serviceEng as any)?._id?.toString() || "usr-eng";
+    const fallbackEngName = (serviceEng as any)?.name || "Field Service Specialist";
+
     const newTicket = await SupportTicketModel.create({
       orgId: activeOrgId,
       ticketId,
       customerId: data.customerId || "cust-1",
       customerName: data.customerName || "Customer Rep",
-      companyName: data.companyName || "Sri Venkatesh Industries",
-      franchiseId: data.franchiseId || "FR-CBE",
-      machineSerial: data.machineSerial || "ARG-VMC-700-0382023",
-      productName: data.productName || "ARGUS VMC-700",
+      companyName: data.companyName || "Client Facility",
+      franchiseId: data.franchiseId || "FR-MAIN",
+      machineSerial: data.machineSerial || "ARG-SER-001",
+      productName: data.productName || "Equipment",
       category: data.category || "Breakdown",
       priority: data.priority || "High",
       slaHoursTotal: slaHours,
       slaDeadline: new Date(Date.now() + slaHours * 3600000).toISOString(),
       slaBreached: false,
-      assignedEngineerId: data.assignedEngineerId || "usr-cbe-eng",
-      assignedEngineerName: data.assignedEngineerName || "Ramesh Kumar",
+      assignedEngineerId: data.assignedEngineerId || fallbackEngId,
+      assignedEngineerName: data.assignedEngineerName || fallbackEngName,
       status: "Open",
       issueDescription: data.issueDescription || "Unspecified issue",
       comments: [],
@@ -2112,6 +2143,14 @@ export const dbRepository = {
     const query: any = { ...idOr(id, { customerId: id }), orgId };
     const doc = await CustomerModel.findOne(query).lean();
     return doc ? cleanDoc<CustomerProfile>(doc) : null;
+  },
+
+  async updateCustomer(id: string, updates: Partial<CustomerProfile>, orgId?: string | null): Promise<CustomerProfile | null> {
+    await ensureInitialized();
+    const query: any = idOr(id, { customerId: id });
+    if (orgId) query.orgId = orgId;
+    const updated = await CustomerModel.findOneAndUpdate(query, { $set: updates }, { new: true }).lean();
+    return updated ? cleanDoc<CustomerProfile>(updated) : null;
   },
 
   // DASHBOARD KPIS & ANALYTICS

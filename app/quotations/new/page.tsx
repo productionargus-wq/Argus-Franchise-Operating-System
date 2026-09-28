@@ -48,24 +48,25 @@ function QuotationBuilderContent() {
         const data = await res.json();
         setProducts(Array.isArray(data) ? data : []);
 
-        // Pre-populate with first product
+        // Pre-populate with first product or product matching sku query param
         if (Array.isArray(data) && data.length > 0) {
-          const first = data[0];
+          const skuParam = searchParams.get("sku");
+          const selected = (skuParam && data.find((p) => p.sku === skuParam)) || data[0];
           const discount = 8;
-          const unitPrice = Math.round(first.listPrice * (1 - discount / 100));
-          const total = Math.round((unitPrice + first.installationCharge) * 1.18);
+          const unitPrice = Math.round((selected.listPrice || 100000) * (1 - discount / 100));
+          const total = Math.round((unitPrice + (selected.installationCharge || 0)) * 1.18);
           setItems([
             {
-              sku: first.sku,
-              name: first.name,
-              listPrice: first.listPrice,
-              minSellingPrice: first.minSellingPrice,
-              maxDiscountPercent: first.maxDiscountPercent,
+              sku: selected.sku,
+              name: selected.name,
+              listPrice: selected.listPrice,
+              minSellingPrice: selected.minSellingPrice,
+              maxDiscountPercent: selected.maxDiscountPercent || 10,
               appliedDiscountPercent: discount,
               unitPrice,
               quantity: 1,
               gstPercent: 18,
-              installationCharge: first.installationCharge,
+              installationCharge: selected.installationCharge || 0,
               total,
             },
           ]);

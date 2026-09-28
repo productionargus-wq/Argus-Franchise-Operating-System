@@ -228,6 +228,7 @@ export interface SalesOrder {
   orderValue: number;
   orderStatus: "Confirmed" | "Production/Stock" | "QC" | "Dispatch" | "Delivered" | "Payment Cleared" | "Order Placed" | string;
   paymentSchedule: PaymentMilestone[];
+  items?: QuotationItem[];
   materialDispatchedDate?: string;
   deliveredDate?: string;
   createdAt: string;
@@ -364,4 +365,11 @@ export interface CustomerProfile {
   pendingTicketsCount: number;
   nextRenewalDate: string;
   notes: string;
+  customUpsells?: Array<{
+    title: string;
+    sku?: string;
+    estimatedValue: number;
+    readiness: string;
+    reason: string;
+  }>;
 }

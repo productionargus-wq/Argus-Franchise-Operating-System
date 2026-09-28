@@ -40,7 +40,7 @@ export function RecentActivity() {
       id: 4,
       type: "install",
       title: "Installation Checklist Updated",
-      desc: "INS-1023 Machine Leveling completed by Ramesh Kumar",
+      desc: "INS-1023 Machine Leveling completed by Service Specialist",
       time: "5 hours ago",
       icon: Wrench,
       color: "text-purple-600",

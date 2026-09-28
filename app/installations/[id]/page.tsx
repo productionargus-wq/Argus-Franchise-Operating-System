@@ -44,6 +44,8 @@ export default function InstallationDetailPage() {
   const [installation, setInstallation] = useState<Installation | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [engineers, setEngineers] = useState<any[]>([]);
+  const [isChangingEngineer, setIsChangingEngineer] = useState(false);
 
   // Sign-off form
   const [signeeName, setSigneeName] = useState("");
@@ -74,6 +76,50 @@ export default function InstallationDetailPage() {
   useEffect(() => {
     loadInstallation();
   }, [params.id, currentUser]);
+
+  useEffect(() => {
+    async function loadEngineers() {
+      if (!currentUser?.orgId) return;
+      try {
+        const res = await fetch(`/api/users?orgId=${encodeURIComponent(currentUser.orgId)}`);
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list)) {
+            setEngineers(list.filter((u) => u.role === "service_engineer" || u.role === "franchise_admin"));
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    loadEngineers();
+  }, [currentUser]);
+
+  const handleAssignEngineer = async (engId: string, engName: string) => {
+    if (!installation) return;
+    setInstallation({
+      ...installation,
+      assignedEngineerId: engId,
+      assignedEngineerName: engName,
+    });
+    setIsChangingEngineer(false);
+    try {
+      await fetch(`/api/installations/${installation.installationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assignedEngineerId: engId,
+          assignedEngineerName: engName,
+          serviceEngineerId: engId,
+          serviceEngineerName: engName,
+          orgId: currentUser?.orgId,
+        }),
+      });
+    } catch (err) {
+      console.error(err);
+      loadInstallation();
+    }
+  };
 
   const handleChecklistToggle = async (key: keyof InstallationChecklist) => {
     if (!installation) return;
@@ -241,11 +287,54 @@ export default function InstallationDetailPage() {
         </div>
 
         <div className="p-4 rounded-xl border border-slate-200 bg-white">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Assigned Engineer</span>
-          <span className="text-sm font-black text-slate-900 mt-0.5 block">
-            {installation.assignedEngineerName || (installation as any).serviceEngineerName || "Ramesh Kumar"}
-          </span>
-          <span className="text-xs text-slate-500 mt-1 block">Certified Field Specialist</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Assigned Engineer</span>
+            {engineers.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsChangingEngineer(!isChangingEngineer)}
+                className="text-[10px] text-[#FF6600] font-bold hover:underline"
+              >
+                {isChangingEngineer ? "Cancel" : "Change"}
+              </button>
+            )}
+          </div>
+          {isChangingEngineer ? (
+            <select
+              value={installation.assignedEngineerId || ""}
+              onChange={(e) => {
+                const eng = engineers.find((u) => (u.id || u._id) === e.target.value);
+                if (eng) handleAssignEngineer(eng.id || eng._id, eng.name);
+              }}
+              className="mt-1 w-full text-xs p-1.5 border border-slate-300 rounded font-semibold text-slate-800 focus:outline-none focus:border-[#FF6600]"
+            >
+              <option value="">Select Service Engineer...</option>
+              {engineers.map((eng) => (
+                <option key={eng.id || eng._id} value={eng.id || eng._id}>
+                  {eng.name} ({eng.email})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <>
+              <span className="text-sm font-black text-slate-900 mt-0.5 block">
+                {installation.assignedEngineerName || (installation as any).serviceEngineerName || "Field Service Specialist"}
+              </span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs text-slate-500">Certified Field Specialist</span>
+                {currentUser?.role === "service_engineer" &&
+                  currentUser.name !== installation.assignedEngineerName && (
+                    <button
+                      type="button"
+                      onClick={() => handleAssignEngineer(currentUser.id || (currentUser as any)._id, currentUser.name)}
+                      className="text-[10px] bg-orange-100 hover:bg-orange-200 text-[#FF6600] px-1.5 py-0.5 rounded font-bold transition-colors"
+                    >
+                      Assign to Me
+                    </button>
+                  )}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="p-4 rounded-xl border border-slate-200 bg-white">

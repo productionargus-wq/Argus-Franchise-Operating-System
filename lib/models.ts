@@ -69,6 +69,7 @@ const CustomerSchema = new Schema(
     pendingTicketsCount: { type: Number, default: 0 },
     nextRenewalDate: { type: String },
     notes: { type: String },
+    customUpsells: [{ type: Schema.Types.Mixed }],
   },
   { strict: false, timestamps: true }
 );

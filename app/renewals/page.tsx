@@ -74,11 +74,11 @@ export default function RenewalsPage() {
   };
 
   const filtered = renewals.filter((r) => {
-    return (
-      r.renewalId.toLowerCase().includes(search.toLowerCase()) ||
-      r.companyName.toLowerCase().includes(search.toLowerCase()) ||
-      r.productOrModule.toLowerCase().includes(search.toLowerCase())
-    );
+    const q = (search || "").toLowerCase();
+    const rid = (r.renewalId || "").toLowerCase();
+    const cname = (r.companyName || r.customerName || "").toLowerCase();
+    const prod = (r.productOrModule || (r as any).productName || "").toLowerCase();
+    return rid.includes(q) || cname.includes(q) || prod.includes(q);
   });
 
   return (
@@ -148,24 +148,25 @@ export default function RenewalsPage() {
                 </tr>
               ) : (
                 filtered.map((rn) => {
-                  const days = rn.daysRemaining;
+                  const days = rn.daysRemaining ?? (rn.expiryDate ? Math.max(0, Math.ceil((new Date(rn.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 365);
                   const isUrgent = days <= 7;
                   const isModerate = days <= 30;
+                  const reminders = rn.remindersSent || [];
 
                   return (
                     <tr
-                      key={rn._id}
+                      key={rn._id || rn.renewalId}
                       className={`hover:bg-slate-50 transition-colors ${
                         isUrgent ? "bg-red-50/20" : isModerate ? "bg-amber-50/10" : ""
                       }`}
                     >
                       <td className="font-bold text-slate-900 whitespace-nowrap">{rn.renewalId}</td>
                       <td>
-                        <div className="font-bold text-slate-900">{rn.companyName}</div>
+                        <div className="font-bold text-slate-900">{rn.companyName || rn.customerName}</div>
                         <div className="text-xs text-slate-500">{rn.customerName}</div>
                       </td>
                       <td>
-                        <div className="font-semibold text-slate-800">{rn.productOrModule}</div>
+                        <div className="font-semibold text-slate-800">{rn.productOrModule || (rn as any).productName || "Equipment"}</div>
                         <div className="text-[11px] text-slate-400">{rn.machineSerial}</div>
                       </td>
                       <td className="text-xs font-semibold text-slate-800 whitespace-nowrap">
@@ -188,17 +189,17 @@ export default function RenewalsPage() {
                         </span>
                       </td>
                       <td className="font-black text-slate-900">
-                        ₹{rn.contractValue.toLocaleString("en-IN")}
+                        ₹{(rn.contractValue || 0).toLocaleString("en-IN")}
                       </td>
                       <td>
                         <StatusBadge status={rn.status} />
                       </td>
                       <td>
                         <div className="flex items-center gap-1 flex-wrap">
-                          {rn.remindersSent.length === 0 ? (
+                          {reminders.length === 0 ? (
                             <span className="text-slate-400 text-[11px]">None yet</span>
                           ) : (
-                            rn.remindersSent.map((s, idx) => (
+                            reminders.map((s, idx) => (
                               <span
                                 key={idx}
                                 className="text-[10px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200"

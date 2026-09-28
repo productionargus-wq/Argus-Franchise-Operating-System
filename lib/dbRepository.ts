@@ -1970,10 +1970,13 @@ export const dbRepository = {
           franchiseName: updated.franchiseName,
           machineSerial: updated.machineSerial,
           productName: updated.productName,
+          productOrModule: updated.productName || "Equipment",
           contractType: "Warranty",
           contractValue: 0,
           startDate,
           expiryDate: nextYear,
+          daysRemaining: 365,
+          remindersSent: [],
           status: "Active",
           contactPerson: (updated as any).customerSignOffData?.signeeName || updated.customerName,
           reminderStage: "None",
@@ -2111,7 +2114,20 @@ export const dbRepository = {
     const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await RenewalModel.find(query).sort({ expiryDate: 1 }).lean();
-    return cleanDocs<Renewal>(docs);
+    return docs.map((doc: any) => {
+      const clean = cleanDoc<Renewal>(doc);
+      if (!clean.remindersSent || !Array.isArray(clean.remindersSent)) {
+        clean.remindersSent = [];
+      }
+      if (!clean.productOrModule && (clean as any).productName) {
+        clean.productOrModule = (clean as any).productName;
+      }
+      if (clean.daysRemaining === undefined && clean.expiryDate) {
+        const diffMs = new Date(clean.expiryDate).getTime() - Date.now();
+        clean.daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      }
+      return clean;
+    });
   },
 
   async triggerRenewalReminder(

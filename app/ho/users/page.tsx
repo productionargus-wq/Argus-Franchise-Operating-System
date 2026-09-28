@@ -15,6 +15,7 @@ import {
   Mail,
   AlertCircle,
   Briefcase,
+  Trash2,
 } from "lucide-react";
 
 export default function UsersAndRolesPage() {
@@ -26,6 +27,11 @@ export default function UsersAndRolesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Delete User State
+  const [userToDelete, setUserToDelete] = useState<UserSession | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // New Personnel Form State
   const [newName, setNewName] = useState("");
@@ -110,6 +116,32 @@ export default function UsersAndRolesPage() {
       setError(err.message || "Failed to add personnel.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete || !activeOrgId) return;
+    try {
+      setDeleting(true);
+      setError(null);
+      const targetId = userToDelete.id || userToDelete._id || userToDelete.email;
+      const res = await fetch(
+        `/api/users?userId=${encodeURIComponent(targetId)}&orgId=${encodeURIComponent(activeOrgId)}`,
+        { method: "DELETE" }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to delete user.");
+        return;
+      }
+      setSuccessMsg(`User ${userToDelete.name} (${userToDelete.email}) was removed successfully.`);
+      setIsDeleteModalOpen(false);
+      setUserToDelete(null);
+      await loadData();
+    } catch (err: any) {
+      setError(err.message || "Failed to delete user.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -276,18 +308,33 @@ export default function UsersAndRolesPage() {
                       </span>
                     </td>
                     <td className="text-right">
-                      {isCurrent ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-[#FF6600] bg-orange-50 px-2 py-1 rounded border border-orange-200">
-                          <span>Active Role</span>
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => switchRole(usr.id)}
-                          className="px-3 py-1 bg-[#293033] hover:bg-[#FF6600] text-white text-xs font-bold rounded transition-colors cursor-pointer"
-                        >
-                          Switch Role
-                        </button>
-                      )}
+                      <div className="inline-flex items-center gap-2 justify-end">
+                        {isCurrent ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-[#FF6600] bg-orange-50 px-2 py-1 rounded border border-orange-200">
+                            <span>Active Role</span>
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => switchRole(usr.id)}
+                              className="px-3 py-1 bg-[#293033] hover:bg-[#FF6600] text-white text-xs font-bold rounded transition-colors cursor-pointer"
+                            >
+                              Switch Role
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUserToDelete(usr);
+                                setIsDeleteModalOpen(true);
+                              }}
+                              className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                              title={`Delete ${usr.name}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -441,6 +488,96 @@ export default function UsersAndRolesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {isDeleteModalOpen && userToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden animate-scaleUp">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-red-50/60">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">Remove User & Revoke Access</h3>
+                  <p className="text-[11px] text-slate-500">
+                    Revoke access from {activeOrgName}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  if (!deleting) {
+                    setIsDeleteModalOpen(false);
+                    setUserToDelete(null);
+                  }
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Are you sure you want to permanently remove <strong className="text-slate-900 font-bold">{userToDelete.name}</strong> (<span className="font-mono text-slate-700">{userToDelete.email}</span>) from <strong>{activeOrgName}</strong>?
+              </p>
+
+              <div className="p-3 bg-red-50 rounded-xl border border-red-200 text-xs text-red-800 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-red-900">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>Immediate Access Revocation</span>
+                </div>
+                <p className="text-[11px] text-red-700">
+                  This user will no longer be able to log in with Google or access any leads, quotations, orders, or organization data.
+                </p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-1.5 text-slate-600">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 font-medium">Role:</span>
+                  <span className="font-bold text-slate-800 capitalize">{userToDelete.role.replace(/_/g, " ")}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 font-medium">Assigned Franchise:</span>
+                  <span className="font-semibold text-slate-800">{userToDelete.franchiseName || userToDelete.franchiseId || "Head Office Central Command"}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setUserToDelete(null);
+                }}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={handleDeleteUser}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{deleting ? "Removing..." : "Confirm Delete"}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

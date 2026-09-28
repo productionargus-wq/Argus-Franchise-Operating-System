@@ -506,7 +506,15 @@ export const dbRepository = {
 
   async deleteUser(userId: string, orgId: string): Promise<boolean> {
     await ensureInitialized();
-    const res = await UserModel.deleteOne({ ...idOr(userId, { id: userId }), orgId });
+    const query: any = {
+      $or: [
+        { id: userId },
+        { email: userId.toLowerCase() },
+        ...(isObjectId(userId) ? [{ _id: userId }] : []),
+      ],
+      orgId,
+    };
+    const res = await UserModel.deleteOne(query);
     return (res.deletedCount || 0) > 0;
   },
 

@@ -89,9 +89,8 @@ export async function DELETE(
     }
 
     return NextResponse.json({
-      success: true,
-      message: "Franchise deleted and active leads rerouted successfully",
       ...result,
+      message: "Franchise deleted and active leads rerouted successfully",
     });
   } catch (error: any) {
     if (error?.digest === "DYNAMIC_SERVER_USAGE") throw error;

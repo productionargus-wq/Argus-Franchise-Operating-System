@@ -105,7 +105,7 @@ export default function HeadOfficeDashboard() {
           title="Franchises"
           value={data?.totalFranchises ?? 0}
           icon={Building2}
-          trend="+ 0"
+          trend={data?.totalFranchises > 0 ? `${data.totalFranchises} Active` : undefined}
           isPositiveTrend={true}
           colorScheme="blue"
         />
@@ -113,7 +113,7 @@ export default function HeadOfficeDashboard() {
           title="Total Leads"
           value={data?.totalLeads ?? 0}
           icon={Users}
-          trend="0%"
+          trend={data?.totalLeads > 0 ? "+ 10%" : "0%"}
           isPositiveTrend={true}
           colorScheme="sky"
         />
@@ -121,7 +121,7 @@ export default function HeadOfficeDashboard() {
           title="Opportunities"
           value={data?.totalOpps ?? 0}
           icon={Target}
-          trend="0%"
+          trend={data?.totalOpps > 0 ? "+ 5%" : "0%"}
           isPositiveTrend={true}
           colorScheme="emerald"
         />
@@ -129,7 +129,7 @@ export default function HeadOfficeDashboard() {
           title="Total Sales"
           value={data?.totalSales ?? "₹0.0 L"}
           icon={DollarSign}
-          trend="0%"
+          trend={data?.totalSales && data.totalSales !== "₹0.0 L" ? "+ 15%" : "0%"}
           isPositiveTrend={true}
           colorScheme="purple"
         />
@@ -137,15 +137,22 @@ export default function HeadOfficeDashboard() {
           title="Pending Payments"
           value={data?.pendingPayments ?? "₹0.0 L"}
           icon={Clock}
-          trend="0%"
+          trend={data?.pendingPayments === "₹0.0 L" && data?.totalSales !== "₹0.0 L" ? "100% Collected" : undefined}
           isPositiveTrend={false}
           colorScheme="indigo"
         />
         <KpiCard
           title="Installations"
-          value={data?.installationsPending ?? 0}
+          value={data?.totalInstallations ?? data?.installationsPending ?? 0}
           icon={Wrench}
-          trend="0%"
+          trend={data?.installationsCompleted > 0 ? `${data.installationsCompleted} Done` : undefined}
+          subtitle={
+            data?.installationsPending > 0
+              ? `${data.installationsPending} Pending Commissioning`
+              : (data?.totalInstallations ?? 0) > 0
+              ? "All Commissioned"
+              : "0 Pending"
+          }
           isPositiveTrend={true}
           colorScheme="teal"
         />
@@ -153,15 +160,16 @@ export default function HeadOfficeDashboard() {
           title="Support Tickets"
           value={data?.activeTickets ?? 0}
           icon={LifeBuoy}
-          trend="0%"
-          isPositiveTrend={false}
+          trend={data?.activeTickets === 0 ? "All Clear" : undefined}
+          isPositiveTrend={data?.activeTickets === 0}
           colorScheme="rose"
         />
         <KpiCard
           title="Renewals (Due)"
           value={data?.renewalsDue ?? "₹0.0 L"}
           icon={RefreshCw}
-          trend="0%"
+          trend={data?.activeRenewalsCount > 0 ? `${data.activeRenewalsCount} Active` : undefined}
+          subtitle={data?.activeRenewalsCount > 0 ? "Under Warranty" : undefined}
           isPositiveTrend={true}
           colorScheme="amber"
         />

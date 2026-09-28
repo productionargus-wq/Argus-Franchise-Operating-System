@@ -94,16 +94,18 @@ export function KpiCard({
                 isPositiveTrend ? "text-emerald-600" : "text-rose-600"
               }`}
             >
-              {isPositiveTrend ? (
-                <TrendingUp className="w-3 h-3 stroke-[2.5]" />
-              ) : (
-                <TrendingDown className="w-3 h-3 stroke-[2.5]" />
-              )}
+              {trend.includes("%") ? (
+                isPositiveTrend ? (
+                  <TrendingUp className="w-3 h-3 stroke-[2.5]" />
+                ) : (
+                  <TrendingDown className="w-3 h-3 stroke-[2.5]" />
+                )
+              ) : null}
               <span>{trend}</span>
             </div>
           )}
-          {!trend && subtitle && (
-            <div className="text-[11px] text-slate-400 mt-1 truncate">
+          {subtitle && (
+            <div className="text-[11px] text-slate-400 mt-0.5 truncate">
               {subtitle}
             </div>
           )}

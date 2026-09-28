@@ -2195,7 +2195,7 @@ export const dbRepository = {
   },
 
   // DASHBOARD KPIS & ANALYTICS
-  async getFranchiseDashboardKPIs(franchiseId: string, orgId?: string | null) {
+  async getFranchiseDashboardKPIs(franchiseId?: string | null, orgId?: string | null) {
     await ensureInitialized();
     if (!orgId) {
       return {
@@ -2206,7 +2206,8 @@ export const dbRepository = {
         poReceived: { value: 0, formatted: "₹0.0 L", trend: "0%" },
         paymentPending: { value: 0, formatted: "₹0.0 L", trend: "0%" },
         installationsPending: { count: 0 },
-        renewalsDue: { value: 0, formatted: "₹0", subtitle: "(This Month)" },
+        installations: { total: 0, completed: 0, pending: 0, trend: "0%", subtitle: "0 Pending" },
+        renewalsDue: { value: 0, formatted: "₹0", totalCount: 0, activeCount: 0, subtitle: "0 Due" },
         commission: { value: 0, formatted: "₹0.00 L" },
         pipelineFunnel: [
           { stage: "New Lead", count: 0, fill: "#2563EB" },
@@ -2216,17 +2217,14 @@ export const dbRepository = {
           { stage: "PO", count: 0, fill: "#10B981" },
           { stage: "Won", count: 0, fill: "#1D4ED8" },
         ],
-        salesTrend: [
-          { month: "Jan", hardware: 0, software: 0 },
-          { month: "Feb", hardware: 0, software: 0 },
-          { month: "Mar", hardware: 0, software: 0 },
-          { month: "Apr", hardware: 0, software: 0 },
-          { month: "May", hardware: 0, software: 0 },
-          { month: "Jun", hardware: 0, software: 0 },
-        ],
+        salesTrend: [],
+        recentActivities: [],
       };
     }
-    const query: any = { franchiseId, orgId };
+    const query: any = { orgId };
+    if (franchiseId) {
+      query.franchiseId = franchiseId;
+    }
 
     const leads = await LeadModel.find(query).lean();
     const opps = await OpportunityModel.find(query).lean();
@@ -2238,18 +2236,130 @@ export const dbRepository = {
 
     const newLeadsCount = leads.length;
     const qualifiedCount = leads.filter((l) => l.status === "Qualified" || l.status === "Converted").length;
-    const demosCount = opps.filter((o) => o.demo && o.demo.status === "Completed").length;
+    const demosCount = opps.filter((o) => o.stage === "Demo" || (o.demo && o.demo.status === "Completed") || (o.timeline && o.timeline.some((t: any) => (t.stage || "").toLowerCase().includes("demo")))).length;
     const quoteTotal = quotes.reduce((acc, q) => acc + (q.grandTotal || 0), 0);
     const poReceivedValue = orders.reduce((acc, o) => acc + (o.orderValue || 0), 0);
 
-    const paymentPending = orders.reduce((acc, o) => {
+    const totalCollections = orders.reduce((acc, o) => {
       const rec = (o.paymentSchedule || []).reduce((p: number, m: any) => p + (m.receivedAmount || 0), 0);
-      return acc + ((o.orderValue || 0) - rec);
+      return acc + rec;
     }, 0);
+    const paymentPending = Math.max(0, poReceivedValue - totalCollections);
 
-    const pendingInstallations = installations.filter((i) => i.status !== "Completed").length;
-    const renewalsMonthValue = renewals.reduce((acc, r) => acc + (r.contractValue || 0), 0);
+    const totalInstallations = installations.length;
+    const completedInstallations = installations.filter((i) => i.status === "Completed").length;
+    const pendingInstallations = totalInstallations - completedInstallations;
+
+    const totalRenewals = renewals.length;
+    const activeRenewals = renewals.filter((r) => r.status === "Active").length;
+    const renewalsMonthValue = renewals
+      .filter((r) => r.status === "Due" || r.status === "Expiring_Soon")
+      .reduce((acc, r) => acc + (r.contractValue || 0), 0);
+
     const earnedCommission = commissions.reduce((acc, c) => acc + (c.calculatedAmount || 0), 0);
+
+    // Sales Trend: Trailing 6 calendar months dynamically calculated from actual orders
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const now = new Date();
+    const trailing6Months: { month: string; yearMonth: string; hardware: number; software: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      trailing6Months.push({
+        month: monthNames[d.getMonth()],
+        yearMonth: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+        hardware: 0,
+        software: 0,
+      });
+    }
+
+    for (const o of orders) {
+      const dateStr = o.poDate || o.createdAt;
+      const d = dateStr ? new Date(dateStr) : now;
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const bucket = trailing6Months.find((b) => b.yearMonth === ym) || trailing6Months[trailing6Months.length - 1];
+      if (bucket) {
+        const valLakhs = Number(((o.orderValue || 0) / 100000).toFixed(2));
+        bucket.hardware += valLakhs;
+      }
+    }
+    const salesTrend = trailing6Months.map((b) => ({
+      month: b.month,
+      hardware: Number(b.hardware.toFixed(1)),
+      software: Number(b.software.toFixed(1)),
+    }));
+
+    // Dynamic Recent Activities across orders, installations, quotations, leads, and renewals
+    const rawActivities: any[] = [];
+    for (const ins of installations) {
+      rawActivities.push({
+        id: `act-ins-${ins.installationId}`,
+        type: "install",
+        title: ins.status === "Completed" ? "Installation Commissioned" : "Installation In Progress",
+        desc: `${ins.installationId} for ${ins.companyName || ins.customerName} (${ins.status})`,
+        timestamp: ins.updatedAt || ins.createdAt || new Date(),
+        color: "text-purple-600",
+      });
+    }
+    for (const ord of orders) {
+      rawActivities.push({
+        id: `act-ord-${ord.orderId}`,
+        type: "order",
+        title: `Sales Order ${ord.orderStatus || "Confirmed"}`,
+        desc: `${ord.companyName || ord.customerName} (${ord.orderId}, ₹${((ord.orderValue || 0) / 100000).toFixed(1)} L)`,
+        timestamp: ord.updatedAt || ord.createdAt || new Date(),
+        color: "text-emerald-600",
+      });
+    }
+    for (const q of quotes) {
+      rawActivities.push({
+        id: `act-quote-${q.quoteId}`,
+        type: "quote",
+        title: `Quotation ${q.status || "Created"}`,
+        desc: `${q.quoteId} (₹${((q.grandTotal || 0) / 100000).toFixed(1)} L) for ${q.companyName || q.customerName}`,
+        timestamp: q.updatedAt || q.createdAt || new Date(),
+        color: "text-blue-600",
+      });
+    }
+    for (const l of leads) {
+      rawActivities.push({
+        id: `act-lead-${l.leadId}`,
+        type: "lead",
+        title: `Lead ${l.status || "Captured"}`,
+        desc: `${l.companyName || l.customerName} (${l.productInterest || "Lead"})`,
+        timestamp: l.updatedAt || l.createdAt || new Date(),
+        color: "text-[#FF6600]",
+      });
+    }
+    for (const r of renewals) {
+      rawActivities.push({
+        id: `act-rw-${r.renewalId}`,
+        type: "renewal",
+        title: `Machine Warranty Active`,
+        desc: `${r.renewalId}: ${r.productName || "Equipment"} (${r.companyName || r.customerName})`,
+        timestamp: r.createdAt || new Date(),
+        color: "text-teal-600",
+      });
+    }
+
+    rawActivities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const recentActivities = rawActivities.slice(0, 6).map((act) => {
+      const diffMs = Date.now() - new Date(act.timestamp).getTime();
+      const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+      let timeText = "Just now";
+      if (diffHrs >= 24) {
+        const days = Math.floor(diffHrs / 24);
+        timeText = days === 1 ? "Yesterday" : `${days} days ago`;
+      } else if (diffHrs >= 1) {
+        timeText = `${diffHrs}h ago`;
+      } else {
+        const mins = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+        timeText = `${mins}m ago`;
+      }
+      return {
+        ...act,
+        time: timeText,
+      };
+    });
 
     return {
       newLeads: { count: newLeadsCount, trend: newLeadsCount > 0 ? "+ 10%" : "0%" },
@@ -2257,26 +2367,46 @@ export const dbRepository = {
       demos: { count: demosCount, trend: demosCount > 0 ? "+ 8%" : "0%" },
       quotationValue: { value: quoteTotal, formatted: `₹${(quoteTotal / 100000).toFixed(1)} L`, trend: quoteTotal > 0 ? "+ 12%" : "0%" },
       poReceived: { value: poReceivedValue, formatted: `₹${(poReceivedValue / 100000).toFixed(1)} L`, trend: poReceivedValue > 0 ? "+ 15%" : "0%" },
-      paymentPending: { value: paymentPending, formatted: `₹${(paymentPending / 100000).toFixed(1)} L`, trend: "0%" },
+      paymentPending: {
+        value: paymentPending,
+        formatted: `₹${(paymentPending / 100000).toFixed(1)} L`,
+        trend: "0%",
+        subtitle: paymentPending === 0 && poReceivedValue > 0 ? "100% Collected" : undefined,
+      },
       installationsPending: { count: pendingInstallations },
-      renewalsDue: { value: renewalsMonthValue, formatted: `₹${renewalsMonthValue.toLocaleString("en-IN")}`, subtitle: "(This Month)" },
+      installations: {
+        total: totalInstallations,
+        completed: completedInstallations,
+        pending: pendingInstallations,
+        trend: completedInstallations > 0 ? `${completedInstallations} Done` : "0%",
+        subtitle: pendingInstallations > 0
+          ? `${pendingInstallations} Pending Commissioning`
+          : totalInstallations > 0
+          ? "All Commissioned & Signed"
+          : "0 Pending",
+      },
+      renewalsDue: {
+        value: renewalsMonthValue,
+        formatted: renewalsMonthValue > 0 ? `₹${(renewalsMonthValue / 100000).toFixed(1)} L` : "₹0",
+        totalCount: totalRenewals,
+        activeCount: activeRenewals,
+        subtitle: renewalsMonthValue > 0
+          ? "(This Month)"
+          : activeRenewals > 0
+          ? `${activeRenewals} Under Warranty`
+          : "0 Due",
+      },
       commission: { value: earnedCommission, formatted: `₹${(earnedCommission / 100000).toFixed(2)} L` },
       pipelineFunnel: [
-        { stage: "New Lead", count: leads.filter(l => l.status === "New").length, fill: "#2563EB" },
+        { stage: "New Lead", count: newLeadsCount, fill: "#2563EB" },
         { stage: "Qualified", count: qualifiedCount, fill: "#06B6D4" },
         { stage: "Demo", count: demosCount, fill: "#F97316" },
         { stage: "Quotation", count: quotes.length, fill: "#EAB308" },
         { stage: "PO", count: orders.length, fill: "#10B981" },
-        { stage: "Won", count: opps.filter(o => o.stage === "Won").length, fill: "#1D4ED8" },
+        { stage: "Won", count: opps.filter((o) => o.stage === "Won" || o.stage === "Closed Won").length, fill: "#1D4ED8" },
       ],
-      salesTrend: [
-        { month: "Jan", hardware: 0, software: 0 },
-        { month: "Feb", hardware: 0, software: 0 },
-        { month: "Mar", hardware: 0, software: 0 },
-        { month: "Apr", hardware: 0, software: 0 },
-        { month: "May", hardware: 0, software: 0 },
-        { month: "Jun", hardware: Number((poReceivedValue / 100000).toFixed(1)), software: 0 },
-      ],
+      salesTrend,
+      recentActivities,
     };
   },
 
@@ -2289,9 +2419,13 @@ export const dbRepository = {
         totalOpps: 0,
         totalSales: "₹0.0 L",
         pendingPayments: "₹0.0 L",
+        totalInstallations: 0,
+        installationsCompleted: 0,
         installationsPending: 0,
         activeTickets: 0,
         renewalsDue: "₹0.0 L",
+        totalRenewals: 0,
+        activeRenewalsCount: 0,
         franchiseSalesBreakdown: [],
         categoryBreakdown: [
           { category: "CNC Accessories", percent: 0, color: "#2563EB" },
@@ -2312,31 +2446,78 @@ export const dbRepository = {
     const tickets = await SupportTicketModel.find(query).lean();
     const renewals = await RenewalModel.find(query).lean();
     const installations = await InstallationModel.find(query).lean();
+    const products = await ProductModel.find(query).lean();
 
     const totalFranchises = franchises.length;
     const totalLeads = leads.length;
     const totalOpps = opps.length;
     const totalSales = orders.reduce((acc, o) => acc + (o.orderValue || 0), 0) || franchises.reduce((acc, f) => acc + (f.achievedSales || 0), 0);
-    const totalCollections = franchises.reduce((acc, f) => acc + (f.collections || 0), 0);
+    const totalCollectionsFromOrders = orders.reduce((acc, o) => {
+      return acc + (o.paymentSchedule || []).reduce((p: number, m: any) => p + (m.receivedAmount || 0), 0);
+    }, 0);
+    const totalCollections = totalCollectionsFromOrders > 0
+      ? totalCollectionsFromOrders
+      : franchises.reduce((acc, f) => acc + (f.collections || 0), 0);
     const pendingPayments = Math.max(0, totalSales - totalCollections);
-    const installationsPending = installations.filter(i => i.status !== "Completed").length;
-    const activeTickets = tickets.filter(t => t.status === "Open" || t.status === "In Progress").length;
-    const renewalsDue = renewals.reduce((acc, r) => acc + (r.contractValue || 0), 0);
 
-    const franchiseSalesBreakdown = franchises.map((f) => ({
-      name: f.location || f.name,
-      salesLakhs: Number(((f.achievedSales || 0) / 100000).toFixed(1)),
-      leads: leads.filter((l) => l.franchiseId === f.code).length,
-      quotations: quotes.filter((q) => q.franchiseId === f.code).length,
-      rate: `${f.annualTarget ? Math.min(100, Math.round(((f.achievedSales || 0) / f.annualTarget) * 100)) : 0}%`,
+    const totalInstallations = installations.length;
+    const installationsCompleted = installations.filter((i) => i.status === "Completed").length;
+    const installationsPending = totalInstallations - installationsCompleted;
+
+    const activeTickets = tickets.filter((t) => t.status === "Open" || t.status === "In Progress").length;
+    const renewalsDue = renewals
+      .filter((r) => r.status === "Due" || r.status === "Expiring_Soon")
+      .reduce((acc, r) => acc + (r.contractValue || 0), 0);
+    const totalRenewals = renewals.length;
+    const activeRenewalsCount = renewals.filter((r) => r.status === "Active").length;
+
+    const franchiseSalesBreakdown = franchises.map((f) => {
+      const fOrders = orders.filter((o) => o.franchiseId === f.code || o.franchiseId === f.franchiseId || o.franchiseName === f.name);
+      const fSales = fOrders.reduce((sum, o) => sum + (o.orderValue || 0), 0) || f.achievedSales || 0;
+      const fLeads = leads.filter((l) => l.franchiseId === f.code || l.franchiseId === f.franchiseId).length;
+      const fQuotes = quotes.filter((q) => q.franchiseId === f.code || q.franchiseId === f.franchiseId).length;
+      const target = f.annualTarget || 5000000;
+      const rate = Math.min(100, Math.round((fSales / target) * 100));
+      return {
+        name: f.location || f.name || f.code,
+        salesLakhs: Number((fSales / 100000).toFixed(1)),
+        leads: fLeads,
+        quotations: fQuotes,
+        rate: `${rate}%`,
+      };
+    });
+
+    // Dynamic product category split from orders and product catalog
+    const catMap: Record<string, number> = {
+      "CNC Accessories": 0,
+      Software: 0,
+      "Installation & Service": 0,
+      "AMC / Renewal": 0,
+    };
+    const prodCatMap = new Map<string, string>();
+    for (const p of products) {
+      if (p.sku && p.category) prodCatMap.set(p.sku, p.category);
+    }
+    let totalCategorized = 0;
+    for (const o of orders) {
+      for (const item of o.items || []) {
+        const cat = prodCatMap.get(item.sku) || item.category || "CNC Accessories";
+        const val = item.total || (item.unitPrice || 0) * (item.quantity || 1) || 0;
+        catMap[cat] = (catMap[cat] || 0) + val;
+        totalCategorized += val;
+      }
+    }
+    const catColors: Record<string, string> = {
+      "CNC Accessories": "#2563EB",
+      Software: "#06B6D4",
+      "Installation & Service": "#F59E0B",
+      "AMC / Renewal": "#8B5CF6",
+    };
+    const categoryBreakdown = Object.keys(catMap).map((cat) => ({
+      category: cat,
+      percent: totalCategorized > 0 ? Math.round(((catMap[cat] || 0) / totalCategorized) * 100) : (totalSales > 0 ? 25 : 0),
+      color: catColors[cat] || "#64748B",
     }));
-
-    const categoryBreakdown = [
-      { category: "CNC Accessories", percent: totalSales > 0 ? 45 : 0, color: "#2563EB" },
-      { category: "Software", percent: totalSales > 0 ? 35 : 0, color: "#06B6D4" },
-      { category: "Installation & Service", percent: totalSales > 0 ? 12 : 0, color: "#F59E0B" },
-      { category: "AMC / Renewal", percent: totalSales > 0 ? 8 : 0, color: "#8B5CF6" },
-    ];
 
     const alerts: any[] = [];
     const pendingQuotes = quotes.filter((q) => q.requiresSpecialApproval && q.status === "Pending_Approval");
@@ -2363,15 +2544,31 @@ export const dbRepository = {
       });
     }
 
+    const pendingInstalls = installations.filter((i) => i.status !== "Completed");
+    for (const pi of pendingInstalls.slice(0, 2)) {
+      alerts.push({
+        id: `alt-ins-${pi.installationId}`,
+        type: "installation_pending",
+        title: "Commissioning Milestone Pending",
+        desc: `${pi.installationId}: ${pi.customerName || "Client"} - 5-step checklist incomplete.`,
+        link: `/installations/${pi.installationId}`,
+        severity: "warning",
+      });
+    }
+
     return {
       totalFranchises,
       totalLeads,
       totalOpps,
       totalSales: `₹${(totalSales / 100000).toFixed(1)} L`,
       pendingPayments: `₹${(pendingPayments / 100000).toFixed(1)} L`,
+      totalInstallations,
+      installationsCompleted,
       installationsPending,
       activeTickets,
-      renewalsDue: `₹${(renewalsDue / 100000).toFixed(1)} L`,
+      renewalsDue: renewalsDue > 0 ? `₹${(renewalsDue / 100000).toFixed(1)} L` : "₹0.0 L",
+      totalRenewals,
+      activeRenewalsCount,
       franchiseSalesBreakdown,
       categoryBreakdown,
       alerts,

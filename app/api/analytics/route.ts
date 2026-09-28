@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const franchiseId = searchParams.get("franchiseId");
     const view = searchParams.get("view"); // "ho" or "franchise"
 
-    if (view === "ho" || !franchiseId) {
+    if (view === "ho" || (!franchiseId && view !== "franchise")) {
       const data = await dbRepository.getHeadOfficeDashboardKPIs(orgId);
       return NextResponse.json(data);
     } else {

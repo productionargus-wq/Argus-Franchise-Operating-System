@@ -2,13 +2,45 @@
 
 import React from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { Clock, CheckCircle2, AlertCircle, FileText, Wrench } from "lucide-react";
+import {
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  FileText,
+  Wrench,
+  ShoppingCart,
+  RefreshCw,
+  LucideIcon,
+} from "lucide-react";
 
-export function RecentActivity() {
+export interface RecentActivityItem {
+  id: string | number;
+  type: string;
+  title: string;
+  desc: string;
+  time: string;
+  icon?: LucideIcon;
+  color?: string;
+}
+
+interface RecentActivityProps {
+  items?: RecentActivityItem[];
+}
+
+const TYPE_ICONS: Record<string, { icon: LucideIcon; color: string }> = {
+  install: { icon: Wrench, color: "text-purple-600" },
+  order: { icon: ShoppingCart, color: "text-emerald-600" },
+  quote: { icon: FileText, color: "text-blue-600" },
+  lead: { icon: CheckCircle2, color: "text-[#FF6600]" },
+  support: { icon: AlertCircle, color: "text-amber-600" },
+  renewal: { icon: RefreshCw, color: "text-teal-600" },
+};
+
+export function RecentActivity({ items }: RecentActivityProps) {
   const { currentUser } = useAuth();
   const isTemplateOrg = currentUser?.orgId === "ORG-TEMP";
 
-  const templateActivities = [
+  const templateActivities: RecentActivityItem[] = [
     {
       id: 1,
       type: "lead",
@@ -56,7 +88,11 @@ export function RecentActivity() {
     },
   ];
 
-  const activities = isTemplateOrg ? templateActivities : [];
+  const activities = (items && items.length > 0)
+    ? items
+    : isTemplateOrg
+    ? templateActivities
+    : [];
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
@@ -78,10 +114,13 @@ export function RecentActivity() {
       ) : (
         <div className="divide-y divide-slate-100">
           {activities.map((act) => {
-            const Icon = act.icon;
+            const resolved = TYPE_ICONS[act.type] || { icon: Clock, color: "text-slate-500" };
+            const Icon = act.icon || resolved.icon;
+            const colorClass = act.color || resolved.color;
+
             return (
               <div key={act.id} className="py-2.5 flex items-start gap-3 text-xs">
-                <div className={`mt-0.5 ${act.color}`}>
+                <div className={`mt-0.5 ${colorClass}`}>
                   <Icon className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">

@@ -190,20 +190,26 @@ export default function FranchiseDashboard() {
           value={kpiData?.paymentPending?.formatted ?? "₹0.0 L"}
           icon={Clock}
           trend={kpiData?.paymentPending?.trend ?? "0%"}
+          subtitle={kpiData?.paymentPending?.subtitle}
           isPositiveTrend={false}
           colorScheme="amber"
         />
         <KpiCard
-          title="Installations Pending"
-          value={kpiData?.installationsPending?.count ?? 0}
+          title="Installations"
+          value={kpiData?.installations?.total ?? kpiData?.installationsPending?.count ?? 0}
           icon={Wrench}
-          colorScheme="rose"
+          trend={kpiData?.installations?.completed > 0 ? `${kpiData.installations.completed} Done` : undefined}
+          isPositiveTrend={true}
+          subtitle={kpiData?.installations?.subtitle ?? (kpiData?.installationsPending?.count > 0 ? `${kpiData.installationsPending.count} Pending` : "0 Pending")}
+          colorScheme="teal"
         />
         <KpiCard
           title="Renewals"
           value={kpiData?.renewalsDue?.formatted ?? "₹0"}
           icon={RefreshCw}
-          subtitle="(This Month)"
+          trend={kpiData?.renewalsDue?.activeCount > 0 ? `${kpiData.renewalsDue.activeCount} Active` : undefined}
+          isPositiveTrend={true}
+          subtitle={kpiData?.renewalsDue?.subtitle ?? "(This Month)"}
           colorScheme="emerald"
         />
       </div>
@@ -217,7 +223,7 @@ export default function FranchiseDashboard() {
       {/* Bottom Grid: Recent Activity & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <RecentActivity />
+          <RecentActivity items={kpiData?.recentActivities} />
         </div>
         <div>
           <QuickActions onOpenNewLead={() => setIsAddLeadModalOpen(true)} />

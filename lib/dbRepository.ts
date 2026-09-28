@@ -1944,11 +1944,52 @@ export const dbRepository = {
     if (updates.checklist) {
       updates.checklist = normalizeInstallationChecklist(updates.checklist);
     }
-    const updated = await InstallationModel.findOneAndUpdate(
+    const updated: any = await InstallationModel.findOneAndUpdate(
       query,
       { $set: updates },
       { new: true }
     ).lean();
+
+    if (updated && updated.status === "Completed") {
+      const activeOrgId = updated.orgId || orgId || "ORG-TEMP";
+      const existingRen = await RenewalModel.findOne({
+        orgId: activeOrgId,
+        machineSerial: updated.machineSerial,
+      });
+      if (!existingRen && updated.machineSerial) {
+        const renCount = await RenewalModel.countDocuments({ orgId: activeOrgId });
+        const startDate = updated.completedDate || new Date().toISOString().split("T")[0];
+        const nextYear = new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0];
+        await RenewalModel.create({
+          orgId: activeOrgId,
+          renewalId: `RW-${1000 + renCount + 1}`,
+          customerId: updated.customerId,
+          customerName: updated.customerName,
+          companyName: updated.companyName,
+          franchiseId: updated.franchiseId,
+          franchiseName: updated.franchiseName,
+          machineSerial: updated.machineSerial,
+          productName: updated.productName,
+          contractType: "Warranty",
+          contractValue: 0,
+          startDate,
+          expiryDate: nextYear,
+          status: "Active",
+          contactPerson: (updated as any).customerSignOffData?.signeeName || updated.customerName,
+          reminderStage: "None",
+        });
+
+        if (updated.customerId) {
+          const custQuery: any = idOr(updated.customerId, { customerId: updated.customerId });
+          if (activeOrgId) custQuery.orgId = activeOrgId;
+          await CustomerModel.updateOne(custQuery, {
+            $inc: { activeMachinesCount: 1 },
+            $set: { nextRenewalDate: nextYear },
+          });
+        }
+      }
+    }
+
     return updated ? normalizeInstallation(updated) : null;
   },
 

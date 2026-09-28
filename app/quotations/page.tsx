@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Clock,
   ShieldAlert,
+  ShieldCheck,
   Trash2,
   RefreshCw,
 } from "lucide-react";
@@ -204,6 +205,10 @@ export default function QuotationsPage() {
                       {quote.requiresSpecialApproval && quote.status === "Pending_Approval" ? (
                         <span className="inline-flex items-center gap-1 text-xs font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
                           <AlertTriangle className="w-3 h-3" /> Special Approval
+                        </span>
+                      ) : !quote.requiresSpecialApproval && (quote.status === "Approved" || quote.status === "Draft") ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                          <ShieldCheck className="w-3 h-3" /> Auto-Approved
                         </span>
                       ) : (
                         <StatusBadge status={quote.status} />

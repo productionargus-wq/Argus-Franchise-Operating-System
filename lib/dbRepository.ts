@@ -203,6 +203,12 @@ async function ensureInitialized() {
           }
         }
 
+        // Auto-heal: Ensure quotations created with standard pricing (<= 10% discount) have status "Approved"
+        await QuotationModel.updateMany(
+          { requiresSpecialApproval: false, status: "Draft" },
+          { $set: { status: "Approved" } }
+        );
+
         isInitialized = true;
         console.log("✅ MongoDB Atlas collections & Organization multi-tenant seed synchronized successfully with ORG-TEMP!");
       } catch (e) {
@@ -1459,7 +1465,7 @@ export const dbRepository = {
 
   async createQuotation(data: any, createdBy: UserSession, orgId?: string | null): Promise<Quotation> {
     await ensureInitialized();
-    const activeOrgId = data.orgId || orgId || createdBy.orgId || "ORG-TEMP";
+    const activeOrgId = data.orgId || orgId || (typeof createdBy === "object" ? createdBy?.orgId : undefined) || "ORG-TEMP";
     const count = await QuotationModel.countDocuments({ orgId: activeOrgId });
     const quoteId = `QT-${9200 + count + 1}`;
 
@@ -1469,26 +1475,52 @@ export const dbRepository = {
     const specialDiscountPercent = data.specialDiscountPercent || 0;
     const overallDiscountPercent = Math.max(maxItemDiscount, specialDiscountPercent);
 
-    // Business rule: discount > 10% requires Head Office Super Admin approval
-    const requiresSpecialApproval = overallDiscountPercent > 10;
+    // Business rule: discount > 10% or below minSellingPrice requires Head Office approval
+    const itemPolicyViolation = items.some(
+      (item: any) =>
+        (item.maxDiscountPercent !== undefined && item.appliedDiscountPercent > item.maxDiscountPercent) ||
+        (item.minSellingPrice !== undefined && item.unitPrice < item.minSellingPrice)
+    );
+    const requiresSpecialApproval = overallDiscountPercent > 10 || itemPolicyViolation;
     const status: Quotation["status"] = requiresSpecialApproval
       ? "Pending_Approval"
-      : "Draft";
+      : "Approved"; // Auto-approved under standard discount policy
 
     const discountAmount = Math.round(subtotal * (overallDiscountPercent / 100));
     const taxableAmount = subtotal - discountAmount;
     const gstAmount = Math.round(taxableAmount * 0.18);
     const grandTotal = taxableAmount + gstAmount;
 
+    let companyName = data.companyName || data.customerName;
+    let customerName = data.customerName || data.companyName;
+    let franchiseId = data.franchiseId || (typeof createdBy === "object" ? createdBy?.franchiseId : undefined) || "";
+    let franchiseName = data.franchiseName || (typeof createdBy === "object" ? createdBy?.franchiseName : undefined) || "";
+
+    const targetOppId = data.opportunityId || data.oppId;
+    if (targetOppId && (!companyName || !customerName || !franchiseId || !franchiseName)) {
+      const opp = await OpportunityModel.findOne({
+        orgId: activeOrgId,
+        ...idOr(targetOppId, { opportunityId: targetOppId }, { oppId: targetOppId }),
+      }).lean();
+      if (opp) {
+        if (!companyName) companyName = opp.companyName;
+        if (!customerName) customerName = opp.customerName || opp.companyName;
+        if (!franchiseId) franchiseId = opp.franchiseId;
+        if (!franchiseName) franchiseName = opp.franchiseName;
+      }
+    }
+
+    const userName = (typeof createdBy === "string" ? createdBy : createdBy?.name) || "Franchise User";
+
     const newQuote = await QuotationModel.create({
       orgId: activeOrgId,
       quoteId,
-      opportunityId: data.opportunityId || data.oppId || "OP-1021",
+      opportunityId: targetOppId || "OP-1001",
       customerId: data.customerId || "CUST-5001",
-      customerName: data.customerName || "Sri Venkatesh Industries",
-      companyName: data.companyName || "Sri Venkatesh Industries",
-      franchiseId: data.franchiseId || createdBy.franchiseId || "FR-CBE",
-      franchiseName: data.franchiseName || createdBy.franchiseName || "Coimbatore Franchise",
+      customerName: customerName || "Valued Customer",
+      companyName: companyName || customerName || "Valued Customer",
+      franchiseId,
+      franchiseName,
       version: 1,
       items,
       subtotal,
@@ -1498,15 +1530,19 @@ export const dbRepository = {
       grandTotal,
       status,
       requiresSpecialApproval,
-      approvalReason: requiresSpecialApproval ? "Discount exceeds 10% standard limit" : undefined,
+      approvalReason: requiresSpecialApproval 
+        ? (data.approvalReason || "Discount exceeds 10% standard limit or violates price control policy") 
+        : undefined,
       validUntil: data.validUntil || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
       createdAt: new Date().toISOString().split("T")[0],
       auditLogs: [
         {
           timestamp: new Date().toISOString().split("T")[0],
-          user: createdBy.name || "Franchise User",
+          user: userName,
           action: "Created",
-          details: `Quotation created with ${overallDiscountPercent}% discount`,
+          details: requiresSpecialApproval
+            ? `Quotation created with ${overallDiscountPercent}% discount (exceeds 10% standard limit - pending Head Office approval)`
+            : `Quotation created with ${overallDiscountPercent}% discount (within standard policy - auto-approved)`,
         },
       ],
       terms: data.terms || "Payment: 20% Advance, 70% Before Dispatch, 10% Post Installation.",

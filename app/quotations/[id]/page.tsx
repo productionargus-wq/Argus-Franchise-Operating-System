@@ -170,20 +170,20 @@ export default function QuotationDetailPage() {
               <h1 className="text-lg font-black text-[#293033] tracking-tight">
                 Quotation: {quotation.quoteId} (v{quotation.version})
               </h1>
-              <StatusBadge status={quotation.status} />
+              <StatusBadge status={!quotation.requiresSpecialApproval && quotation.status === "Draft" ? "Approved" : quotation.status} />
             </div>
             <p className="text-xs text-slate-500">{quotation.companyName} | Opportunity: {quotation.opportunityId}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {quotation.status === "Approved" && (
+          {(quotation.status === "Approved" || (!quotation.requiresSpecialApproval && quotation.status !== "Rejected" && quotation.status !== "Accepted")) && (
             <button
               onClick={() => {
                 setPoNumber(`PO-${Math.floor(10000 + Math.random() * 90000)}`);
                 setIsPoModalOpen(true);
               }}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <ShoppingCart className="w-3.5 h-3.5" />
               <span>Convert to Sales Order</span>
@@ -267,6 +267,63 @@ export default function QuotationDetailPage() {
               Only Head Office Super Admin can authorize this special discount override. Switch role to <strong>Vikram Rathore</strong> in the top bar to review and approve.
             </p>
           )}
+        </div>
+      )}
+
+      {/* Auto-Approved Banner (Standard Pricing Policy) */}
+      {!quotation.requiresSpecialApproval && quotation.status !== "Rejected" && quotation.status !== "Accepted" && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-emerald-900">Standard Pricing Policy — Auto-Approved</span>
+                <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded">Ready for Order Conversion</span>
+              </div>
+              <p className="text-xs text-emerald-700 mt-0.5">
+                This quotation complies with Head Office price control rules and standard franchise discount policy (≤ 10%). Commercial approval is granted automatically.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setPoNumber(`PO-${Math.floor(10000 + Math.random() * 90000)}`);
+              setIsPoModalOpen(true);
+            }}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <ShoppingCart className="w-3.5 h-3.5" />
+            <span>Convert to Sales Order</span>
+          </button>
+        </div>
+      )}
+
+      {/* Converted to Order Banner */}
+      {quotation.status === "Accepted" && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 text-blue-700 rounded-lg shrink-0">
+              <CheckCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-blue-900">Quotation Converted to Sales Order</span>
+                <span className="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded">Order Active</span>
+              </div>
+              <p className="text-xs text-blue-700 mt-0.5">
+                This quotation has been successfully converted into an active Sales Order. Customer PO and milestone payment schedules are in progress.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/orders"
+            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <ShoppingCart className="w-3.5 h-3.5" />
+            <span>View Sales Orders</span>
+          </Link>
         </div>
       )}
 

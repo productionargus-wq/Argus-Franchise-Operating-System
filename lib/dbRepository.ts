@@ -2017,8 +2017,19 @@ export const dbRepository = {
   async createSupportTicket(data: Partial<SupportTicket>, orgId?: string | null): Promise<SupportTicket> {
     await ensureInitialized();
     const activeOrgId = data.orgId || orgId || "ORG-TEMP";
-    const count = await SupportTicketModel.countDocuments({ orgId: activeOrgId });
-    const ticketId = `TK-${1050 + count + 1}`;
+
+    // Find the highest existing ticket number to avoid duplicate key collisions
+    const allTickets = await SupportTicketModel.find({ orgId: activeOrgId })
+      .select("ticketId")
+      .lean();
+    let nextNum = 1051;
+    for (const t of allTickets) {
+      const match = (t as any).ticketId?.match(/TK-(\d+)/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num >= nextNum) nextNum = num + 1;
+      }
+    }
 
     const slaHours = data.priority === "Critical" ? 4 : data.priority === "High" ? 8 : 24;
 
@@ -2037,29 +2048,43 @@ export const dbRepository = {
     const fallbackEngId = (serviceEng as any)?.id || (serviceEng as any)?._id?.toString() || "usr-eng";
     const fallbackEngName = (serviceEng as any)?.name || "Field Service Specialist";
 
-    const newTicket = await SupportTicketModel.create({
-      orgId: activeOrgId,
-      ticketId,
-      customerId: data.customerId || "cust-1",
-      customerName: data.customerName || "Customer Rep",
-      companyName: data.companyName || "Client Facility",
-      franchiseId: data.franchiseId || "FR-MAIN",
-      machineSerial: data.machineSerial || "ARG-SER-001",
-      productName: data.productName || "Equipment",
-      category: data.category || "Breakdown",
-      priority: data.priority || "High",
-      slaHoursTotal: slaHours,
-      slaDeadline: new Date(Date.now() + slaHours * 3600000).toISOString(),
-      slaBreached: false,
-      assignedEngineerId: data.assignedEngineerId || fallbackEngId,
-      assignedEngineerName: data.assignedEngineerName || fallbackEngName,
-      status: "Open",
-      issueDescription: data.issueDescription || "Unspecified issue",
-      comments: [],
-      createdAt: new Date().toLocaleString("en-GB"),
-    });
-
-    return cleanDoc<SupportTicket>(newTicket);
+    // Retry loop to handle potential race conditions on ticketId
+    let attempts = 0;
+    while (attempts < 5) {
+      try {
+        const ticketId = `TK-${nextNum + attempts}`;
+        const newTicket = await SupportTicketModel.create({
+          orgId: activeOrgId,
+          ticketId,
+          customerId: data.customerId || "cust-1",
+          customerName: data.customerName || "Customer Rep",
+          companyName: data.companyName || "Client Facility",
+          franchiseId: data.franchiseId || "FR-MAIN",
+          machineSerial: data.machineSerial || "ARG-SER-001",
+          productName: data.productName || "Equipment",
+          category: data.category || "Breakdown",
+          priority: data.priority || "High",
+          slaHoursTotal: slaHours,
+          slaDeadline: new Date(Date.now() + slaHours * 3600000).toISOString(),
+          slaBreached: false,
+          assignedEngineerId: data.assignedEngineerId || fallbackEngId,
+          assignedEngineerName: data.assignedEngineerName || fallbackEngName,
+          status: "Open",
+          issueDescription: data.issueDescription || "Unspecified issue",
+          comments: [],
+          createdAt: new Date().toLocaleString("en-GB"),
+        });
+        return cleanDoc<SupportTicket>(newTicket);
+      } catch (err: any) {
+        // Duplicate key error — retry with next number
+        if (err?.code === 11000) {
+          attempts++;
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw new Error("Could not generate a unique ticket ID after multiple attempts");
   },
 
   async addTicketComment(

@@ -22,9 +22,14 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { searchParams } = new URL(request.url);
     const orgId = body.orgId || searchParams.get("orgId");
+    if (!orgId) {
+      return NextResponse.json({ error: "orgId is required" }, { status: 400 });
+    }
     const newTicket = await dbRepository.createSupportTicket(body, orgId);
     return NextResponse.json(newTicket, { status: 201 });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 400 });
+    console.error("Failed to create support ticket:", err);
+    const status = err?.code === 11000 ? 409 : 400;
+    return NextResponse.json({ error: err.message || "Failed to create support ticket" }, { status });
   }
 }

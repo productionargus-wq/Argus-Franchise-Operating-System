@@ -38,6 +38,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     return NextResponse.json({ error: "Invalid patch action" }, { status: 400 });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 400 });
+    console.error(`Failed to update support ticket ${params.id}:`, err);
+    return NextResponse.json({ error: err.message || "Failed to update support ticket" }, { status: 400 });
   }
 }

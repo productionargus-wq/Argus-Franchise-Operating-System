@@ -2191,7 +2191,43 @@ export const dbRepository = {
     const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await CustomerModel.find(query).sort({ companyName: 1 }).lean();
-    return cleanDocs<CustomerProfile>(docs);
+    if (docs.length === 0) return [];
+
+    const orders = await OrderModel.find({ orgId }).lean();
+    const installations = await InstallationModel.find({ orgId }).lean();
+    const tickets = await SupportTicketModel.find({ orgId }).lean();
+    const renewals = await RenewalModel.find({ orgId }).lean();
+
+    return docs.map((doc: any) => {
+      const clean = cleanDoc<CustomerProfile>(doc);
+      const matchesCust = (item: any) => {
+        if (!item) return false;
+        return (
+          item.customerId === clean._id?.toString() ||
+          item.customerId === clean.customerId ||
+          (clean.companyName && item.companyName && item.companyName.toLowerCase() === clean.companyName.toLowerCase()) ||
+          (clean.contactPerson && item.customerName && item.customerName.toLowerCase() === clean.contactPerson.toLowerCase())
+        );
+      };
+
+      const custOrders = orders.filter(matchesCust);
+      const custInstallations = installations.filter(matchesCust);
+      const custTickets = tickets.filter(matchesCust);
+      const custRenewals = renewals.filter(matchesCust);
+
+      const computedLtv = custOrders.reduce((sum, o) => sum + (o.orderValue || 0), 0);
+      const completedInstalls = custInstallations.filter((i) => i.status === "Completed");
+      const openTickets = custTickets.filter((t) => t.status === "Open" || t.status === "In Progress");
+      const sortedRenewals = [...custRenewals].sort((a, b) => new Date(a.expiryDate || "").getTime() - new Date(b.expiryDate || "").getTime());
+
+      return {
+        ...clean,
+        lifetimeValue: computedLtv > 0 ? computedLtv : (clean.lifetimeValue || 0),
+        activeMachinesCount: completedInstalls.length > 0 ? completedInstalls.length : (clean.activeMachinesCount || 0),
+        pendingTicketsCount: openTickets.length > 0 ? openTickets.length : (clean.pendingTicketsCount || 0),
+        nextRenewalDate: sortedRenewals[0]?.expiryDate || clean.nextRenewalDate || "None",
+      };
+    });
   },
 
   async getCustomerById(id: string, orgId?: string | null): Promise<CustomerProfile | null> {
@@ -2199,7 +2235,41 @@ export const dbRepository = {
     if (!orgId) return null;
     const query: any = { ...idOr(id, { customerId: id }), orgId };
     const doc = await CustomerModel.findOne(query).lean();
-    return doc ? cleanDoc<CustomerProfile>(doc) : null;
+    if (!doc) return null;
+    const clean = cleanDoc<CustomerProfile>(doc);
+
+    const matchesCust = (item: any) => {
+      if (!item) return false;
+      return (
+        item.customerId === clean._id?.toString() ||
+        item.customerId === clean.customerId ||
+        (clean.companyName && item.companyName && item.companyName.toLowerCase() === clean.companyName.toLowerCase()) ||
+        (clean.contactPerson && item.customerName && item.customerName.toLowerCase() === clean.contactPerson.toLowerCase())
+      );
+    };
+
+    const orders = await OrderModel.find({ orgId }).lean();
+    const installations = await InstallationModel.find({ orgId }).lean();
+    const tickets = await SupportTicketModel.find({ orgId }).lean();
+    const renewals = await RenewalModel.find({ orgId }).lean();
+
+    const custOrders = orders.filter(matchesCust);
+    const custInstallations = installations.filter(matchesCust);
+    const custTickets = tickets.filter(matchesCust);
+    const custRenewals = renewals.filter(matchesCust);
+
+    const computedLtv = custOrders.reduce((sum, o) => sum + (o.orderValue || 0), 0);
+    const completedInstalls = custInstallations.filter((i) => i.status === "Completed");
+    const openTickets = custTickets.filter((t) => t.status === "Open" || t.status === "In Progress");
+    const sortedRenewals = [...custRenewals].sort((a, b) => new Date(a.expiryDate || "").getTime() - new Date(b.expiryDate || "").getTime());
+
+    return {
+      ...clean,
+      lifetimeValue: computedLtv > 0 ? computedLtv : (clean.lifetimeValue || 0),
+      activeMachinesCount: completedInstalls.length > 0 ? completedInstalls.length : (clean.activeMachinesCount || 0),
+      pendingTicketsCount: openTickets.length > 0 ? openTickets.length : (clean.pendingTicketsCount || 0),
+      nextRenewalDate: sortedRenewals[0]?.expiryDate || clean.nextRenewalDate || "None",
+    };
   },
 
   async updateCustomer(id: string, updates: Partial<CustomerProfile>, orgId?: string | null): Promise<CustomerProfile | null> {

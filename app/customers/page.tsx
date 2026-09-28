@@ -118,37 +118,44 @@ export default function CustomersPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Account Lifetime Value:</span>
                     <span className="font-extrabold text-emerald-700">
-                      ₹{cust.lifetimeValue.toLocaleString("en-IN")}
+                      ₹{(cust.lifetimeValue || 0).toLocaleString("en-IN")}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Active Machines on Floor:</span>
-                    <span className="font-bold text-slate-900">{cust.activeMachinesCount} units</span>
+                    <span className="font-bold text-slate-900">{cust.activeMachinesCount || 0} units</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Open Tickets:</span>
                     <span
                       className={`font-bold ${
-                        cust.pendingTicketsCount > 0 ? "text-red-600" : "text-emerald-600"
+                        (cust.pendingTicketsCount || 0) > 0 ? "text-red-600" : "text-emerald-600"
                       }`}
                     >
-                      {cust.pendingTicketsCount} open
+                      {cust.pendingTicketsCount || 0} open
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Next AMC Renewal:</span>
-                    <span className="font-bold text-slate-800">{cust.nextRenewalDate}</span>
+                    <span className="font-bold text-slate-800">{cust.nextRenewalDate || "None"}</span>
                   </div>
                 </div>
               </div>
 
               <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-                <span className="text-slate-400 text-[11px] flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-slate-400" />
-                  <span>{cust.district}</span>
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 text-[11px] flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-slate-400" />
+                    <span>{cust.district || "Tamil Nadu"}</span>
+                  </span>
+                  {cust.franchiseName && (
+                    <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.5 rounded">
+                      {cust.franchiseName}
+                    </span>
+                  )}
+                </div>
                 <Link
-                  href={`/customers/${cust._id}`}
+                  href={`/customers/${cust.customerId || cust._id}`}
                   className="px-3 py-1.5 bg-[#FF6600] hover:bg-[#E65C00] text-white font-semibold rounded-lg transition-colors flex items-center gap-1 text-xs"
                 >
                   <span>Customer 360°</span>

@@ -51,7 +51,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const headOfficeNavItems = [
     { label: "HO Dashboard", href: "/ho/dashboard", icon: LayoutDashboard },
     { label: "Franchises", href: "/ho/franchises", icon: Building2 },
-    { label: "Leads", href: "/ho/leads", icon: Users },
+    { label: "Customers (360°)", href: "/customers", icon: Users },
+    { label: "Leads", href: "/ho/leads", icon: Target },
     { label: "Quotations & Approvals", href: "/quotations", icon: FileText },
     { label: "Sales & Orders", href: "/ho/orders", icon: ShoppingCart },
     { label: "Installations", href: "/ho/installations", icon: Wrench },

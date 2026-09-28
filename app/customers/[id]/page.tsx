@@ -139,6 +139,15 @@ export default function Customer360Page() {
 
   const { customer, opportunities, quotations, orders, installations, tickets, renewals, upsells } = data;
 
+  const computedLtv = (orders || []).reduce((sum: number, o: any) => sum + (o.orderValue || 0), 0) || customer.lifetimeValue || 0;
+  const completedInstallations = (installations || []).filter((i: any) => i.status === "Completed");
+  const activeMachines = completedInstallations.length > 0 ? completedInstallations.length : (customer.activeMachinesCount || 0);
+  const openTickets = (tickets || []).filter((t: any) => t.status === "Open" || t.status === "In Progress");
+  const criticalTickets = openTickets.filter((t: any) => t.priority === "Critical" || t.priority === "High");
+  const sortedRenewals = [...(renewals || [])].sort((a: any, b: any) => new Date(a.expiryDate || "").getTime() - new Date(b.expiryDate || "").getTime());
+  const nextRenewal = sortedRenewals[0];
+  const nextRenewalDate = nextRenewal?.expiryDate || customer.nextRenewalDate || "None";
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
@@ -160,7 +169,7 @@ export default function Customer360Page() {
               </span>
             </div>
             <p className="text-xs text-slate-500">
-              GSTIN: {customer.gstin} | Franchise: {customer.franchiseName}
+              GSTIN: {customer.gstin || "N/A"} | Franchise: {customer.franchiseName || "Direct"}
             </p>
           </div>
         </div>
@@ -183,9 +192,11 @@ export default function Customer360Page() {
             Customer Lifetime Value
           </span>
           <span className="text-2xl font-black text-emerald-700 mt-1 block">
-            ₹{customer.lifetimeValue.toLocaleString("en-IN")}
+            ₹{computedLtv.toLocaleString("en-IN")}
           </span>
-          <span className="text-xs text-emerald-600 mt-0.5 block font-medium">Top Tier Automotive Supplier</span>
+          <span className="text-xs text-emerald-600 mt-0.5 block font-medium truncate">
+            {orders.length > 0 ? `${orders.length} Confirmed Order${orders.length > 1 ? "s" : ""}` : (customer.industry ? `${customer.industry} Partner` : "New Account")}
+          </span>
         </div>
 
         <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
@@ -193,19 +204,29 @@ export default function Customer360Page() {
             Active CNC Machinery
           </span>
           <span className="text-2xl font-black text-slate-900 mt-1 block">
-            {customer.activeMachinesCount} Units Installed
+            {activeMachines} Unit{activeMachines === 1 ? "" : "s"} Installed
           </span>
-          <span className="text-xs text-slate-500 mt-0.5 block">VMC-700, Lathes, 4th Axis</span>
+          <span className="text-xs text-slate-500 mt-0.5 block truncate">
+            {completedInstallations.length > 0
+              ? completedInstallations.map((i: any) => i.productName || i.machineSerial).slice(0, 2).join(", ")
+              : (installations.length > 0 ? `${installations.length} Pending Installation` : "No equipment installed")}
+          </span>
         </div>
 
         <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
             Active Support Tickets
           </span>
-          <span className="text-2xl font-black text-red-600 mt-1 block">
-            {customer.pendingTicketsCount} Open Incident
+          <span className={`text-2xl font-black mt-1 block ${openTickets.length > 0 ? "text-red-600" : "text-slate-900"}`}>
+            {openTickets.length} Open Incident{openTickets.length === 1 ? "" : "s"}
           </span>
-          <span className="text-xs text-red-700 mt-0.5 block font-semibold">1 Critical (SLA in progress)</span>
+          <span className={`text-xs mt-0.5 block font-semibold truncate ${criticalTickets.length > 0 ? "text-red-700" : "text-emerald-600"}`}>
+            {criticalTickets.length > 0
+              ? `${criticalTickets.length} Critical SLA in progress`
+              : openTickets.length > 0
+              ? `${openTickets.length} Standard SLA active`
+              : "All SLA clear & operational"}
+          </span>
         </div>
 
         <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
@@ -213,9 +234,13 @@ export default function Customer360Page() {
             Next AMC / Warranty Renewal
           </span>
           <span className="text-2xl font-black text-[#FF6600] mt-1 block">
-            {customer.nextRenewalDate}
+            {nextRenewalDate}
           </span>
-          <span className="text-xs text-slate-500 mt-0.5 block">Notice-30d Dispatched</span>
+          <span className="text-xs text-slate-500 mt-0.5 block truncate">
+            {nextRenewal
+              ? `${nextRenewal.contractType || "Warranty"} (${nextRenewal.daysRemaining ?? 365}d left)`
+              : "No upcoming renewal"}
+          </span>
         </div>
       </div>
 
@@ -283,31 +308,41 @@ export default function Customer360Page() {
               Installed Machine Fleet on Shop Floor
             </h3>
             <div className="space-y-3">
-              {(installations || []).map((ins: any) => (
-                <div
-                  key={ins._id}
-                  className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between"
-                >
-                  <div>
-                    <span className="text-xs font-black text-slate-900">{ins.productName}</span>
-                    <div className="text-xs text-[#FF6600] font-bold">Serial: {ins.machineSerial}</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">
-                      Installed on {ins.scheduledDate} by {ins.assignedEngineerName}
+              {(installations || []).length === 0 ? (
+                <div className="p-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-slate-100">
+                  No machinery installations logged for this customer account.
+                </div>
+              ) : (
+                (installations || []).map((ins: any) => (
+                  <div
+                    key={ins._id || ins.installationId}
+                    className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between"
+                  >
+                    <div>
+                      <span className="text-xs font-black text-slate-900">{ins.productName}</span>
+                      <div className="text-xs text-[#FF6600] font-bold">Serial: {ins.machineSerial}</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        {ins.status === "Completed"
+                          ? `Commissioned on ${ins.completedDate || ins.scheduledDate} by ${ins.serviceEngineerName || ins.assignedEngineerName || "Service Engineer"}`
+                          : `Scheduled for ${ins.scheduledDate} with ${ins.serviceEngineerName || ins.assignedEngineerName || "Service Engineer"}`}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                        ins.status === "Completed" ? "text-emerald-700 bg-emerald-100" : "text-amber-700 bg-amber-100"
+                      }`}>
+                        {ins.status || "Pending"}
+                      </span>
+                      <Link
+                        href={`/installations/${ins.installationId}`}
+                        className="text-xs text-blue-600 font-bold hover:underline block mt-1"
+                      >
+                        View Report →
+                      </Link>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-emerald-700 bg-emerald-100 font-bold px-2 py-0.5 rounded text-[11px]">
-                      Commissioned
-                    </span>
-                    <Link
-                      href={`/installations/${ins.installationId}`}
-                      className="text-xs text-blue-600 font-bold hover:underline block mt-1"
-                    >
-                      View Report →
-                    </Link>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>

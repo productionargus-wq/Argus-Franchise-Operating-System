@@ -21,12 +21,39 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const allRenewals = await dbRepository.getRenewals(customerOrgId);
     const allProducts = await dbRepository.getProducts(customerOrgId);
 
-    const opps = allOpps.filter((o) => o.customerId === customer._id || o.customerId === customer.customerId);
-    const quotes = allQuotes.filter((q) => q.customerId === customer._id || q.customerId === customer.customerId);
-    const orders = allOrders.filter((o) => o.customerId === customer._id || o.customerId === customer.customerId);
-    const installations = allInstallations.filter((i) => i.customerId === customer._id || i.customerId === customer.customerId);
-    const tickets = allTickets.filter((t) => t.customerId === customer._id || t.customerId === customer.customerId);
-    const renewals = allRenewals.filter((r) => r.customerId === customer._id || r.customerId === customer.customerId);
+    const matchesCustomer = (item: any) => {
+      if (!item) return false;
+      return (
+        item.customerId === customer._id?.toString() ||
+        item.customerId === customer.customerId ||
+        (customer.companyName && item.companyName && item.companyName.toLowerCase() === customer.companyName.toLowerCase()) ||
+        (customer.contactPerson && item.customerName && item.customerName.toLowerCase() === customer.contactPerson.toLowerCase())
+      );
+    };
+
+    const opps = allOpps.filter(matchesCustomer);
+    const quotes = allQuotes.filter(matchesCustomer);
+    const orders = allOrders.filter(matchesCustomer);
+    const installations = allInstallations.filter(matchesCustomer);
+    const tickets = allTickets.filter(matchesCustomer);
+    const renewals = allRenewals.filter(matchesCustomer);
+
+    // Dynamically calculate Customer 360 KPIs
+    const computedLtv = orders.reduce((sum, o) => sum + (o.orderValue || 0), 0);
+    const completedInstallations = installations.filter((i) => i.status === "Completed");
+    const activeMachinesCount = completedInstallations.length > 0 ? completedInstallations.length : (customer.activeMachinesCount || 0);
+    const openTickets = tickets.filter((t) => t.status === "Open" || t.status === "In Progress");
+    const pendingTicketsCount = openTickets.length;
+    const sortedRenewals = [...renewals].sort((a, b) => new Date(a.expiryDate || "").getTime() - new Date(b.expiryDate || "").getTime());
+    const nextRenewalDate = sortedRenewals[0]?.expiryDate || customer.nextRenewalDate || "None";
+
+    const enrichedCustomer = {
+      ...customer,
+      lifetimeValue: computedLtv > 0 ? computedLtv : (customer.lifetimeValue || 0),
+      activeMachinesCount,
+      pendingTicketsCount,
+      nextRenewalDate,
+    };
 
     // DYNAMIC UPSELL MATRIX GENERATION
     const upsells: Array<{
@@ -148,7 +175,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     }
 
     return NextResponse.json({
-      customer,
+      customer: enrichedCustomer,
       opportunities: opps,
       quotations: quotes,
       orders,

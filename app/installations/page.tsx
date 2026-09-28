@@ -109,12 +109,20 @@ export default function InstallationsPage() {
           <div className="col-span-2 text-center py-12 text-slate-400 text-xs">No installations found.</div>
         ) : (
           filtered.map((inst) => {
+            const raw = inst.checklist;
+            let cur: any = raw;
+            while (Array.isArray(cur) && cur.length > 0) {
+              cur = cur[0];
+            }
+            while (cur && typeof cur === "object" && cur["0"] && typeof cur["0"] === "object") {
+              cur = cur["0"];
+            }
             const checklistItems = [
-              inst.checklist.materialDelivered,
-              inst.checklist.preInstallCheck,
-              inst.checklist.machineInstalled,
-              inst.checklist.trainingCompleted,
-              inst.checklist.customerSignOff,
+              cur?.materialDelivered,
+              cur?.preInstallCheck,
+              cur?.machineInstalled,
+              cur?.trainingCompleted,
+              cur?.customerSignOff,
             ];
             const completedCount = checklistItems.filter(Boolean).length;
             const progressPercent = Math.round((completedCount / 5) * 100);

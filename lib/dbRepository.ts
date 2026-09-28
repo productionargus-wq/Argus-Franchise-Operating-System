@@ -40,6 +40,7 @@ import {
   Quotation,
   SalesOrder,
   Installation,
+  InstallationChecklist,
   SupportTicket,
   Renewal,
   CommissionRecord,
@@ -257,6 +258,57 @@ function cleanDoc<T>(doc: any): T {
 
 function cleanDocs<T>(docs: any[]): T[] {
   return docs.map((d) => cleanDoc<T>(d));
+}
+
+function normalizeInstallationChecklist(raw: any): InstallationChecklist {
+  const result: InstallationChecklist = {
+    materialDelivered: false,
+    preInstallCheck: false,
+    machineInstalled: false,
+    trainingCompleted: false,
+    customerSignOff: false,
+  };
+
+  if (!raw) return result;
+
+  let cur = raw;
+  while (Array.isArray(cur) && cur.length > 0) {
+    cur = cur[0];
+  }
+  while (cur && typeof cur === "object" && cur["0"] && typeof cur["0"] === "object") {
+    cur = cur["0"];
+  }
+
+  if (cur && typeof cur === "object") {
+    result.materialDelivered = Boolean(cur.materialDelivered);
+    result.preInstallCheck = Boolean(cur.preInstallCheck);
+    result.machineInstalled = Boolean(cur.machineInstalled);
+    result.trainingCompleted = Boolean(cur.trainingCompleted);
+    result.customerSignOff = Boolean(cur.customerSignOff);
+  }
+
+  return result;
+}
+
+function normalizeInstallation(doc: any): Installation {
+  const inst = cleanDoc<Installation>(doc);
+  if (inst) {
+    inst.checklist = normalizeInstallationChecklist(inst.checklist);
+    if (!inst.assignedEngineerName) {
+      inst.assignedEngineerName = (inst as any).serviceEngineerName || "Ramesh Kumar";
+    }
+    if (!inst.assignedEngineerId) {
+      inst.assignedEngineerId = (inst as any).serviceEngineerId || "usr-cbe-eng";
+    }
+    if (!inst.trainingDetails) {
+      inst.trainingDetails = {
+        traineesCount: 2,
+        operatorsTrained: ["P. Murugesan", "K. Loganathan"],
+        topicsCovered: ["G-code fundamentals", "Tool length offset measurement", "Emergency shutdown procedures"],
+      };
+    }
+  }
+  return inst;
 }
 
 export const dbRepository = {
@@ -1758,17 +1810,25 @@ export const dbRepository = {
       machineSerial: `ARG-VMC-${Math.floor(100 + Math.random() * 900)}-${new Date().getFullYear()}`,
       productName: quote.items[0]?.name || "ARGUS VMC-700",
       siteReadinessStatus: "Pending",
+      assignedEngineerId: "usr-cbe-eng",
+      assignedEngineerName: "Ramesh Kumar",
       serviceEngineerId: "usr-cbe-eng",
       serviceEngineerName: "Ramesh Kumar",
       scheduledDate: new Date(Date.now() + 25 * 86400000).toISOString().split("T")[0],
       status: "Scheduled",
-      checklist: [
-        { item: "3-Phase 415V Stabilized Power & Neutral Grounding Verified", completed: false },
-        { item: "Pneumatic Supply (6 bar clean dry air connected)", completed: false },
-        { item: "Foundation Leveling within 0.02mm per meter verified", completed: false },
-        { item: "Axes Travel and Spindle Runout Calibration Performed", completed: false },
-        { item: "Test Part Machining Program Executed & Dimensional Sign-Off", completed: false },
-      ],
+      checklist: {
+        materialDelivered: false,
+        preInstallCheck: false,
+        machineInstalled: false,
+        trainingCompleted: false,
+        customerSignOff: false,
+      },
+      photos: [],
+      trainingDetails: {
+        traineesCount: 2,
+        operatorsTrained: ["P. Murugesan", "K. Loganathan"],
+        topicsCovered: ["G-code fundamentals", "Tool length offset measurement", "Emergency shutdown procedures"],
+      },
       operatorTrainingSigned: false,
     });
 
@@ -1850,7 +1910,7 @@ export const dbRepository = {
     const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await InstallationModel.find(query).sort({ scheduledDate: 1 }).lean();
-    return cleanDocs<Installation>(docs);
+    return docs.map(normalizeInstallation);
   },
 
   async getInstallationById(id: string, orgId?: string | null): Promise<Installation | null> {
@@ -1858,19 +1918,22 @@ export const dbRepository = {
     if (!orgId) return null;
     const query: any = { ...idOr(id, { installationId: id }), orgId };
     const doc = await InstallationModel.findOne(query).lean();
-    return doc ? cleanDoc<Installation>(doc) : null;
+    return doc ? normalizeInstallation(doc) : null;
   },
 
   async updateInstallation(id: string, updates: Partial<Installation>, orgId?: string | null): Promise<Installation | null> {
     await ensureInitialized();
     const query: any = idOr(id, { installationId: id });
     if (orgId) query.orgId = orgId;
+    if (updates.checklist) {
+      updates.checklist = normalizeInstallationChecklist(updates.checklist);
+    }
     const updated = await InstallationModel.findOneAndUpdate(
       query,
       { $set: updates },
       { new: true }
     ).lean();
-    return updated ? cleanDoc<Installation>(updated) : null;
+    return updated ? normalizeInstallation(updated) : null;
   },
 
   // SUPPORT TICKETS

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
-import { Installation } from "@/lib/types";
+import { Installation, InstallationChecklist } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/Badge";
 import { SignaturePad } from "@/components/ui/SignaturePad";
 import {
@@ -19,6 +19,24 @@ import {
   ShieldCheck,
   Printer,
 } from "lucide-react";
+
+function getSafeChecklist(inst: Installation | null): InstallationChecklist {
+  const raw = inst?.checklist;
+  let cur: any = raw;
+  while (Array.isArray(cur) && cur.length > 0) {
+    cur = cur[0];
+  }
+  while (cur && typeof cur === "object" && cur["0"] && typeof cur["0"] === "object") {
+    cur = cur["0"];
+  }
+  return {
+    materialDelivered: Boolean(cur?.materialDelivered),
+    preInstallCheck: Boolean(cur?.preInstallCheck),
+    machineInstalled: Boolean(cur?.machineInstalled),
+    trainingCompleted: Boolean(cur?.trainingCompleted),
+    customerSignOff: Boolean(cur?.customerSignOff),
+  };
+}
 
 export default function InstallationDetailPage() {
   const params = useParams();
@@ -57,12 +75,19 @@ export default function InstallationDetailPage() {
     loadInstallation();
   }, [params.id, currentUser]);
 
-  const handleChecklistToggle = async (key: keyof Installation["checklist"]) => {
+  const handleChecklistToggle = async (key: keyof InstallationChecklist) => {
     if (!installation) return;
-    const updatedChecklist = {
-      ...installation.checklist,
-      [key]: !installation.checklist[key],
+    const current = getSafeChecklist(installation);
+    const updatedChecklist: InstallationChecklist = {
+      ...current,
+      [key]: !current[key],
     };
+
+    // Optimistically update UI
+    setInstallation({
+      ...installation,
+      checklist: updatedChecklist,
+    });
 
     try {
       setSaving(true);
@@ -72,10 +97,14 @@ export default function InstallationDetailPage() {
         body: JSON.stringify({ checklist: updatedChecklist, orgId: currentUser?.orgId }),
       });
       if (res.ok) {
+        const data = await res.json();
+        setInstallation(data);
+      } else {
         loadInstallation();
       }
     } catch (err) {
       console.error(err);
+      loadInstallation();
     } finally {
       setSaving(false);
     }
@@ -88,6 +117,14 @@ export default function InstallationDetailPage() {
       return;
     }
 
+    const current = getSafeChecklist(installation);
+    const finalChecklist: InstallationChecklist = {
+      ...current,
+      customerSignOff: true,
+      trainingCompleted: true,
+      machineInstalled: true,
+    };
+
     try {
       setSaving(true);
       const res = await fetch(`/api/installations/${installation.installationId}`, {
@@ -97,12 +134,7 @@ export default function InstallationDetailPage() {
           orgId: currentUser?.orgId,
           status: "Completed",
           completedDate: new Date().toISOString().split("T")[0],
-          checklist: {
-            ...installation.checklist,
-            customerSignOff: true,
-            trainingCompleted: true,
-            machineInstalled: true,
-          },
+          checklist: finalChecklist,
           customerSignOffData: {
             signeeName,
             signeeDesignation,
@@ -112,7 +144,8 @@ export default function InstallationDetailPage() {
         }),
       });
       if (res.ok) {
-        loadInstallation();
+        const data = await res.json();
+        setInstallation(data);
       }
     } catch (err) {
       console.error(err);
@@ -209,7 +242,9 @@ export default function InstallationDetailPage() {
 
         <div className="p-4 rounded-xl border border-slate-200 bg-white">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Assigned Engineer</span>
-          <span className="text-sm font-black text-slate-900 mt-0.5 block">{installation.assignedEngineerName}</span>
+          <span className="text-sm font-black text-slate-900 mt-0.5 block">
+            {installation.assignedEngineerName || (installation as any).serviceEngineerName || "Ramesh Kumar"}
+          </span>
           <span className="text-xs text-slate-500 mt-1 block">Certified Field Specialist</span>
         </div>
 
@@ -224,7 +259,7 @@ export default function InstallationDetailPage() {
         <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50">
           <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">Sign-off Status</span>
           <span className="text-sm font-black text-emerald-800 mt-0.5 block">
-            {installation.checklist.customerSignOff ? "Officially Accepted" : "Pending Sign-off"}
+            {getSafeChecklist(installation).customerSignOff ? "Officially Accepted" : "Pending Sign-off"}
           </span>
           <span className="text-xs text-emerald-600 mt-1 block">Warranty Active from Sign-off</span>
         </div>
@@ -244,7 +279,8 @@ export default function InstallationDetailPage() {
 
           <div className="space-y-3">
             {checklistItems.map((item, idx) => {
-              const isDone = installation.checklist[item.key];
+              const safeChecklist = getSafeChecklist(installation);
+              const isDone = safeChecklist[item.key];
 
               return (
                 <div

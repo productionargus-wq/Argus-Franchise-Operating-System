@@ -334,12 +334,58 @@ export const dbRepository = {
 
     // 2. Check regular organization UserModel (Head Office Admin, Franchise Admin, Engineers, etc.)
     // Note: super_admin role can never originate from UserModel
-    const doc: any = await UserModel.findOne({
+    let doc: any = await UserModel.findOne({
       email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, "i") },
       role: { $ne: "super_admin" },
     }).lean();
 
-    if (!doc) return null;
+    if (!doc) {
+      // 3. Fallback Self-Healing: Check if email belongs to an onboarded Franchise in FranchiseModel
+      const franchiseDoc: any = await FranchiseModel.findOne({
+        email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, "i") },
+      }).lean();
+
+      if (franchiseDoc) {
+        const orgDoc: any = franchiseDoc.orgId
+          ? await OrganizationModel.findOne({ orgId: franchiseDoc.orgId }).lean()
+          : null;
+
+        const initials = (franchiseDoc.contactPerson || "FA")
+          .split(" ")
+          .map((w: string) => w[0])
+          .filter(Boolean)
+          .join("")
+          .slice(0, 2)
+          .toUpperCase() || "FA";
+
+        const restoredUser: UserSession = {
+          id: `usr-${franchiseDoc.code.toLowerCase().replace(/[^a-z0-9]/g, "")}-admin`,
+          name: franchiseDoc.contactPerson || "Franchise Admin",
+          email: normalizedEmail,
+          role: "franchise_admin",
+          orgId: franchiseDoc.orgId,
+          orgName: orgDoc?.name || franchiseDoc.name,
+          franchiseId: franchiseDoc.code,
+          franchiseName: franchiseDoc.name,
+          avatar: initials,
+          status: "active",
+        };
+
+        // Self-heal and persist back into UserModel in Atlas so all queries see them
+        await UserModel.findOneAndUpdate(
+          { email: normalizedEmail },
+          { $set: restoredUser },
+          { upsert: true, new: true }
+        );
+
+        return {
+          user: restoredUser,
+          organization: orgDoc ? cleanDoc<Organization>(orgDoc) : null,
+        };
+      }
+
+      return null;
+    }
 
     let org: Organization | null = null;
     if (doc.orgId) {
@@ -378,7 +424,7 @@ export const dbRepository = {
     await ensureInitialized();
     if (!orgId) return [];
 
-    const activeFranchises = await FranchiseModel.find({ orgId }).select("code").lean();
+    const activeFranchises: any[] = await FranchiseModel.find({ orgId }).lean();
     const activeCodes = new Set(activeFranchises.map((f: any) => f.code));
 
     // Self-healing: automatically purge any orphaned franchise staff accounts whose franchise was deleted in the past
@@ -387,6 +433,36 @@ export const dbRepository = {
       role: { $in: ["franchise_admin", "franchise_sales", "service_engineer"] },
       franchiseId: { $nin: Array.from(activeCodes) },
     });
+
+    // Self-healing: ensure every active franchise with an admin email has a corresponding user record in UserModel
+    for (const fr of activeFranchises) {
+      if (fr.email && fr.code) {
+        const cleanEmail = fr.email.trim().toLowerCase();
+        const existing = await UserModel.findOne({ email: cleanEmail }).lean();
+        if (!existing) {
+          const initials = (fr.contactPerson || "FA")
+            .split(" ")
+            .map((w: string) => w[0])
+            .filter(Boolean)
+            .join("")
+            .slice(0, 2)
+            .toUpperCase() || "FA";
+
+          await UserModel.create({
+            id: `usr-${fr.code.toLowerCase().replace(/[^a-z0-9]/g, "")}-admin`,
+            name: fr.contactPerson || "Franchise Admin",
+            email: cleanEmail,
+            role: "franchise_admin",
+            orgId,
+            orgName: fr.name,
+            franchiseId: fr.code,
+            franchiseName: fr.name,
+            avatar: initials,
+            status: "active",
+          });
+        }
+      }
+    }
 
     const docs = await UserModel.find({ orgId }).lean();
     return cleanDocs<UserSession>(docs);
@@ -620,13 +696,14 @@ export const dbRepository = {
               orgId: activeOrgId,
               franchiseId: code,
               franchiseName: name,
+              role: "franchise_admin",
               status: "active",
             },
           }
         );
       } else {
         await UserModel.findOneAndUpdate(
-          { id: adminUserData.id },
+          { email: adminUserEmail },
           { $set: adminUserData },
           { upsert: true, new: true }
         );
@@ -703,24 +780,43 @@ export const dbRepository = {
       }
 
       // 2. Synchronize UserModel for Franchise Admin
-      const userUpdate: any = {};
-      if (data.contactPerson) userUpdate.name = data.contactPerson.trim();
-      if (data.email) userUpdate.email = data.email.trim().toLowerCase();
-      if (data.name) userUpdate.franchiseName = data.name.trim();
-      if (data.contactPerson) {
-        const initials = data.contactPerson
+      if (updated.email) {
+        const adminEmail = updated.email.trim().toLowerCase();
+        const contactName = (data.contactPerson || updated.contactPerson || "Franchise Admin").trim();
+        const initials = contactName
           .split(" ")
           .map((n: string) => n[0])
           .filter(Boolean)
           .join("")
           .slice(0, 2)
-          .toUpperCase();
-        if (initials) userUpdate.avatar = initials;
-      }
-      if (Object.keys(userUpdate).length > 0) {
-        await UserModel.updateMany(
-          { franchiseId: updated.code, orgId, role: "franchise_admin" },
-          { $set: userUpdate }
+          .toUpperCase() || "FA";
+
+        const orgDoc: any = await OrganizationModel.findOne({ orgId }).lean();
+
+        await UserModel.findOneAndUpdate(
+          {
+            $or: [
+              { email: adminEmail },
+              { franchiseId: updated.code, orgId, role: "franchise_admin" },
+            ],
+          },
+          {
+            $set: {
+              name: contactName,
+              email: adminEmail,
+              role: "franchise_admin",
+              orgId,
+              orgName: orgDoc?.name || updated.name,
+              franchiseId: updated.code,
+              franchiseName: updated.name,
+              avatar: initials,
+              status: "active",
+            },
+            $setOnInsert: {
+              id: `usr-${updated.code.toLowerCase().replace(/[^a-z0-9]/g, "")}-admin`,
+            },
+          },
+          { upsert: true, new: true }
         );
       }
     }

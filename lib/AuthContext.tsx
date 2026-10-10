@@ -132,8 +132,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (users.length > 0) {
               setAvailableUsers(users);
             }
-            // For franchise and HO staff, verify currentUser still exists in active org personnel
-            if (currentUser.role !== "super_admin" && users.length > 0) {
+            // For franchise staff and engineers, verify currentUser still exists in active org personnel
+            if (
+              currentUser.role !== "super_admin" &&
+              currentUser.role !== "head_office_admin" &&
+              users.length > 0
+            ) {
               const currentEmail = currentUser.email.toLowerCase();
               const userStillExists = users.some(
                 (u) => (u.email && u.email.toLowerCase() === currentEmail) || u.id === currentUser.id

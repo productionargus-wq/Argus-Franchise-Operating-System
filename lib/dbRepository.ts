@@ -340,7 +340,42 @@ export const dbRepository = {
     }).lean();
 
     if (!doc) {
-      // 3. Fallback Self-Healing: Check if email belongs to an onboarded Franchise in FranchiseModel
+      // 3. Fallback Self-Healing: Check if email is the Head Office Admin email in OrganizationModel
+      const orgAdminDoc: any = await OrganizationModel.findOne({
+        adminEmail: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, "i") },
+      }).lean();
+
+      if (orgAdminDoc) {
+        const initials = orgAdminDoc.adminName
+          ? orgAdminDoc.adminName.split(" ").map((n: string) => n[0]).filter(Boolean).join("").slice(0, 2).toUpperCase()
+          : "HO";
+
+        const hoUser: UserSession = {
+          id: `usr-ho-${orgAdminDoc.orgId.toLowerCase().replace(/[^a-z0-9]/g, "")}-admin`,
+          name: orgAdminDoc.adminName || "Head Office Admin",
+          email: normalizedEmail,
+          role: "head_office_admin",
+          orgId: orgAdminDoc.orgId,
+          orgName: orgAdminDoc.name,
+          franchiseId: null,
+          avatar: initials || "HO",
+          status: "active",
+        };
+
+        // Self-heal and persist back into UserModel in Atlas so all queries see them
+        await UserModel.findOneAndUpdate(
+          { email: normalizedEmail },
+          { $set: hoUser },
+          { upsert: true, new: true }
+        );
+
+        return {
+          user: hoUser,
+          organization: cleanDoc<Organization>(orgAdminDoc),
+        };
+      }
+
+      // 4. Fallback Self-Healing: Check if email belongs to an onboarded Franchise in FranchiseModel
       const franchiseDoc: any = await FranchiseModel.findOne({
         email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, "i") },
       }).lean();
@@ -461,6 +496,29 @@ export const dbRepository = {
             status: "active",
           });
         }
+      }
+    }
+
+    // Self-healing: ensure the organization's Head Office Admin user record exists in UserModel
+    const orgDoc: any = await OrganizationModel.findOne({ orgId }).lean();
+    if (orgDoc?.adminEmail) {
+      const cleanHoEmail = orgDoc.adminEmail.trim().toLowerCase();
+      const existingHo = await UserModel.findOne({ email: cleanHoEmail }).lean();
+      if (!existingHo) {
+        const initials = orgDoc.adminName
+          ? orgDoc.adminName.split(" ").map((n: string) => n[0]).filter(Boolean).join("").slice(0, 2).toUpperCase()
+          : "HO";
+        await UserModel.create({
+          id: `usr-ho-${orgId.toLowerCase().replace(/[^a-z0-9]/g, "")}-admin`,
+          name: orgDoc.adminName || "Head Office Admin",
+          email: cleanHoEmail,
+          role: "head_office_admin",
+          orgId,
+          orgName: orgDoc.name,
+          franchiseId: null,
+          avatar: initials || "HO",
+          status: "active",
+        });
       }
     }
 
@@ -1459,22 +1517,36 @@ export const dbRepository = {
     if (!lead) return null;
     const activeOrgId = lead.orgId || orgId || "ORG-TEMP";
 
-    await LeadModel.findOneAndUpdate(
-      { ...idOr(leadId, { leadId }), ...(orgId ? { orgId } : {}) },
-      { $set: { status: "Converted" } }
-    );
+    // Idempotent: return existing opportunity if already converted
+    const existingOpp: any = await OpportunityModel.findOne({
+      orgId: activeOrgId,
+      leadId: lead.leadId,
+    }).lean();
+
+    if (existingOpp) {
+      await LeadModel.findOneAndUpdate(
+        { ...idOr(leadId, { leadId }), ...(orgId ? { orgId } : {}) },
+        { $set: { status: "Converted" } }
+      );
+      return cleanDoc<Opportunity>(existingOpp);
+    }
 
     // Ensure customer exists in Atlas
     let cust: any = await CustomerModel.findOne({
       orgId: activeOrgId,
-      companyName: { $regex: new RegExp(`^${lead.companyName}$`, "i") },
+      companyName: { $regex: new RegExp(`^${lead.companyName.trim().replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, "i") },
     }).lean();
 
     if (!cust) {
       const custCount = await CustomerModel.countDocuments({ orgId: activeOrgId });
+      let nextCustNum = 5000 + custCount + 1;
+      while (await CustomerModel.exists({ orgId: activeOrgId, customerId: `CUST-${nextCustNum}` })) {
+        nextCustNum++;
+      }
+
       cust = await CustomerModel.create({
         orgId: activeOrgId,
-        customerId: `CUST-${5000 + custCount + 1}`,
+        customerId: `CUST-${nextCustNum}`,
         companyName: lead.companyName,
         contactPerson: lead.customerName,
         email: lead.email,
@@ -1492,13 +1564,17 @@ export const dbRepository = {
     }
 
     const oppCount = await OpportunityModel.countDocuments({ orgId: activeOrgId });
-    const oppId = `OP-${1020 + oppCount + 1}`;
+    let nextOppNum = 1020 + oppCount + 1;
+    while (await OpportunityModel.exists({ orgId: activeOrgId, opportunityId: `OP-${nextOppNum}` })) {
+      nextOppNum++;
+    }
+    const oppId = `OP-${nextOppNum}`;
 
     const newOpp = await OpportunityModel.create({
       orgId: activeOrgId,
       opportunityId: oppId,
       leadId: lead.leadId,
-      customerId: cust?.customerId || `CUST-${5000 + oppCount + 1}`,
+      customerId: cust?.customerId || `CUST-5001`,
       customerName: lead.customerName,
       companyName: lead.companyName,
       phone: lead.phone,
@@ -1526,6 +1602,11 @@ export const dbRepository = {
       createdAt: new Date().toISOString().split("T")[0],
       updatedAt: new Date().toISOString().split("T")[0],
     });
+
+    await LeadModel.findOneAndUpdate(
+      { ...idOr(leadId, { leadId }), ...(orgId ? { orgId } : {}) },
+      { $set: { status: "Converted" } }
+    );
 
     return cleanDoc<Opportunity>(newOpp);
   },

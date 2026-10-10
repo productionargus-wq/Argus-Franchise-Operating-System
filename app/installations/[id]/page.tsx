@@ -52,6 +52,16 @@ export default function InstallationDetailPage() {
   const [signeeDesignation, setSigneeDesignation] = useState("Works Manager");
   const [signatureData, setSignatureData] = useState("");
 
+  // Operator training form state
+  const [isEditingTraining, setIsEditingTraining] = useState(false);
+  const [trainingOperators, setTrainingOperators] = useState("");
+  const [trainingCount, setTrainingCount] = useState(0);
+  const [trainingTopics, setTrainingTopics] = useState<string[]>([]);
+  const [savingTraining, setSavingTraining] = useState(false);
+
+  // Reschedule date state
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
   const loadInstallation = async () => {
     try {
       setLoading(true);
@@ -65,11 +75,74 @@ export default function InstallationDetailPage() {
           setSigneeDesignation(data.customerSignOffData.signeeDesignation || "");
           setSignatureData(data.customerSignOffData.signatureImage || "");
         }
+        if (data.trainingDetails) {
+          const ops = Array.isArray(data.trainingDetails.operatorsTrained)
+            ? data.trainingDetails.operatorsTrained.filter((o: string) => o !== "P. Murugesan" && o !== "K. Loganathan")
+            : [];
+          setTrainingOperators(ops.join(", "));
+          setTrainingCount(data.trainingDetails.traineesCount || ops.length);
+          setTrainingTopics(data.trainingDetails.topicsCovered || []);
+        }
       }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveTraining = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!installation) return;
+    try {
+      setSavingTraining(true);
+      const ops = trainingOperators
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const updatedTraining = {
+        traineesCount: trainingCount || ops.length,
+        operatorsTrained: ops,
+        topicsCovered: trainingTopics,
+      };
+      const res = await fetch(`/api/installations/${installation.installationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          trainingDetails: updatedTraining,
+          orgId: currentUser?.orgId,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setInstallation(data);
+        setIsEditingTraining(false);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingTraining(false);
+    }
+  };
+
+  const handleRescheduleDate = async (newDate: string) => {
+    if (!installation || !newDate) return;
+    try {
+      const res = await fetch(`/api/installations/${installation.installationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scheduledDate: newDate,
+          orgId: currentUser?.orgId,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setInstallation(data);
+        setIsRescheduling(false);
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -338,8 +411,30 @@ export default function InstallationDetailPage() {
         </div>
 
         <div className="p-4 rounded-xl border border-slate-200 bg-white">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Scheduled Date</span>
-          <span className="text-sm font-black text-slate-900 mt-0.5 block">{installation.scheduledDate}</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Scheduled Date</span>
+            <button
+              type="button"
+              onClick={() => setIsRescheduling(!isRescheduling)}
+              className="text-[10px] text-[#FF6600] font-bold hover:underline"
+            >
+              {isRescheduling ? "Cancel" : "Change"}
+            </button>
+          </div>
+          {isRescheduling ? (
+            <div className="mt-1">
+              <input
+                type="date"
+                defaultValue={installation.scheduledDate}
+                onChange={(e) => {
+                  if (e.target.value) handleRescheduleDate(e.target.value);
+                }}
+                className="w-full text-xs p-1.5 border border-slate-300 rounded font-semibold text-slate-800 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+          ) : (
+            <span className="text-sm font-black text-slate-900 mt-0.5 block">{installation.scheduledDate}</span>
+          )}
           <span className="text-xs text-slate-500 mt-1 block">
             Completed: {installation.completedDate || "In Progress"}
           </span>
@@ -409,19 +504,148 @@ export default function InstallationDetailPage() {
 
           {/* Operator Training Information */}
           <div className="pt-3 border-t border-slate-100 text-xs space-y-2">
-            <span className="font-bold text-slate-800 block">Operator Training Log:</span>
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Operators Trained:</span>
-                <span className="font-semibold text-slate-800">
-                  {installation.trainingDetails?.operatorsTrained?.join(", ") || "P. Murugesan, K. Loganathan"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Modules Completed:</span>
-                <span className="font-semibold text-slate-800">G-code, Work Coordinate Setting, Safety E-Stop</span>
-              </div>
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-[#FF6600]" />
+                <span>Operator Training Log</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsEditingTraining(!isEditingTraining)}
+                className="text-[11px] font-bold text-[#FF6600] hover:underline"
+              >
+                {isEditingTraining ? "Cancel" : "Update Training Log"}
+              </button>
             </div>
+
+            {isEditingTraining ? (
+              <form onSubmit={handleSaveTraining} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Operators Trained (Comma-separated names)
+                  </label>
+                  <input
+                    type="text"
+                    value={trainingOperators}
+                    onChange={(e) => setTrainingOperators(e.target.value)}
+                    placeholder="e.g. Ramesh Kumar, S. Anand, Vignesh M"
+                    className="w-full p-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#FF6600] bg-white font-medium"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Number of Trainees
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={trainingCount}
+                      onChange={(e) => setTrainingCount(Number(e.target.value))}
+                      className="w-full p-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#FF6600] bg-white font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                    Completed Training Modules
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {[
+                      "G-code & M-code Operations",
+                      "Work Coordinate (G54-G59) Setting",
+                      "Tool Offset & Tool Geometry",
+                      "Safety Interlocks & E-Stop Procedures",
+                      "Daily Preventive Lubrication",
+                      "Sample Part Dry Run Execution",
+                    ].map((mod) => {
+                      const isChecked = trainingTopics.includes(mod);
+                      return (
+                        <label
+                          key={mod}
+                          className="flex items-center gap-1.5 text-[11px] text-slate-700 cursor-pointer p-1.5 rounded hover:bg-slate-100"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setTrainingTopics([...trainingTopics, mod]);
+                              } else {
+                                setTrainingTopics(trainingTopics.filter((t) => t !== mod));
+                              }
+                            }}
+                            className="rounded border-slate-300 text-[#FF6600] focus:ring-[#FF6600]"
+                          />
+                          <span>{mod}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingTraining(false)}
+                    className="px-3 py-1.5 bg-slate-200 text-slate-700 font-bold rounded-lg text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingTraining}
+                    className="px-3 py-1.5 bg-[#FF6600] hover:bg-[#E65C00] text-white font-bold rounded-lg text-xs transition-colors"
+                  >
+                    {savingTraining ? "Saving..." : "Save Training Log"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Operators Trained:</span>
+                  {installation.trainingDetails?.operatorsTrained && installation.trainingDetails.operatorsTrained.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {installation.trainingDetails.operatorsTrained.map((op: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded font-semibold text-[11px]"
+                        >
+                          {op}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-slate-400 italic font-normal text-[11px]">
+                      No operators recorded yet. Click &quot;Update Training Log&quot; to add.
+                    </span>
+                  )}
+                </div>
+
+                <div className="pt-1 border-t border-slate-200/60">
+                  <span className="text-slate-500 block text-[11px]">Modules Completed:</span>
+                  {installation.trainingDetails?.topicsCovered && installation.trainingDetails.topicsCovered.length > 0 ? (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {installation.trainingDetails.topicsCovered.map((topic: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded font-semibold text-[10px]"
+                        >
+                          {topic}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-slate-400 italic font-normal text-[11px]">
+                      No modules recorded yet.
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

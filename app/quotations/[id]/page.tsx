@@ -287,16 +287,10 @@ export default function QuotationDetailPage() {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => {
-              setPoNumber(`PO-${Math.floor(10000 + Math.random() * 90000)}`);
-              setIsPoModalOpen(true);
-            }}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
-          >
-            <ShoppingCart className="w-3.5 h-3.5" />
-            <span>Convert to Sales Order</span>
-          </button>
+          <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold border border-emerald-300">
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Auto-Authorized for Order</span>
+          </div>
         </div>
       )}
 

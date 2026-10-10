@@ -180,7 +180,13 @@ export function Navbar({ onToggleSidebar, isSidebarOpen }: NavbarProps) {
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white text-slate-800 rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden animate-fadeIn">
+              <>
+                {/* Mobile Backdrop to cleanly dismiss when tapping outside */}
+                <div
+                  className="fixed inset-0 z-40 bg-black/40 sm:hidden"
+                  onClick={() => setShowNotifications(false)}
+                />
+                <div className="fixed inset-x-3 top-16 mx-auto max-w-sm sm:max-w-none sm:inset-auto sm:right-0 sm:top-full sm:absolute sm:mt-2 sm:w-96 bg-white text-slate-800 rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden animate-fadeIn">
                 {/* Header */}
                 <div className="px-4 py-3 bg-[#293033] text-white flex justify-between items-center">
                   <div className="flex items-center gap-2">
@@ -291,7 +297,8 @@ export function Navbar({ onToggleSidebar, isSidebarOpen }: NavbarProps) {
                   </Link>
                 </div>
               </div>
-            )}
+            </>
+          )}
           </div>
 
           {/* Interactive Role Switcher with Synchronized Content Redirection */}

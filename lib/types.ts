@@ -148,6 +148,14 @@ export interface Opportunity {
     completed: boolean;
     note?: string;
   }[];
+  expectedCloseDate?: string;
+  probabilityPercent?: number;
+  negotiationNotes?: string;
+  poNumber?: string;
+  poDate?: string;
+  poValue?: number;
+  advancePercent?: number;
+  poNotes?: string;
   createdAt: string;
   updatedAt: string;
 }

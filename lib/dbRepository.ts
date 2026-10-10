@@ -180,11 +180,18 @@ function normalizeInstallation(doc: any): Installation {
     if (!inst.assignedEngineerId) {
       inst.assignedEngineerId = (inst as any).serviceEngineerId || "";
     }
-    if (!inst.trainingDetails) {
+    // Clean out legacy mock dummy names if present
+    if (inst.trainingDetails) {
+      if (Array.isArray(inst.trainingDetails.operatorsTrained)) {
+        inst.trainingDetails.operatorsTrained = inst.trainingDetails.operatorsTrained.filter(
+          (op: string) => op !== "P. Murugesan" && op !== "K. Loganathan"
+        );
+      }
+    } else {
       inst.trainingDetails = {
-        traineesCount: 2,
-        operatorsTrained: ["P. Murugesan", "K. Loganathan"],
-        topicsCovered: ["G-code fundamentals", "Tool length offset measurement", "Emergency shutdown procedures"],
+        traineesCount: 0,
+        operatorsTrained: [],
+        topicsCovered: [],
       };
     }
   }
@@ -1633,9 +1640,41 @@ export const dbRepository = {
     await ensureInitialized();
     const query: any = idOr(id, { opportunityId: id }, { oppId: id });
     if (orgId) query.orgId = orgId;
+
+    const currentDoc: any = await OpportunityModel.findOne(query).lean();
+    if (!currentDoc) return null;
+
+    let finalTimeline = updates.timeline || currentDoc.timeline || [];
+    if (updates.stage && updates.stage !== currentDoc.stage && !updates.timeline) {
+      const stageNotes: Record<string, string> = {
+        Qualified: "Opportunity scope and budget verified.",
+        Demo: "Technical demonstration & cutting trial logged.",
+        Quotation: "Commercial quotation created for customer.",
+        Negotiation: "Commercial terms and payment schedule in negotiation.",
+        "PO Expected": "Customer purchase order terms accepted.",
+        Won: "Formal Purchase Order received. Deal Won!",
+        Lost: "Opportunity marked as closed-lost.",
+      };
+      finalTimeline = [
+        ...finalTimeline,
+        {
+          stage: `${updates.stage}`,
+          date: new Date().toISOString().split("T")[0],
+          completed: true,
+          note: stageNotes[updates.stage] || `Moved to ${updates.stage} stage.`,
+        },
+      ];
+    }
+
+    const payload: any = {
+      ...updates,
+      timeline: finalTimeline,
+      updatedAt: new Date().toISOString().split("T")[0],
+    };
+
     const updated = await OpportunityModel.findOneAndUpdate(
       query,
-      { $set: { ...updates, updatedAt: new Date().toISOString().split("T")[0] } },
+      { $set: payload },
       { new: true }
     ).lean();
     return updated ? cleanDoc<Opportunity>(updated) : null;
@@ -1983,9 +2022,9 @@ export const dbRepository = {
       },
       photos: [],
       trainingDetails: {
-        traineesCount: 2,
-        operatorsTrained: ["P. Murugesan", "K. Loganathan"],
-        topicsCovered: ["G-code fundamentals", "Tool length offset measurement", "Emergency shutdown procedures"],
+        traineesCount: 0,
+        operatorsTrained: [],
+        topicsCovered: [],
       },
       operatorTrainingSigned: false,
     });

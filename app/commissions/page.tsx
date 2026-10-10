@@ -130,24 +130,45 @@ export default function CommissionsPage() {
         </div>
       </div>
 
+      {/* GST & Margin Clarification Banner */}
+      <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 flex items-start gap-2.5 text-xs text-blue-900">
+        <div className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold shrink-0 text-[10px] uppercase tracking-wide">
+          GST Policy
+        </div>
+        <div className="space-y-0.5">
+          <p className="font-semibold text-blue-900">
+            Commission is calculated on the Ex-GST Machine Margin Spread:{" "}
+            <span className="font-mono bg-blue-100/80 px-1 py-0.5 rounded text-[11px]">
+              Commission = Sale Price (Ex-GST) &minus; Partner Buy Price (Ex-GST)
+            </span>
+          </p>
+          <p className="text-blue-700 text-[11px]">
+            18% GST collected on customer invoices is pass-through tax remitted to the government and excluded from partner margins. Commission accrues proportionally as customer milestone funds (including GST &amp; install) are verified.
+          </p>
+        </div>
+      </div>
+
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <h3 className="font-bold text-xs uppercase tracking-wider text-[#293033]">
-            Transaction-Level Commission Ledger
+            Transaction-Level Commission Ledger (Margin Spread Engine)
           </h3>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse table-compact">
+          <table className="w-full text-left border-collapse table-compact text-xs">
             <thead>
               <tr>
                 <th>Commission ID</th>
-                <th>Order Ref & Customer</th>
+                <th>Order Ref &amp; Customer</th>
                 <th>Franchise Partner</th>
-                <th>Eligible Revenue Received</th>
-                <th>Commission Rate</th>
-                <th>Calculated Amount</th>
+                <th>Sale Price (Ex-GST)</th>
+                <th>Partner Buy Price (Ex-GST)</th>
+                <th>Margin Spread</th>
+                <th>Effective Rate</th>
+                <th>Funds Received (Incl. GST)</th>
+                <th>Earned Commission</th>
                 <th>Settlement Status</th>
                 <th className="text-right">Settlement Actions</th>
               </tr>
@@ -155,71 +176,92 @@ export default function CommissionsPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-slate-400">
+                  <td colSpan={11} className="text-center py-8 text-slate-400">
                     Loading commission data...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-slate-400">
+                  <td colSpan={11} className="text-center py-8 text-slate-400">
                     No commission records found.
                   </td>
                 </tr>
               ) : (
-                filtered.map((comm) => (
-                  <tr key={comm._id} className="hover:bg-slate-50 transition-colors">
-                    <td className="font-bold text-slate-900 whitespace-nowrap">
-                      {comm.commissionId}
-                    </td>
-                    <td>
-                      <div className="font-bold text-slate-900">{comm.customerName}</div>
-                      <div className="text-xs text-[#FF6600] font-semibold">{comm.orderId}</div>
-                    </td>
-                    <td>
-                      <div className="text-xs font-semibold text-slate-800">
-                        {comm.franchiseName}
-                      </div>
-                    </td>
-                    <td className="font-medium text-slate-800">
-                      ₹{(comm.eligibleRevenue || 0).toLocaleString("en-IN")}
-                    </td>
-                    <td>
-                      <span className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded text-xs">
-                        {comm.commissionRate || 0}%
-                      </span>
-                    </td>
-                    <td className="font-black text-emerald-700">
-                      ₹{(comm.calculatedAmount || 0).toLocaleString("en-IN")}
-                    </td>
-                    <td>
-                      <StatusBadge status={comm.status} />
-                    </td>
-                    <td className="text-right">
-                      {isHeadOffice && comm.status !== "Paid" ? (
-                        <div className="inline-flex items-center gap-1.5 justify-end">
-                          {comm.status === "Calculated" && (
-                            <button
-                              onClick={() => handleUpdateStatus(comm._id, "Payable")}
-                              className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded text-xs font-bold transition-colors"
-                            >
-                              Mark Payable
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleUpdateStatus(comm._id, "Paid")}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow-xs transition-colors"
-                          >
-                            Disburse (Paid)
-                          </button>
+                filtered.map((comm) => {
+                  const salePrice =
+                    comm.customerSellingPrice ||
+                    (comm.orderValue ? Math.round(comm.orderValue / 1.18) : comm.eligibleRevenue) ||
+                    0;
+                  const buyPrice = comm.partnerTransferPrice || 0;
+                  const fullMargin =
+                    comm.totalCommission !== undefined
+                      ? comm.totalCommission
+                      : Math.round(salePrice * ((comm.commissionRate || 10) / 100));
+
+                  return (
+                    <tr key={comm._id} className="hover:bg-slate-50 transition-colors">
+                      <td className="font-bold text-slate-900 whitespace-nowrap">
+                        {comm.commissionId}
+                      </td>
+                      <td>
+                        <div className="font-bold text-slate-900">{comm.customerName}</div>
+                        <div className="text-xs text-[#FF6600] font-semibold">{comm.orderId}</div>
+                      </td>
+                      <td>
+                        <div className="text-xs font-semibold text-slate-800">
+                          {comm.franchiseName}
                         </div>
-                      ) : (
-                        <span className="text-[11px] text-slate-400">
-                          {comm.paymentReference || "Payment Pending"}
+                      </td>
+                      <td className="font-medium text-slate-800">
+                        ₹{salePrice.toLocaleString("en-IN")}
+                      </td>
+                      <td className="text-slate-600 font-medium">
+                        {buyPrice > 0 ? `₹${buyPrice.toLocaleString("en-IN")}` : "Standard Tier"}
+                      </td>
+                      <td className="font-bold text-slate-900">
+                        ₹{fullMargin.toLocaleString("en-IN")}
+                      </td>
+                      <td>
+                        <span className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded text-xs">
+                          {comm.commissionRate || 10}%
                         </span>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="font-medium text-slate-800">
+                        ₹{(comm.eligibleRevenue || 0).toLocaleString("en-IN")}
+                      </td>
+                      <td className="font-black text-emerald-700">
+                        ₹{(comm.calculatedAmount || 0).toLocaleString("en-IN")}
+                      </td>
+                      <td>
+                        <StatusBadge status={comm.status} />
+                      </td>
+                      <td className="text-right">
+                        {isHeadOffice && comm.status !== "Paid" ? (
+                          <div className="inline-flex items-center gap-1.5 justify-end">
+                            {comm.status === "Calculated" && (
+                              <button
+                                onClick={() => handleUpdateStatus(comm._id, "Payable")}
+                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded text-xs font-bold transition-colors cursor-pointer"
+                              >
+                                Mark Payable
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleUpdateStatus(comm._id, "Paid")}
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                            >
+                              Disburse (Paid)
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-400">
+                            {comm.paymentReference || "Payment Pending"}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

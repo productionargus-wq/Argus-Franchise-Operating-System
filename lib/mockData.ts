@@ -945,9 +945,13 @@ export const MOCK_COMMISSIONS: CommissionRecord[] = [
     franchiseName: "Coimbatore Franchise",
     orderId: "SO-1023",
     customerName: "Sri Venkatesh Industries",
+    orderValue: 1935000,
+    customerSellingPrice: 1650000,
+    partnerTransferPrice: 1480000,
+    totalCommission: 170000,
     eligibleRevenue: 1935000, // payments received (advance + dispatch)
-    commissionRate: 10, // 10% slab
-    calculatedAmount: 193500,
+    commissionRate: 10.3, // 10.3% margin
+    calculatedAmount: 170000,
     status: "Payable",
     createdAt: "2024-12-10",
   },
@@ -958,8 +962,12 @@ export const MOCK_COMMISSIONS: CommissionRecord[] = [
     franchiseName: "Coimbatore Franchise",
     orderId: "SO-0994",
     customerName: "Kavitha Precision Engineering",
+    orderValue: 1250000,
+    customerSellingPrice: 1125000,
+    partnerTransferPrice: 1000000,
+    totalCommission: 125000,
     eligibleRevenue: 1250000,
-    commissionRate: 10,
+    commissionRate: 11.1, // 11.1% margin
     calculatedAmount: 125000,
     status: "Paid",
     paymentReference: "NEFT-ARGUS-99120",

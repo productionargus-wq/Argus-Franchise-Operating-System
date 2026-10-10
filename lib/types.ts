@@ -341,15 +341,19 @@ export interface Renewal {
 export interface CommissionRecord {
   _id: string;
   orgId?: string;
-  commissionId: string; // e.g. COMM-7801
+  commissionId: string; // e.g. COM-2001
   franchiseId: string;
   franchiseName: string;
   orderId: string;
   customerName: string;
-  eligibleRevenue: number;
-  commissionRate: number; // e.g. 10%
-  calculatedAmount: number;
-  status: "Calculated" | "Approved" | "Payable" | "Paid";
+  orderValue?: number; // Total order invoice value (including GST)
+  customerSellingPrice?: number; // Machine selling price (Ex-GST)
+  partnerTransferPrice?: number; // Partner transfer buy price (Ex-GST)
+  totalCommission?: number; // Full order margin spread: customerSellingPrice - partnerTransferPrice
+  eligibleRevenue: number; // Gross payments received to date (including GST)
+  commissionRate: number; // Effective margin rate %: (totalCommission / customerSellingPrice) * 100
+  calculatedAmount: number; // Realized commission based on collection ratio
+  status: "Calculated" | "Approved" | "Payable" | "Paid" | "Pending Collection";
   paymentReference?: string;
   paidDate?: string;
   createdAt: string;

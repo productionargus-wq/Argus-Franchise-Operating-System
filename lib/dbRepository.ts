@@ -2073,6 +2073,45 @@ export const dbRepository = {
       );
     }
 
+    // Look up franchise partner tier to determine exact transfer price (Ex-GST)
+    const franchiseDoc: any = await FranchiseModel.findOne({
+      ...idOr(quote.franchiseId, { code: quote.franchiseId }),
+      orgId: activeOrgId,
+    }).lean();
+    const partnerTier = franchiseDoc?.partnerType || "Regional Partner";
+
+    // Calculate Machine Selling Price (Ex-GST) vs Partner Transfer Price (Ex-GST)
+    let totalSellingPrice = 0;
+    let totalTransferPrice = 0;
+
+    for (const item of (quote.items || [])) {
+      const qty = item.quantity || 1;
+      const itemSalePrice = (item.unitPrice || 0) * qty;
+      totalSellingPrice += itemSalePrice;
+
+      // Look up product to find tier transfer price
+      const prod: any = await ProductModel.findOne({ sku: item.sku, orgId: activeOrgId }).lean();
+      let unitTransfer = 0;
+      if (prod) {
+        if (partnerTier === "Regional Partner") {
+          unitTransfer = prod.regionalPartnerPrice || prod.franchisePurchasePrice || 0;
+        } else if (partnerTier === "Channel Partner") {
+          unitTransfer = prod.channelPartnerPrice || prod.franchisePurchasePrice || 0;
+        } else if (partnerTier === "Referral Partner") {
+          unitTransfer = prod.referralPartnerPrice || prod.franchisePurchasePrice || 0;
+        } else {
+          unitTransfer = prod.regionalPartnerPrice || prod.franchisePurchasePrice || 0;
+        }
+      }
+      totalTransferPrice += unitTransfer * qty;
+    }
+
+    // Partner Margin Spread (Ex-GST)
+    const totalMargin = Math.max(0, totalSellingPrice - totalTransferPrice);
+    const effectiveMarginRate = totalSellingPrice > 0 
+      ? Math.round((totalMargin / totalSellingPrice) * 1000) / 10 
+      : 10;
+
     // Auto-create Commission record in Atlas
     const commCount = await CommissionModel.countDocuments({ orgId: activeOrgId });
     let nextCommNum = 2000 + commCount + 1;
@@ -2085,9 +2124,13 @@ export const dbRepository = {
       franchiseId: quote.franchiseId,
       franchiseName: quote.franchiseName,
       orderId,
+      customerName: quote.customerName,
       orderValue: quote.grandTotal,
+      customerSellingPrice: totalSellingPrice,
+      partnerTransferPrice: totalTransferPrice,
+      totalCommission: totalMargin,
       eligibleRevenue: 0,
-      commissionRate: 10,
+      commissionRate: effectiveMarginRate,
       calculatedAmount: 0,
       status: "Pending Collection",
       createdAt: new Date().toISOString().split("T")[0],
@@ -2193,12 +2236,19 @@ export const dbRepository = {
     if (orgId) commQuery.orgId = orgId;
     const comm: any = await CommissionModel.findOne(commQuery).lean();
     if (comm) {
+      const orderVal = order.orderValue || (comm.orderValue || 1);
+      const collectionRatio = Math.min(1, totalReceived / orderVal);
+      const fullMargin = comm.totalCommission !== undefined
+        ? (comm.totalCommission || 0)
+        : Math.round((comm.orderValue || orderVal) * ((comm.commissionRate || 10) / 100));
+      const earnedAmount = Math.round(fullMargin * collectionRatio);
+
       await CommissionModel.findOneAndUpdate(
         commQuery,
         {
           $set: {
             eligibleRevenue: totalReceived,
-            calculatedAmount: Math.round(totalReceived * ((comm.commissionRate || 10) / 100)),
+            calculatedAmount: earnedAmount,
             status: totalReceived >= order.orderValue ? "Calculated" : "Pending Collection",
           },
         }

@@ -1727,7 +1727,11 @@ export const dbRepository = {
     await ensureInitialized();
     const activeOrgId = data.orgId || orgId || (typeof createdBy === "object" ? createdBy?.orgId : undefined) || "ORG-TEMP";
     const count = await QuotationModel.countDocuments({ orgId: activeOrgId });
-    const quoteId = `QT-${9200 + count + 1}`;
+    let nextQuoteNum = 9200 + count + 1;
+    while (await QuotationModel.exists({ orgId: activeOrgId, quoteId: `QT-${nextQuoteNum}` })) {
+      nextQuoteNum++;
+    }
+    const quoteId = `QT-${nextQuoteNum}`;
 
     const items = data.items || [];
     const subtotal = items.reduce((acc: number, item: any) => acc + (item.unitPrice || item.listPrice || 0) * (item.quantity || 1), 0);
@@ -1905,7 +1909,11 @@ export const dbRepository = {
     const activeOrgId = quote.orgId || orgId || "ORG-TEMP";
 
     const count = await OrderModel.countDocuments({ orgId: activeOrgId });
-    const orderId = `SO-${4000 + count + 1}`;
+    let nextOrderNum = 4000 + count + 1;
+    while (await OrderModel.exists({ orgId: activeOrgId, orderId: `SO-${nextOrderNum}` })) {
+      nextOrderNum++;
+    }
+    const orderId = `SO-${nextOrderNum}`;
 
     const advanceAmount = Math.round(quote.grandTotal * 0.2);
     const dispatchAmount = Math.round(quote.grandTotal * 0.7);
@@ -1975,9 +1983,13 @@ export const dbRepository = {
 
     // Auto-create Commission record in Atlas
     const commCount = await CommissionModel.countDocuments({ orgId: activeOrgId });
+    let nextCommNum = 2000 + commCount + 1;
+    while (await CommissionModel.exists({ orgId: activeOrgId, commissionId: `COM-${nextCommNum}` })) {
+      nextCommNum++;
+    }
     await CommissionModel.create({
       orgId: activeOrgId,
-      commissionId: `COM-${2000 + commCount + 1}`,
+      commissionId: `COM-${nextCommNum}`,
       franchiseId: quote.franchiseId,
       franchiseName: quote.franchiseName,
       orderId,
@@ -1991,6 +2003,10 @@ export const dbRepository = {
 
     // Auto-create Installation record in Atlas
     const instCount = await InstallationModel.countDocuments({ orgId: activeOrgId });
+    let nextInstNum = 100 + instCount + 1;
+    while (await InstallationModel.exists({ orgId: activeOrgId, installationId: `INS-${nextInstNum}` })) {
+      nextInstNum++;
+    }
 
     // Look up real service engineer for this franchise/org
     const serviceEng =
@@ -2009,7 +2025,7 @@ export const dbRepository = {
 
     await InstallationModel.create({
       orgId: activeOrgId,
-      installationId: `INS-${100 + instCount + 1}`,
+      installationId: `INS-${nextInstNum}`,
       orderId,
       customerId: quote.customerId,
       customerName: quote.customerName,
@@ -2144,45 +2160,53 @@ export const dbRepository = {
     ).lean();
 
     if (updated && updated.status === "Completed") {
-      const activeOrgId = updated.orgId || orgId || "ORG-TEMP";
-      const existingRen = await RenewalModel.findOne({
-        orgId: activeOrgId,
-        machineSerial: updated.machineSerial,
-      });
-      if (!existingRen && updated.machineSerial) {
-        const renCount = await RenewalModel.countDocuments({ orgId: activeOrgId });
-        const startDate = updated.completedDate || new Date().toISOString().split("T")[0];
-        const nextYear = new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0];
-        await RenewalModel.create({
+      try {
+        const activeOrgId = updated.orgId || orgId || "ORG-TEMP";
+        const existingRen = await RenewalModel.findOne({
           orgId: activeOrgId,
-          renewalId: `RW-${1000 + renCount + 1}`,
-          customerId: updated.customerId,
-          customerName: updated.customerName,
-          companyName: updated.companyName,
-          franchiseId: updated.franchiseId,
-          franchiseName: updated.franchiseName,
           machineSerial: updated.machineSerial,
-          productName: updated.productName,
-          productOrModule: updated.productName || "Equipment",
-          contractType: "Warranty",
-          contractValue: 0,
-          startDate,
-          expiryDate: nextYear,
-          daysRemaining: Math.max(0, Math.ceil((new Date(nextYear).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
-          remindersSent: [],
-          status: "Active",
-          contactPerson: (updated as any).customerSignOffData?.signeeName || updated.customerName,
-          reminderStage: "None",
         });
-
-        if (updated.customerId) {
-          const custQuery: any = idOr(updated.customerId, { customerId: updated.customerId });
-          if (activeOrgId) custQuery.orgId = activeOrgId;
-          await CustomerModel.updateOne(custQuery, {
-            $inc: { activeMachinesCount: 1 },
-            $set: { nextRenewalDate: nextYear },
+        if (!existingRen && updated.machineSerial) {
+          const renCount = await RenewalModel.countDocuments({ orgId: activeOrgId });
+          let nextRenNum = 1000 + renCount + 1;
+          while (await RenewalModel.exists({ orgId: activeOrgId, renewalId: `RW-${nextRenNum}` })) {
+            nextRenNum++;
+          }
+          const startDate = updated.completedDate || new Date().toISOString().split("T")[0];
+          const nextYear = new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0];
+          await RenewalModel.create({
+            orgId: activeOrgId,
+            renewalId: `RW-${nextRenNum}`,
+            customerId: updated.customerId,
+            customerName: updated.customerName,
+            companyName: updated.companyName,
+            franchiseId: updated.franchiseId,
+            franchiseName: updated.franchiseName,
+            machineSerial: updated.machineSerial,
+            productName: updated.productName,
+            productOrModule: updated.productName || "Equipment",
+            contractType: "Warranty",
+            contractValue: 0,
+            startDate,
+            expiryDate: nextYear,
+            daysRemaining: Math.max(0, Math.ceil((new Date(nextYear).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
+            remindersSent: [],
+            status: "Active",
+            contactPerson: (updated as any).customerSignOffData?.signeeName || updated.customerName,
+            reminderStage: "None",
           });
+
+          if (updated.customerId) {
+            const custQuery: any = idOr(updated.customerId, { customerId: updated.customerId });
+            if (activeOrgId) custQuery.orgId = activeOrgId;
+            await CustomerModel.updateOne(custQuery, {
+              $inc: { activeMachinesCount: 1 },
+              $set: { nextRenewalDate: nextYear },
+            });
+          }
         }
+      } catch (renErr) {
+        console.error("Auto-renewal creation error on installation completion:", renErr);
       }
     }
 

@@ -926,8 +926,8 @@ export const MOCK_COMMISSIONS: CommissionRecord[] = [
     orderId: "SO-1023",
     customerName: "Sri Venkatesh Industries",
     eligibleRevenue: 1935000, // payments received (advance + dispatch)
-    commissionRate: 8, // 8% slab
-    calculatedAmount: 154800,
+    commissionRate: 10, // 10% slab
+    calculatedAmount: 193500,
     status: "Payable",
     createdAt: "2024-12-10",
   },
@@ -939,8 +939,8 @@ export const MOCK_COMMISSIONS: CommissionRecord[] = [
     orderId: "SO-0994",
     customerName: "Kavitha Precision Engineering",
     eligibleRevenue: 1250000,
-    commissionRate: 8,
-    calculatedAmount: 100000,
+    commissionRate: 10,
+    calculatedAmount: 125000,
     status: "Paid",
     paymentReference: "NEFT-ARGUS-99120",
     paidDate: "2024-11-30",

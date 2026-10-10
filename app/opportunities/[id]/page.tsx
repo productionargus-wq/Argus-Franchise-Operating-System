@@ -1141,9 +1141,9 @@ export default function OpportunityDetailPage() {
                   <span className="font-semibold text-slate-900">{opportunity.franchiseName}</span>
                 </div>
                 <div className="flex justify-between text-slate-600 text-[11px]">
-                  <span>Estimated Commission (4.5%):</span>
+                  <span>Estimated Commission (10%):</span>
                   <span className="font-bold text-emerald-700">
-                    ₹{Math.round(((opportunity.poValue || opportunity.expectedValue || 1850000) * 0.045)).toLocaleString("en-IN")}
+                    ₹{Math.round(((opportunity.poValue || opportunity.expectedValue || 1850000) * 0.10)).toLocaleString("en-IN")}
                   </span>
                 </div>
               </div>

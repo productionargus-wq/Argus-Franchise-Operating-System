@@ -271,7 +271,7 @@ const CommissionSchema = new Schema(
     orderId: { type: String, index: true },
     orderValue: { type: Number, default: 0 },
     eligibleRevenue: { type: Number, default: 0 },
-    commissionRate: { type: Number, default: 8 },
+    commissionRate: { type: Number, default: 10 },
     calculatedAmount: { type: Number, default: 0 },
     status: { type: String, default: "Calculated" },
     paidDate: { type: String },

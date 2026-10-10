@@ -1995,7 +1995,7 @@ export const dbRepository = {
       orderId,
       orderValue: quote.grandTotal,
       eligibleRevenue: 0,
-      commissionRate: 8,
+      commissionRate: 10,
       calculatedAmount: 0,
       status: "Pending Collection",
       createdAt: new Date().toISOString().split("T")[0],
@@ -2106,7 +2106,7 @@ export const dbRepository = {
         {
           $set: {
             eligibleRevenue: totalReceived,
-            calculatedAmount: Math.round(totalReceived * ((comm.commissionRate || 8) / 100)),
+            calculatedAmount: Math.round(totalReceived * ((comm.commissionRate || 10) / 100)),
             status: totalReceived >= order.orderValue ? "Calculated" : "Pending Collection",
           },
         }

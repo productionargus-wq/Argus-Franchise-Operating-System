@@ -343,7 +343,7 @@ export interface CommissionRecord {
   orderId: string;
   customerName: string;
   eligibleRevenue: number;
-  commissionRate: number; // e.g. 8%
+  commissionRate: number; // e.g. 10%
   calculatedAmount: number;
   status: "Calculated" | "Approved" | "Payable" | "Paid";
   paymentReference?: string;

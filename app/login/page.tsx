@@ -1,18 +1,34 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { ShieldCheck, Building2, AlertCircle, ArrowRight, Sparkles } from "lucide-react";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { loginWithGoogle } = useAuth();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "account_deleted") {
+      setErrorMessage(
+        "Your account has been removed by an administrator. Please contact your organization Head Office."
+      );
+    } else if (errorParam === "account_disabled") {
+      setErrorMessage(
+        "Your account has been deactivated. Please contact your organization administrator."
+      );
+    } else if (errorParam === "session_expired") {
+      setErrorMessage("Your session has expired. Please sign in again.");
+    }
+  }, [searchParams]);
 
   const handleGoogleAuth = async (email: string, name: string) => {
     setLoading(true);
@@ -37,6 +53,55 @@ export default function LoginPage() {
   };
 
   return (
+    <div className="bg-white py-8 px-6 shadow-2xl rounded-2xl sm:px-10 border border-slate-200/80">
+      <div className="mb-6 text-center">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-orange-50 text-[#FF6600] border border-orange-200/60 uppercase tracking-wider mb-2">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Single Sign-On (SSO)</span>
+        </span>
+        <h3 className="text-base font-bold text-slate-800">
+          Sign in with your organization account
+        </h3>
+        <p className="text-xs text-slate-500 mt-1">
+          Authorized Head Office Admins, Franchise Admins, Sales & Service Engineers
+        </p>
+      </div>
+
+      {errorMessage && (
+        <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2.5 animate-shake">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div className="flex-1 font-medium">{errorMessage}</div>
+        </div>
+      )}
+
+      {/* Login Page: Only Google Sign In button as requested */}
+      <div className="space-y-4">
+        <GoogleSignInButton
+          mode="login"
+          label="Sign in with Google"
+          isLoading={loading}
+          onAuthenticated={handleGoogleAuth}
+        />
+      </div>
+
+      <div className="mt-6 pt-5 border-t border-slate-100 flex flex-col items-center gap-3">
+        <div className="text-xs text-slate-500">
+          New Organization Head Office?
+        </div>
+        <Link
+          href="/register"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#FF6600] hover:text-[#E65C00] hover:underline transition-all"
+        >
+          <span>Register Your Organization (HO Admin)</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
     <div className="min-h-screen bg-linear-to-b from-slate-50 via-slate-100 to-slate-200 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         {/* Logo and Brand */}
@@ -59,50 +124,9 @@ export default function LoginPage() {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-2xl rounded-2xl sm:px-10 border border-slate-200/80">
-          <div className="mb-6 text-center">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-orange-50 text-[#FF6600] border border-orange-200/60 uppercase tracking-wider mb-2">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Single Sign-On (SSO)</span>
-            </span>
-            <h3 className="text-base font-bold text-slate-800">
-              Sign in with your organization account
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Authorized Head Office Admins, Franchise Admins, Sales & Service Engineers
-            </p>
-          </div>
-
-          {errorMessage && (
-            <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2.5 animate-shake">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <div className="flex-1 font-medium">{errorMessage}</div>
-            </div>
-          )}
-
-          {/* Login Page: Only Google Sign In button as requested */}
-          <div className="space-y-4">
-            <GoogleSignInButton
-              mode="login"
-              label="Sign in with Google"
-              isLoading={loading}
-              onAuthenticated={handleGoogleAuth}
-            />
-          </div>
-
-          <div className="mt-6 pt-5 border-t border-slate-100 flex flex-col items-center gap-3">
-            <div className="text-xs text-slate-500">
-              New Organization Head Office?
-            </div>
-            <Link
-              href="/register"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#FF6600] hover:text-[#E65C00] hover:underline transition-all"
-            >
-              <span>Register Your Organization (HO Admin)</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
+        <Suspense fallback={<div className="bg-white p-8 rounded-2xl shadow-xl text-center text-xs">Loading...</div>}>
+          <LoginForm />
+        </Suspense>
 
         {/* Security / Compliance Badges */}
         <div className="mt-6 text-center space-y-2">

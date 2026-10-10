@@ -25,7 +25,7 @@ interface AuthContextType {
     name?: string,
     avatar?: string
   ) => Promise<{ success: boolean; error?: string; redirectUrl?: string }>;
-  logout: () => void;
+  logout: (reason?: any) => void;
   isSuperAdmin: boolean;
   isHeadOffice: boolean;
   canApprovePrice: boolean;
@@ -52,6 +52,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [availableUsers, setAvailableUsers] = useState<UserSession[]>([]);
 
+  const logout = (reason?: any) => {
+    setIsAuthenticated(false);
+    setCurrentUser(GUEST_USER);
+    setOrganization(null);
+    localStorage.removeItem("argus_auth_session");
+    localStorage.removeItem("argus_current_user_id");
+    if (typeof window !== "undefined") {
+      const reasonStr = typeof reason === "string" ? reason : undefined;
+      if (reasonStr) {
+        window.location.href = `/login?error=${encodeURIComponent(reasonStr)}`;
+      } else {
+        window.location.href = "/login";
+      }
+    }
+  };
+
+  const verifySession = async (email: string, orgId?: string | null): Promise<boolean> => {
+    if (!email) return false;
+    try {
+      const res = await fetch("/api/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, orgId }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.warn("[Auth] Session invalidated by server:", data);
+        logout(data.code === "ACCOUNT_DISABLED" ? "account_disabled" : "account_deleted");
+        return false;
+      }
+
+      const data = await res.json();
+      if (!data.valid) {
+        console.warn("[Auth] Session validation failed:", data);
+        logout(data.code === "ACCOUNT_DISABLED" ? "account_disabled" : "account_deleted");
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.warn("[Auth] Session verification network hiccup:", err);
+      return true; // Keep local session during temporary network disconnect
+    }
+  };
+
   useEffect(() => {
     try {
       // Restore Live Session if logged in
@@ -63,6 +109,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setOrganization(parsed.organization || null);
           setIsAuthenticated(true);
           setAvailableUsers([parsed.user]);
+
+          // Asynchronously verify with server immediately to catch accounts deleted while away
+          if (parsed.user.email) {
+            verifySession(parsed.user.email, parsed.user.orgId);
+          }
         }
       }
     } catch (e) {
@@ -73,17 +124,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (currentUser?.orgId) {
+    if (currentUser?.orgId && currentUser?.email) {
       fetch(`/api/users?orgId=${encodeURIComponent(currentUser.orgId)}`)
         .then((res) => (res.ok ? res.json() : []))
         .then((users: UserSession[]) => {
-          if (Array.isArray(users) && users.length > 0) {
-            setAvailableUsers(users);
+          if (Array.isArray(users)) {
+            if (users.length > 0) {
+              setAvailableUsers(users);
+            }
+            // For franchise and HO staff, verify currentUser still exists in active org personnel
+            if (currentUser.role !== "super_admin" && users.length > 0) {
+              const currentEmail = currentUser.email.toLowerCase();
+              const userStillExists = users.some(
+                (u) => (u.email && u.email.toLowerCase() === currentEmail) || u.id === currentUser.id
+              );
+              if (!userStillExists) {
+                console.warn("[Auth] Current user removed from organization personnel directory. Booting session.");
+                logout("account_deleted");
+              }
+            }
           }
         })
         .catch((err) => console.error("Failed to load org users:", err));
     }
-  }, [currentUser?.orgId]);
+  }, [currentUser?.orgId, currentUser?.email, currentUser?.role]);
+
+  // Window focus & visibility & heartbeat listener: kick deleted users immediately when tab becomes active
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser?.email) return;
+
+    let isChecking = false;
+    const checkLiveness = async () => {
+      if (isChecking) return;
+      isChecking = true;
+      try {
+        await verifySession(currentUser.email, currentUser.orgId);
+      } finally {
+        isChecking = false;
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        checkLiveness();
+      }
+    };
+
+    window.addEventListener("focus", checkLiveness);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    // Heartbeat check every 25 seconds while tab is open
+    const interval = setInterval(checkLiveness, 25000);
+
+    return () => {
+      window.removeEventListener("focus", checkLiveness);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      clearInterval(interval);
+    };
+  }, [isAuthenticated, currentUser?.email, currentUser?.orgId]);
 
   const loginWithGoogle = async (
     email: string,
@@ -164,15 +262,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem("argus_auth_session");
-    localStorage.removeItem("argus_current_user_id");
-    // Window location change cleanly clears memory state
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
-  };
 
   const switchRole = (userId: string) => {
     const user = availableUsers.find((u) => u.id === userId);

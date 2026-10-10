@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
-import { Franchise, UserSession } from "@/lib/types";
+import { Franchise, UserSession, PartnerType } from "@/lib/types";
 import { useAuth } from "@/lib/AuthContext";
 import { useNotifications } from "@/lib/NotificationContext";
 import { useRouter } from "next/navigation";
@@ -17,6 +17,9 @@ import {
   CheckCircle2,
   ArrowRight,
   AlertCircle,
+  Layers,
+  Award,
+  Check,
 } from "lucide-react";
 
 interface OnboardFranchiseModalProps {
@@ -37,9 +40,10 @@ export function OnboardFranchiseModal({
   const initialForm = {
     code: "",
     name: "",
+    partnerType: "Regional Partner" as PartnerType,
     location: "",
     state: "Tamil Nadu",
-    annualTargetLakhs: 120, // ₹1.2 Cr default
+    annualTargetLakhs: 200, // ₹2.0 Cr default for Regional Partner
     agreementStartDate: "2026-04-01",
     agreementEndDate: "2029-03-31",
     territoryDistricts: "",
@@ -57,6 +61,19 @@ export function OnboardFranchiseModal({
     franchise: Franchise;
     adminUser: UserSession;
   } | null>(null);
+
+  const handlePartnerTypeChange = (tier: PartnerType) => {
+    let target = form.annualTargetLakhs;
+    if (tier === "Regional Partner") target = 200;
+    else if (tier === "Channel Partner") target = 75;
+    else if (tier === "Referral Partner") target = 0;
+
+    setForm((prev) => ({
+      ...prev,
+      partnerType: tier,
+      annualTargetLakhs: target,
+    }));
+  };
 
   // Auto-fill suggestion based on city/location
   const handleLocationChange = (val: string) => {
@@ -94,6 +111,7 @@ export function OnboardFranchiseModal({
       const payload = {
         code: form.code.trim().toUpperCase(),
         name: form.name.trim(),
+        partnerType: form.partnerType,
         location: form.location.trim(),
         state: form.state,
         annualTarget: Number(form.annualTargetLakhs) * 100000,
@@ -136,7 +154,9 @@ export function OnboardFranchiseModal({
       // Add to notifications
       addNotification({
         title: "Franchise Partner Onboarded",
-        desc: `${data.franchise.name} (${data.franchise.code}) registered with ₹${(
+        desc: `${data.franchise.name} (${data.franchise.code}) registered as ${
+          data.franchise.partnerType || form.partnerType
+        } with ₹${(
           data.franchise.annualTarget / 10000000
         ).toFixed(2)} Cr quota in ${data.franchise.location}.`,
         type: "contract",
@@ -193,7 +213,7 @@ export function OnboardFranchiseModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs">
               <div className="bg-white/80 p-3 rounded-lg border border-emerald-100">
                 <span className="text-slate-400 block text-[11px]">Partner Code & Entity</span>
                 <span className="font-extrabold text-slate-900 block text-sm">
@@ -201,6 +221,15 @@ export function OnboardFranchiseModal({
                 </span>
                 <span className="text-slate-600 truncate block">
                   {createdResult.franchise.name}
+                </span>
+              </div>
+              <div className="bg-white/80 p-3 rounded-lg border border-emerald-100">
+                <span className="text-slate-400 block text-[11px]">Partner Tier</span>
+                <span className="font-extrabold text-[#FF6600] block text-sm">
+                  {createdResult.franchise.partnerType || form.partnerType}
+                </span>
+                <span className="text-slate-600 block text-[11px]">
+                  Registered Tier
                 </span>
               </div>
               <div className="bg-white/80 p-3 rounded-lg border border-emerald-100">
@@ -262,11 +291,107 @@ export function OnboardFranchiseModal({
             </div>
           )}
 
-          {/* Section 1: Entity Identity */}
+          {/* Section 1: Partner Classification & Business Tier */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+              <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                <Layers className="w-4 h-4 text-[#FF6600]" />
+                <span className="text-sm">1. Partner Classification & Business Tier *</span>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-500">
+                Sets buy price, margin spread & terms
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                {
+                  tier: "Regional Partner" as PartnerType,
+                  title: "Regional Partner",
+                  badge: "Master Distributor",
+                  quotaText: "₹2.00 Cr Quota Preset",
+                  desc: "Lowest Transfer Buy Price • Exclusive master territory rights • Direct stocking & dispatch",
+                  theme: {
+                    activeBorder: "border-purple-500 bg-purple-50/50 ring-2 ring-purple-400/30",
+                    badgeBg: "bg-purple-100 text-purple-700",
+                    iconColor: "text-purple-600",
+                  },
+                  icon: ShieldCheck,
+                },
+                {
+                  tier: "Channel Partner" as PartnerType,
+                  title: "Channel Partner",
+                  badge: "City / District Stockist",
+                  quotaText: "₹75 Lakhs Quota Preset",
+                  desc: "Standard Transfer Buy Price • City & industrial cluster non-exclusive • Co-branded sales",
+                  theme: {
+                    activeBorder: "border-blue-500 bg-blue-50/50 ring-2 ring-blue-400/30",
+                    badgeBg: "bg-blue-100 text-blue-700",
+                    iconColor: "text-blue-600",
+                  },
+                  icon: Building2,
+                },
+                {
+                  tier: "Referral Partner" as PartnerType,
+                  title: "Referral Partner",
+                  badge: "Affiliate & Agent",
+                  quotaText: "₹0 Quota (No Mandate)",
+                  desc: "Referral Transfer Buy Price • Deal registration & introductions • Direct HO installation",
+                  theme: {
+                    activeBorder: "border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-400/30",
+                    badgeBg: "bg-emerald-100 text-emerald-700",
+                    iconColor: "text-emerald-600",
+                  },
+                  icon: Award,
+                },
+              ].map((item) => {
+                const isSelected = form.partnerType === item.tier;
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.tier}
+                    type="button"
+                    onClick={() => handlePartnerTypeChange(item.tier)}
+                    className={`p-3.5 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
+                      isSelected
+                        ? `${item.theme.activeBorder} shadow-sm`
+                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.theme.badgeBg}`}>
+                          {item.badge}
+                        </span>
+                        {isSelected ? (
+                          <span className="w-5 h-5 rounded-full bg-[#FF6600] text-white flex items-center justify-center">
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </span>
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border border-slate-300" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Icon className={`w-4 h-4 ${item.theme.iconColor}`} />
+                        <h4 className="font-extrabold text-slate-900 text-xs">{item.title}</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">{item.desc}</p>
+                    </div>
+                    <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                      <span className="text-slate-400 font-medium">Default Quota:</span>
+                      <span className="font-bold text-[#FF6600]">{item.quotaText}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 2: Entity Identity */}
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 font-bold text-slate-900 border-b border-slate-200 pb-1.5">
               <Building2 className="w-4 h-4 text-[#FF6600]" />
-              <span className="text-sm">1. Franchise Partner Entity & Location</span>
+              <span className="text-sm">2. Franchise Partner Entity & Location</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -344,11 +469,11 @@ export function OnboardFranchiseModal({
             </div>
           </div>
 
-          {/* Section 2: Quota & Horizon */}
+          {/* Section 3: Quota & Horizon */}
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 font-bold text-slate-900 border-b border-slate-200 pb-1.5">
               <Target className="w-4 h-4 text-[#FF6600]" />
-              <span className="text-sm">2. Commercial Target & Agreement Horizon</span>
+              <span className="text-sm">3. Commercial Target & Agreement Horizon</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -361,7 +486,7 @@ export function OnboardFranchiseModal({
                   <input
                     type="number"
                     required
-                    min={10}
+                    min={0}
                     max={5000}
                     step={5}
                     value={form.annualTargetLakhs}
@@ -398,11 +523,11 @@ export function OnboardFranchiseModal({
             </div>
           </div>
 
-          {/* Section 3: Exclusive Territory */}
+          {/* Section 4: Exclusive Territory */}
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 font-bold text-slate-900 border-b border-slate-200 pb-1.5">
               <ShieldCheck className="w-4 h-4 text-[#FF6600]" />
-              <span className="text-sm">3. Exclusive Territory Jurisdiction & Protection</span>
+              <span className="text-sm">4. Exclusive Territory Jurisdiction & Protection</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -440,11 +565,11 @@ export function OnboardFranchiseModal({
             </div>
           </div>
 
-          {/* Section 4: Primary Contact & Initial Admin */}
+          {/* Section 5: Primary Contact & Initial Admin */}
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 font-bold text-slate-900 border-b border-slate-200 pb-1.5">
               <UserCheck className="w-4 h-4 text-[#FF6600]" />
-              <span className="text-sm">4. Managing Partner & Initial Admin Access</span>
+              <span className="text-sm">5. Managing Partner & Initial Admin Access</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

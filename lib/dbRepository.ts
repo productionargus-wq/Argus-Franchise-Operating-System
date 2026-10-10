@@ -682,6 +682,7 @@ export const dbRepository = {
       orgId: activeOrgId,
       code,
       name,
+      partnerType: data.partnerType || "Regional Partner",
       location,
       state,
       territoryDistricts,
@@ -818,6 +819,7 @@ export const dbRepository = {
     if (data.collections !== undefined) updateFields.collections = Number(data.collections) || 0;
     if (data.commissionEarned !== undefined) updateFields.commissionEarned = Number(data.commissionEarned) || 0;
     if (data.commissionPaid !== undefined) updateFields.commissionPaid = Number(data.commissionPaid) || 0;
+    if (data.partnerType !== undefined) updateFields.partnerType = data.partnerType;
 
     const query = {
       ...idOr(id, { code: id }),
@@ -2123,6 +2125,7 @@ export const dbRepository = {
       commissionId: `COM-${nextCommNum}`,
       franchiseId: quote.franchiseId,
       franchiseName: quote.franchiseName,
+      partnerTier,
       orderId,
       customerName: quote.customerName,
       orderValue: quote.grandTotal,

@@ -34,11 +34,14 @@ export interface UserSession {
   status?: "active" | "pending_approval" | "disabled";
 }
 
+export type PartnerType = "Regional Partner" | "Channel Partner" | "Referral Partner";
+
 export interface Franchise {
   _id: string;
   orgId?: string;
   code: string;
   name: string;
+  partnerType?: PartnerType;
   location: string;
   state: string;
   territoryDistricts: string[];
@@ -344,6 +347,7 @@ export interface CommissionRecord {
   commissionId: string; // e.g. COM-2001
   franchiseId: string;
   franchiseName: string;
+  partnerTier?: string;
   orderId: string;
   customerName: string;
   orderValue?: number; // Total order invoice value (including GST)

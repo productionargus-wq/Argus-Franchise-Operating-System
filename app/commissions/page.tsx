@@ -211,6 +211,19 @@ export default function CommissionsPage() {
                         <div className="text-xs font-semibold text-slate-800">
                           {comm.franchiseName}
                         </div>
+                        {comm.partnerTier && (
+                          <span
+                            className={`inline-block mt-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                              comm.partnerTier === "Regional Partner"
+                                ? "bg-purple-100 text-purple-700"
+                                : comm.partnerTier === "Channel Partner"
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-emerald-100 text-emerald-700"
+                            }`}
+                          >
+                            {comm.partnerTier}
+                          </span>
+                        )}
                       </td>
                       <td className="font-medium text-slate-800">
                         ₹{salePrice.toLocaleString("en-IN")}

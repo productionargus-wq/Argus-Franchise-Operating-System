@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
-import { Franchise } from "@/lib/types";
+import { Franchise, PartnerType } from "@/lib/types";
 import { useAuth } from "@/lib/AuthContext";
 import { useNotifications } from "@/lib/NotificationContext";
 import {
@@ -12,6 +12,10 @@ import {
   AlertCircle,
   Save,
   CheckCircle2,
+  ShieldCheck,
+  Layers,
+  Award,
+  Check,
 } from "lucide-react";
 
 interface EditFranchiseModalProps {
@@ -32,6 +36,7 @@ export function EditFranchiseModal({
 
   const [form, setForm] = useState({
     name: "",
+    partnerType: "Regional Partner" as PartnerType,
     location: "",
     state: "Tamil Nadu",
     status: "Active" as "Active" | "Inactive" | "Suspended",
@@ -53,6 +58,7 @@ export function EditFranchiseModal({
     if (franchise) {
       setForm({
         name: franchise.name || "",
+        partnerType: (franchise.partnerType || "Regional Partner") as PartnerType,
         location: franchise.location || "",
         state: franchise.state || "Tamil Nadu",
         status: franchise.status || "Active",
@@ -102,6 +108,7 @@ export function EditFranchiseModal({
         location: form.location.trim(),
         state: form.state,
         status: form.status,
+        partnerType: form.partnerType,
         contactPerson: form.contactPerson.trim(),
         phone: form.phone.trim(),
         email: form.email.trim(),
@@ -134,7 +141,9 @@ export function EditFranchiseModal({
       setSuccess(true);
       addNotification({
         title: "Franchise Updated",
-        desc: `${updatedFranchise.name} (${updatedFranchise.code}) details updated successfully.`,
+        desc: `${updatedFranchise.name} (${updatedFranchise.code}) updated as ${
+          updatedFranchise.partnerType || form.partnerType
+        } successfully.`,
         type: "service",
         link: "/ho/franchises",
       });
@@ -177,6 +186,76 @@ export function EditFranchiseModal({
             <span className="font-semibold">Franchise details saved successfully!</span>
           </div>
         )}
+
+        {/* Partner Classification Tier Selector */}
+        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+              <Layers className="w-4 h-4 text-[#FF6600]" />
+              <span>Partner Classification Tier *</span>
+            </label>
+            <span className="text-[10px] text-slate-500 font-medium">
+              Controls buy transfer price & legal clauses
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {[
+              {
+                tier: "Regional Partner" as PartnerType,
+                title: "Regional Partner",
+                badge: "Master Tier",
+                desc: "Lowest Transfer Buy Price",
+                border: "border-purple-400 bg-purple-50 text-purple-900",
+                icon: ShieldCheck,
+              },
+              {
+                tier: "Channel Partner" as PartnerType,
+                title: "Channel Partner",
+                badge: "Stockist Tier",
+                desc: "Standard Transfer Buy Price",
+                border: "border-blue-400 bg-blue-50 text-blue-900",
+                icon: Building2,
+              },
+              {
+                tier: "Referral Partner" as PartnerType,
+                title: "Referral Partner",
+                badge: "Affiliate Tier",
+                desc: "Referral Transfer Buy Price",
+                border: "border-emerald-400 bg-emerald-50 text-emerald-900",
+                icon: Award,
+              },
+            ].map((item) => {
+              const isSelected = form.partnerType === item.tier;
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.tier}
+                  type="button"
+                  onClick={() => setForm({ ...form, partnerType: item.tier })}
+                  className={`p-2.5 rounded-lg border text-left transition-all flex items-center justify-between cursor-pointer ${
+                    isSelected
+                      ? `${item.border} ring-1 ring-[#FF6600]/40 font-bold shadow-2xs`
+                      : "border-slate-200 bg-white hover:border-slate-300 text-slate-700"
+                  }`}
+                >
+                  <div className="min-w-0 pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <Icon className="w-3.5 h-3.5 shrink-0 text-[#FF6600]" />
+                      <span className="text-xs font-bold truncate">{item.title}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block truncate">{item.desc}</span>
+                  </div>
+                  {isSelected && (
+                    <span className="w-4 h-4 rounded-full bg-[#FF6600] text-white flex items-center justify-center shrink-0">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Basic Entity Info */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

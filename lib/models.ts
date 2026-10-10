@@ -6,6 +6,12 @@ const FranchiseSchema = new Schema(
     orgId: { type: String, required: true, index: true },
     code: { type: String, required: true, index: true },
     name: { type: String, required: true },
+    partnerType: {
+      type: String,
+      default: "Regional Partner",
+      enum: ["Regional Partner", "Channel Partner", "Referral Partner"],
+      index: true,
+    },
     location: { type: String, required: true },
     state: { type: String, default: "Tamil Nadu" },
     territoryDistricts: [{ type: String }],

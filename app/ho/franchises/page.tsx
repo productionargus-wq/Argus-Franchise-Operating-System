@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   Pencil,
   Trash2,
+  Layers,
 } from "lucide-react";
 
 export default function FranchisesManagementPage() {
@@ -33,6 +34,7 @@ export default function FranchisesManagementPage() {
   const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [partnerTierFilter, setPartnerTierFilter] = useState<string>("All");
 
   // Edit & Delete state
   const [editingFranchise, setEditingFranchise] = useState<Franchise | null>(null);
@@ -91,9 +93,11 @@ export default function FranchisesManagementPage() {
 
   // Filtered franchises
   const filteredFranchises = franchises.filter((fr) => {
+    const tier = fr.partnerType || "Regional Partner";
     const matchesSearch =
       fr.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       fr.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tier.toLowerCase().includes(searchQuery.toLowerCase()) ||
       fr.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
       fr.contactPerson.toLowerCase().includes(searchQuery.toLowerCase()) ||
       fr.territoryDistricts.some((d) => d.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -101,7 +105,10 @@ export default function FranchisesManagementPage() {
     const matchesStatus =
       statusFilter === "All" ? true : fr.status.toLowerCase() === statusFilter.toLowerCase();
 
-    return matchesSearch && matchesStatus;
+    const matchesTier =
+      partnerTierFilter === "All" ? true : tier.toLowerCase() === partnerTierFilter.toLowerCase();
+
+    return matchesSearch && matchesStatus && matchesTier;
   });
 
   // Calculate summary metrics
@@ -205,33 +212,59 @@ export default function FranchisesManagementPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-80">
+      <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="relative w-full md:w-72">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
             type="text"
-            placeholder="Search by code, name, city, district, or partner..."
+            placeholder="Search code, name, tier, city, partner..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-[#FF6600]"
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <span className="text-xs font-semibold text-slate-500">Status:</span>
-          {["All", "Active", "Suspended"].map((st) => (
-            <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
-                statusFilter === st
-                  ? "bg-[#293033] text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              {st}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+          {/* Partner Tier Filter Pills */}
+          <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
+            <span className="text-[11px] font-bold text-slate-500 pl-1">Tier:</span>
+            {[
+              { id: "All", label: "All" },
+              { id: "Regional Partner", label: "Regional" },
+              { id: "Channel Partner", label: "Channel" },
+              { id: "Referral Partner", label: "Referral" },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setPartnerTierFilter(t.id)}
+                className={`px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                  partnerTierFilter === t.id
+                    ? "bg-[#FF6600] text-white shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Status Filter Pills */}
+          <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
+            <span className="text-[11px] font-bold text-slate-500 pl-1">Status:</span>
+            {["All", "Active", "Suspended"].map((st) => (
+              <button
+                key={st}
+                onClick={() => setStatusFilter(st)}
+                className={`px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                  statusFilter === st
+                    ? "bg-[#293033] text-white shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                }`}
+              >
+                {st}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -253,6 +286,7 @@ export default function FranchisesManagementPage() {
           filteredFranchises.map((fr) => {
             const achievementRate = fr.annualTarget > 0 ? Math.round((fr.achievedSales / fr.annualTarget) * 100) : 0;
             const collectionRate = fr.achievedSales > 0 ? Math.round((fr.collections / fr.achievedSales) * 100) : 0;
+            const tierName = fr.partnerType || "Regional Partner";
 
             return (
               <div
@@ -261,10 +295,24 @@ export default function FranchisesManagementPage() {
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <span className="text-[10px] font-bold text-[#FF6600] uppercase tracking-wider block">
-                      {fr.code}
-                    </span>
-                    <h2 className="text-base font-black text-slate-900 mt-0.5">{fr.name}</h2>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-[#FF6600] uppercase tracking-wider block">
+                        {fr.code}
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          tierName === "Regional Partner"
+                            ? "bg-purple-50 text-purple-700 border-purple-200"
+                            : tierName === "Channel Partner"
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        }`}
+                      >
+                        <Layers className="w-3 h-3" />
+                        <span>{tierName}</span>
+                      </span>
+                    </div>
+                    <h2 className="text-base font-black text-slate-900 mt-1">{fr.name}</h2>
                     <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                       <MapPin className="w-3.5 h-3.5 text-slate-400" />
                       <span>{fr.location}, {fr.state}</span>

@@ -50,6 +50,7 @@ export function TermsView({ isHoView = false }: TermsViewProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editTier, setEditTier] = useState<PartnerTierTerms | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [userPartnerTier, setUserPartnerTier] = useState<string | null>(null);
 
   const loadPolicy = async () => {
     if (!currentUser?.orgId) {
@@ -73,6 +74,26 @@ export function TermsView({ isHoView = false }: TermsViewProps) {
   useEffect(() => {
     loadPolicy();
   }, [currentUser?.orgId]);
+
+  useEffect(() => {
+    if (!isHoView && currentUser?.franchiseId && currentUser?.orgId) {
+      fetch(`/api/franchises/${encodeURIComponent(currentUser.franchiseId)}?orgId=${encodeURIComponent(currentUser.orgId)}`)
+        .then((res) => res.json())
+        .then((fr) => {
+          if (fr && fr.partnerType) {
+            setUserPartnerTier(fr.partnerType);
+            if (fr.partnerType === "Channel Partner") {
+              setActiveTab("channel_partner");
+            } else if (fr.partnerType === "Referral Partner") {
+              setActiveTab("referral_partner");
+            } else {
+              setActiveTab("regional_partner");
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isHoView, currentUser?.franchiseId, currentUser?.orgId]);
 
   const currentTierData: PartnerTierTerms | null =
     activeTab !== "matrix" && policy?.tiers ? policy.tiers[activeTab] : null;
@@ -278,6 +299,11 @@ export function TermsView({ isHoView = false }: TermsViewProps) {
         >
           <Building2 className="w-3.5 h-3.5 text-[#FF6600]" />
           <span>REGIONAL PARTNER</span>
+          {userPartnerTier === "Regional Partner" && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#FF6600] text-white uppercase font-black tracking-wider">
+              Your Tier
+            </span>
+          )}
         </button>
 
         <button
@@ -290,6 +316,11 @@ export function TermsView({ isHoView = false }: TermsViewProps) {
         >
           <Users className="w-3.5 h-3.5 text-blue-400" />
           <span>CHANNEL PARTNER</span>
+          {userPartnerTier === "Channel Partner" && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500 text-white uppercase font-black tracking-wider">
+              Your Tier
+            </span>
+          )}
         </button>
 
         <button
@@ -302,6 +333,11 @@ export function TermsView({ isHoView = false }: TermsViewProps) {
         >
           <Award className="w-3.5 h-3.5 text-emerald-400" />
           <span>REFERRAL PARTNER</span>
+          {userPartnerTier === "Referral Partner" && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500 text-white uppercase font-black tracking-wider">
+              Your Tier
+            </span>
+          )}
         </button>
 
         <button
@@ -316,6 +352,34 @@ export function TermsView({ isHoView = false }: TermsViewProps) {
           <span>TIER COMPARISON MATRIX</span>
         </button>
       </div>
+
+      {userPartnerTier && (
+        <div className="p-2.5 bg-orange-50/70 border border-orange-200 rounded-lg flex items-center justify-between text-xs text-orange-950">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-[#FF6600] shrink-0" />
+            <span>
+              Your franchise is officially registered as a <strong className="font-extrabold text-[#FF6600]">{userPartnerTier}</strong>.
+              {activeTab !== "matrix" && (
+                currentTierData?.tierName === userPartnerTier
+                  ? " The legal clauses below govern your active commercial relationship."
+                  : ` Currently previewing ${currentTierData?.tierName} specifications.`
+              )}
+            </span>
+          </div>
+          {activeTab !== "matrix" && currentTierData?.tierName !== userPartnerTier && (
+            <button
+              onClick={() => {
+                if (userPartnerTier === "Channel Partner") setActiveTab("channel_partner");
+                else if (userPartnerTier === "Referral Partner") setActiveTab("referral_partner");
+                else setActiveTab("regional_partner");
+              }}
+              className="text-[11px] font-bold text-[#FF6600] hover:underline cursor-pointer ml-2 shrink-0"
+            >
+              Switch back to my tier &rarr;
+            </button>
+          )}
+        </div>
+      )}
 
       {/* =================================================================== */}
       {/* 1. TIER COMPARISON MATRIX VIEW */}

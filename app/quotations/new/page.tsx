@@ -15,6 +15,7 @@ import {
   Building2,
   Send,
   Lock,
+  Layers,
 } from "lucide-react";
 
 function QuotationBuilderContent() {
@@ -24,6 +25,7 @@ function QuotationBuilderContent() {
 
   const [products, setProducts] = useState<ProductMasterItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [franchiseTier, setFranchiseTier] = useState<string>("Regional Partner");
 
   // Quote metadata
   const [companyName, setCompanyName] = useState(searchParams.get("company") || "");
@@ -34,6 +36,19 @@ function QuotationBuilderContent() {
   const [items, setItems] = useState<QuotationItem[]>([]);
   const [approvalReason, setApprovalReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (currentUser?.franchiseId && currentUser?.orgId) {
+      fetch(`/api/franchises/${encodeURIComponent(currentUser.franchiseId)}?orgId=${encodeURIComponent(currentUser.orgId)}`)
+        .then((res) => res.json())
+        .then((fr) => {
+          if (fr && fr.partnerType) {
+            setFranchiseTier(fr.partnerType);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [currentUser?.franchiseId, currentUser?.orgId]);
 
   useEffect(() => {
     if (!currentUser?.orgId) {
@@ -173,6 +188,20 @@ function QuotationBuilderContent() {
   );
   const grandTotal = subtotal + taxAmount + installationTotal;
 
+  const estimatedMargin = items.reduce((acc, item) => {
+    const prod = products.find((p) => p.sku === item.sku);
+    if (!prod) return acc;
+    let transfer = prod.franchisePurchasePrice || 0;
+    if (franchiseTier === "Regional Partner") {
+      transfer = prod.regionalPartnerPrice || prod.franchisePurchasePrice || 0;
+    } else if (franchiseTier === "Channel Partner") {
+      transfer = prod.channelPartnerPrice || prod.franchisePurchasePrice || 0;
+    } else if (franchiseTier === "Referral Partner") {
+      transfer = prod.referralPartnerPrice || prod.franchisePurchasePrice || 0;
+    }
+    return acc + Math.max(0, item.unitPrice - transfer) * item.quantity;
+  }, 0);
+
   const handleSubmitQuotation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) return;
@@ -222,11 +251,27 @@ function QuotationBuilderContent() {
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-xl font-extrabold text-[#293033] tracking-tight">
-              Quotation Builder (Price Control Engine)
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-extrabold text-[#293033] tracking-tight">
+                Quotation Builder (Price Control Engine)
+              </h1>
+              {currentUser?.franchiseId && (
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                    franchiseTier === "Regional Partner"
+                      ? "bg-purple-50 text-purple-700 border-purple-200"
+                      : franchiseTier === "Channel Partner"
+                      ? "bg-blue-50 text-blue-700 border-blue-200"
+                      : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  }`}
+                >
+                  <Layers className="w-3 h-3" />
+                  <span>{franchiseTier}</span>
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-500">
-              Pricing dynamically verified against Head Office price master rules.
+              Pricing verified against Head Office price master rules • {franchiseTier} Transfer Buy Pricing.
             </p>
           </div>
         </div>
@@ -447,6 +492,10 @@ function QuotationBuilderContent() {
             <div className="text-slate-500">
               Installation & Training:{" "}
               <strong className="text-slate-800">₹{installationTotal.toLocaleString("en-IN")}</strong>
+            </div>
+            <div className="pt-1.5 mt-1 border-t border-slate-100 flex items-center justify-between gap-3 text-emerald-700 bg-emerald-50/60 px-2 py-1 rounded">
+              <span className="text-[11px] font-bold">Est. Margin ({franchiseTier}):</span>
+              <strong className="text-xs font-black">+₹{estimatedMargin.toLocaleString("en-IN")}</strong>
             </div>
           </div>
 

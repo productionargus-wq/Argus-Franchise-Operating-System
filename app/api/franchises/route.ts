@@ -31,9 +31,10 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
     console.error("Failed to create franchise:", error);
+    const isConflict = error?.code === 11000 || error?.statusCode === 409 || error?.message?.includes("already exists");
     return NextResponse.json(
       { error: error?.message || "Internal server error creating franchise" },
-      { status: 500 }
+      { status: isConflict ? 409 : 500 }
     );
   }
 }

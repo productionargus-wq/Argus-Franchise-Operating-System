@@ -508,53 +508,92 @@ export const dbRepository = {
       phone: data.phone || "+91 98000 00000",
     };
 
-    const createdFranchiseDoc = await FranchiseModel.create(newFranchiseData);
-    const newFranchise = cleanDoc<Franchise>(createdFranchiseDoc);
-
-    // Auto-provision territory mappings in Atlas
-    if (territoryDistricts.length > 0) {
-      for (let idx = 0; idx < territoryDistricts.length; idx++) {
-        const dist = territoryDistricts[idx];
-        await TerritoryModel.create({
-          orgId: activeOrgId,
-          country: "India",
-          state,
-          district: dist,
-          pincodeRange: pincodes.length > 0 ? pincodes : [`6${Math.floor(10000 + Math.random() * 89999)}`],
-          assignedFranchiseId: code,
-          assignedFranchiseName: name,
-          isProtected: true,
-        });
-      }
+    // Pre-check for duplicate franchise code within this organization
+    const existingFranchise = await FranchiseModel.findOne({ orgId: activeOrgId, code }).lean();
+    if (existingFranchise) {
+      const err: any = new Error(`Franchise code "${code}" already exists in this organization. Please choose a different code (e.g. ${code}-01).`);
+      err.code = 11000;
+      err.statusCode = 409;
+      throw err;
     }
 
-    // Auto-create initial Franchise Admin user in Atlas
-    const initials = (newFranchise.contactPerson || "FA")
-      .split(" ")
-      .map((w) => w[0])
-      .filter(Boolean)
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "FA";
+    let createdFranchiseDoc: any;
+    try {
+      createdFranchiseDoc = await FranchiseModel.create(newFranchiseData);
+      const newFranchise = cleanDoc<Franchise>(createdFranchiseDoc);
 
-    const adminUserData: UserSession = {
-      id: `usr-${code.toLowerCase().replace(/[^a-z0-9]/g, "")}-admin`,
-      name: newFranchise.contactPerson,
-      email: newFranchise.email,
-      role: "franchise_admin",
-      orgId: activeOrgId,
-      franchiseId: code,
-      franchiseName: name,
-      avatar: initials,
-    };
+      // Auto-provision territory mappings in Atlas
+      if (territoryDistricts.length > 0) {
+        for (let idx = 0; idx < territoryDistricts.length; idx++) {
+          const dist = territoryDistricts[idx];
+          await TerritoryModel.create({
+            orgId: activeOrgId,
+            country: "India",
+            state,
+            district: dist,
+            pincodeRange: pincodes.length > 0 ? pincodes : [`6${Math.floor(10000 + Math.random() * 89999)}`],
+            assignedFranchiseId: code,
+            assignedFranchiseName: name,
+            isProtected: true,
+          });
+        }
+      }
 
-    await UserModel.findOneAndUpdate(
-      { id: adminUserData.id },
-      { $set: adminUserData },
-      { upsert: true, new: true }
-    );
+      // Auto-create initial Franchise Admin user in Atlas
+      const initials = (newFranchise.contactPerson || "FA")
+        .split(" ")
+        .map((w) => w[0])
+        .filter(Boolean)
+        .join("")
+        .slice(0, 2)
+        .toUpperCase() || "FA";
 
-    return { franchise: newFranchise, adminUser: adminUserData };
+      const adminUserEmail = (newFranchise.email || "").toLowerCase().trim();
+      const adminUserData: UserSession = {
+        id: `usr-${code.toLowerCase().replace(/[^a-z0-9]/g, "")}-admin`,
+        name: newFranchise.contactPerson || "Franchise Admin",
+        email: adminUserEmail,
+        role: "franchise_admin",
+        orgId: activeOrgId,
+        franchiseId: code,
+        franchiseName: name,
+        avatar: initials,
+        status: "active",
+      };
+
+      // Safely handle user creation avoiding unique email collisions
+      const existingUser = await UserModel.findOne({
+        email: adminUserEmail,
+      }).lean();
+
+      if (existingUser) {
+        await UserModel.updateOne(
+          { _id: (existingUser as any)._id },
+          {
+            $set: {
+              orgId: activeOrgId,
+              franchiseId: code,
+              franchiseName: name,
+              status: "active",
+            },
+          }
+        );
+      } else {
+        await UserModel.findOneAndUpdate(
+          { id: adminUserData.id },
+          { $set: adminUserData },
+          { upsert: true, new: true }
+        );
+      }
+
+      return { franchise: newFranchise, adminUser: adminUserData };
+    } catch (err: any) {
+      // Rollback franchise record if subsequent territory/user creation failed
+      if (createdFranchiseDoc?._id) {
+        await FranchiseModel.deleteOne({ _id: createdFranchiseDoc._id }).catch(() => {});
+      }
+      throw err;
+    }
   },
 
   async updateFranchise(

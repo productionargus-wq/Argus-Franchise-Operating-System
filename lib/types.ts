@@ -76,7 +76,11 @@ export interface ProductMasterItem {
   category: "CNC Machines" | "CNC Accessories" | "Software" | "AMC / Service" | "Spare Parts";
   listPrice: number;
   franchisePurchasePrice: number;
+  regionalPartnerPrice?: number;
+  channelPartnerPrice?: number;
+  referralPartnerPrice?: number;
   minSellingPrice: number;
+  websitePrice?: number;
   maxDiscountPercent: number; // e.g. 10%
   gstPercent: number; // e.g. 18%
   installationCharge: number;

@@ -28,6 +28,25 @@ export async function POST(request: Request) {
   }
 }
 
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { searchParams } = new URL(request.url);
+    const orgId = body.orgId || searchParams.get("orgId");
+    const id = body.id || body._id || body.sku || searchParams.get("id");
+    if (!id || !orgId) {
+      return NextResponse.json({ error: "id and orgId required" }, { status: 400 });
+    }
+    const updated = await dbRepository.updateProduct(id, body, orgId);
+    if (!updated) {
+      return NextResponse.json({ error: "Product not found or update failed" }, { status: 404 });
+    }
+    return NextResponse.json(updated);
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 400 });
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

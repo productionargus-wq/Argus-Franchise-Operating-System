@@ -1233,8 +1233,12 @@ export const dbRepository = {
       name: product.name || "New Industrial Machine",
       category: product.category || "CNC Machines",
       listPrice: Number(product.listPrice) || 0,
-      franchisePurchasePrice: Number(product.franchisePurchasePrice) || 0,
+      franchisePurchasePrice: Number(product.franchisePurchasePrice) || Number(product.regionalPartnerPrice) || 0,
+      regionalPartnerPrice: Number(product.regionalPartnerPrice) || Number(product.franchisePurchasePrice) || 0,
+      channelPartnerPrice: Number(product.channelPartnerPrice) || 0,
+      referralPartnerPrice: Number(product.referralPartnerPrice) || 0,
       minSellingPrice: Number(product.minSellingPrice) || 0,
+      websitePrice: Number(product.websitePrice) || 0,
       maxDiscountPercent: Number(product.maxDiscountPercent) || 10,
       gstPercent: Number(product.gstPercent) || 18,
       installationCharge: Number(product.installationCharge) || 0,
@@ -1245,6 +1249,27 @@ export const dbRepository = {
     };
     const created = await ProductModel.create(newPrd);
     return cleanDoc<ProductMasterItem>(created);
+  },
+
+  async updateProduct(id: string, updates: Partial<ProductMasterItem>, orgId?: string | null): Promise<ProductMasterItem | null> {
+    await ensureInitialized();
+    if (!orgId) return null;
+    const query = {
+      ...idOr(id, { sku: id }),
+      orgId,
+    };
+    const cleanUpdates: any = { ...updates };
+    delete cleanUpdates._id;
+    delete cleanUpdates.orgId;
+    if (cleanUpdates.regionalPartnerPrice !== undefined && cleanUpdates.franchisePurchasePrice === undefined) {
+      cleanUpdates.franchisePurchasePrice = Number(cleanUpdates.regionalPartnerPrice) || 0;
+    }
+    const updated = await ProductModel.findOneAndUpdate(
+      query,
+      { $set: cleanUpdates },
+      { new: true }
+    );
+    return updated ? cleanDoc<ProductMasterItem>(updated) : null;
   },
 
   async deleteProduct(id: string, orgId?: string | null): Promise<boolean> {

@@ -13,10 +13,11 @@ import {
   AlertTriangle,
   Lock,
   Trash2,
+  Pencil,
 } from "lucide-react";
 
 export default function PriceMasterPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, isHeadOffice } = useAuth();
   const [products, setProducts] = useState<ProductMasterItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -31,8 +32,11 @@ export default function PriceMasterPage() {
     name: "",
     category: "CNC Machines",
     listPrice: 1500000,
-    franchisePurchasePrice: 1200000,
+    regionalPartnerPrice: 1200000,
+    channelPartnerPrice: 1250000,
+    referralPartnerPrice: 1300000,
     minSellingPrice: 1350000,
+    websitePrice: 1500000,
     maxDiscountPercent: 10,
     gstPercent: 18,
     installationCharge: 35000,
@@ -40,6 +44,28 @@ export default function PriceMasterPage() {
     renewalAmcRules: "Standard 1-year AMC post warranty",
     description: "",
   });
+
+  // Edit product state
+  const [productToEdit, setProductToEdit] = useState<ProductMasterItem | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    sku: "",
+    name: "",
+    category: "CNC Machines" as ProductMasterItem["category"],
+    listPrice: 1500000,
+    regionalPartnerPrice: 1200000,
+    channelPartnerPrice: 1250000,
+    referralPartnerPrice: 1300000,
+    minSellingPrice: 1350000,
+    websitePrice: 1500000,
+    maxDiscountPercent: 10,
+    gstPercent: 18,
+    installationCharge: 35000,
+    warrantyPeriodMonths: 12,
+    renewalAmcRules: "Standard 1-year AMC post warranty",
+    description: "",
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const loadProducts = async () => {
     if (!currentUser?.orgId) {
@@ -72,6 +98,7 @@ export default function PriceMasterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          franchisePurchasePrice: form.regionalPartnerPrice,
           orgId: currentUser?.orgId,
         }),
       });
@@ -81,6 +108,62 @@ export default function PriceMasterPage() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleOpenEdit = (prod: ProductMasterItem) => {
+    setProductToEdit(prod);
+    setEditForm({
+      sku: prod.sku,
+      name: prod.name,
+      category: prod.category,
+      listPrice: prod.listPrice || 0,
+      regionalPartnerPrice: prod.regionalPartnerPrice ?? prod.franchisePurchasePrice ?? 0,
+      channelPartnerPrice: prod.channelPartnerPrice ?? 0,
+      referralPartnerPrice: prod.referralPartnerPrice ?? 0,
+      minSellingPrice: prod.minSellingPrice || 0,
+      websitePrice: prod.websitePrice || 0,
+      maxDiscountPercent: prod.maxDiscountPercent || 10,
+      gstPercent: prod.gstPercent || 18,
+      installationCharge: prod.installationCharge || 0,
+      warrantyPeriodMonths: prod.warrantyPeriodMonths || 12,
+      renewalAmcRules: prod.renewalAmcRules || "Standard 1-year AMC post warranty",
+      description: prod.description || "",
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!productToEdit || !currentUser?.orgId) return;
+    setSavingEdit(true);
+    try {
+      const id = productToEdit._id || productToEdit.sku;
+      const res = await fetch(
+        `/api/products?id=${encodeURIComponent(id)}&orgId=${encodeURIComponent(currentUser.orgId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...editForm,
+            franchisePurchasePrice: editForm.regionalPartnerPrice,
+            orgId: currentUser?.orgId,
+          }),
+        }
+      );
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        setProductToEdit(null);
+        loadProducts();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to update product");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update product");
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -163,10 +246,12 @@ export default function PriceMasterPage() {
                 <th>Product Description</th>
                 <th>Category</th>
                 <th>List Price (MSRP)</th>
-                <th>Franchise Transfer Price</th>
-                <th>Min Selling Price</th>
+                <th>REGIONAL PARTNER</th>
+                <th>CHANNEL PARTNER</th>
+                <th>REFERRAL PARTNER</th>
+                <th>BEST SELLING PRICE</th>
+                <th>WEBSITE PRICE</th>
                 <th>Max Allowed Disc %</th>
-                <th>GST %</th>
                 <th>Installation Fee</th>
                 <th>Price Control Status</th>
                 <th className="text-right">Actions</th>
@@ -175,13 +260,13 @@ export default function PriceMasterPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="text-center py-8 text-slate-400">
+                  <td colSpan={13} className="text-center py-8 text-slate-400">
                     Loading price master...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="text-center py-8 text-slate-400">
+                  <td colSpan={13} className="text-center py-8 text-slate-400">
                     No products found in master catalog.
                   </td>
                 </tr>
@@ -202,17 +287,25 @@ export default function PriceMasterPage() {
                       ₹{prod.listPrice.toLocaleString("en-IN")}
                     </td>
                     <td className="font-semibold text-slate-700">
-                      ₹{prod.franchisePurchasePrice.toLocaleString("en-IN")}
+                      ₹{(prod.regionalPartnerPrice ?? prod.franchisePurchasePrice ?? 0).toLocaleString("en-IN")}
+                    </td>
+                    <td className="font-semibold text-slate-700">
+                      ₹{(prod.channelPartnerPrice ?? 0).toLocaleString("en-IN")}
+                    </td>
+                    <td className="font-semibold text-slate-700">
+                      ₹{(prod.referralPartnerPrice ?? 0).toLocaleString("en-IN")}
                     </td>
                     <td className="font-black text-emerald-800">
                       ₹{prod.minSellingPrice.toLocaleString("en-IN")}
+                    </td>
+                    <td className="font-bold text-blue-700">
+                      ₹{(prod.websitePrice ?? 0).toLocaleString("en-IN")}
                     </td>
                     <td>
                       <span className="bg-orange-100 text-orange-800 text-xs font-black px-2 py-0.5 rounded">
                         {prod.maxDiscountPercent}%
                       </span>
                     </td>
-                    <td className="text-xs text-slate-600">{prod.gstPercent}%</td>
                     <td className="text-xs text-slate-600">
                       ₹{prod.installationCharge.toLocaleString("en-IN")}
                     </td>
@@ -222,17 +315,29 @@ export default function PriceMasterPage() {
                       </span>
                     </td>
                     <td className="text-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProductToDelete(prod);
-                          setIsDeleteModalOpen(true);
-                        }}
-                        className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors cursor-pointer inline-flex items-center justify-center"
-                        title="Delete Product SKU"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="inline-flex items-center gap-1 justify-end">
+                        {(isHeadOffice || currentUser?.role === "head_office_admin" || currentUser?.role === "super_admin") && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(prod)}
+                            className="p-1.5 rounded hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-colors cursor-pointer inline-flex items-center justify-center"
+                            title="Edit Product Master SKU"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProductToDelete(prod);
+                            setIsDeleteModalOpen(true);
+                          }}
+                          className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors cursor-pointer inline-flex items-center justify-center"
+                          title="Delete Product SKU"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -298,22 +403,52 @@ export default function PriceMasterPage() {
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Franchise Purchase Price (₹) *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Regional Partner Price (₹) *</label>
               <input
                 type="number"
                 required
-                value={form.franchisePurchasePrice}
-                onChange={(e) => setForm({ ...form, franchisePurchasePrice: Number(e.target.value) })}
+                value={form.regionalPartnerPrice}
+                onChange={(e) => setForm({ ...form, regionalPartnerPrice: Number(e.target.value) })}
                 className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Minimum Selling Price (Floor ₹) *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Channel Partner Price (₹) *</label>
+              <input
+                type="number"
+                required
+                value={form.channelPartnerPrice}
+                onChange={(e) => setForm({ ...form, channelPartnerPrice: Number(e.target.value) })}
+                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Referral Partner Price (₹) *</label>
+              <input
+                type="number"
+                required
+                value={form.referralPartnerPrice}
+                onChange={(e) => setForm({ ...form, referralPartnerPrice: Number(e.target.value) })}
+                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Best Selling Price (Floor ₹) *</label>
               <input
                 type="number"
                 required
                 value={form.minSellingPrice}
                 onChange={(e) => setForm({ ...form, minSellingPrice: Number(e.target.value) })}
+                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Website Price (₹) *</label>
+              <input
+                type="number"
+                required
+                value={form.websitePrice}
+                onChange={(e) => setForm({ ...form, websitePrice: Number(e.target.value) })}
                 className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
               />
             </div>
@@ -354,15 +489,169 @@ export default function PriceMasterPage() {
             <button
               type="button"
               onClick={() => setIsAddModalOpen(false)}
-              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-[#FF6600] hover:bg-[#E65C00] text-white font-bold rounded-lg shadow-xs"
+              className="px-4 py-2 bg-[#FF6600] hover:bg-[#E65C00] text-white font-bold rounded-lg shadow-xs cursor-pointer"
             >
               Save Master SKU
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit SKU Master Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={`Edit SKU Master: ${productToEdit?.sku}`}
+        maxWidth="lg"
+      >
+        <form onSubmit={handleUpdateProduct} className="space-y-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">SKU Code</label>
+              <input
+                type="text"
+                disabled
+                value={editForm.sku}
+                className="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Product Name *</label>
+              <input
+                type="text"
+                required
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Category *</label>
+              <select
+                value={editForm.category}
+                onChange={(e) => setEditForm({ ...editForm, category: e.target.value as any })}
+                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              >
+                <option value="CNC Machines">CNC Machines</option>
+                <option value="CNC Accessories">CNC Accessories</option>
+                <option value="Software">Software & Controller</option>
+                <option value="AMC / Service">AMC / Service</option>
+                <option value="Spare Parts">Spare Parts</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">List Price (MSRP ₹) *</label>
+              <input
+                type="number"
+                required
+                value={editForm.listPrice}
+                onChange={(e) => setEditForm({ ...editForm, listPrice: Number(e.target.value) })}
+                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Regional Partner Price (₹) *</label>
+              <input
+                type="number"
+                required
+                value={editForm.regionalPartnerPrice}
+                onChange={(e) => setEditForm({ ...editForm, regionalPartnerPrice: Number(e.target.value) })}
+                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Channel Partner Price (₹) *</label>
+              <input
+                type="number"
+                required
+                value={editForm.channelPartnerPrice}
+                onChange={(e) => setEditForm({ ...editForm, channelPartnerPrice: Number(e.target.value) })}
+                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Referral Partner Price (₹) *</label>
+              <input
+                type="number"
+                required
+                value={editForm.referralPartnerPrice}
+                onChange={(e) => setEditForm({ ...editForm, referralPartnerPrice: Number(e.target.value) })}
+                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Best Selling Price (Floor ₹) *</label>
+              <input
+                type="number"
+                required
+                value={editForm.minSellingPrice}
+                onChange={(e) => setEditForm({ ...editForm, minSellingPrice: Number(e.target.value) })}
+                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Website Price (₹) *</label>
+              <input
+                type="number"
+                required
+                value={editForm.websitePrice}
+                onChange={(e) => setEditForm({ ...editForm, websitePrice: Number(e.target.value) })}
+                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Maximum Allowed Discount % *</label>
+              <input
+                type="number"
+                required
+                max="30"
+                value={editForm.maxDiscountPercent}
+                onChange={(e) => setEditForm({ ...editForm, maxDiscountPercent: Number(e.target.value) })}
+                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Installation Charge (₹)</label>
+              <input
+                type="number"
+                value={editForm.installationCharge}
+                onChange={(e) => setEditForm({ ...editForm, installationCharge: Number(e.target.value) })}
+                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Technical Specifications</label>
+            <textarea
+              rows={3}
+              placeholder="Spindle speed, axis travels, controller type..."
+              value={editForm.description}
+              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+              className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+            ></textarea>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={savingEdit}
+              className="px-4 py-2 bg-[#FF6600] hover:bg-[#E65C00] disabled:opacity-50 text-white font-bold rounded-lg shadow-xs cursor-pointer"
+            >
+              {savingEdit ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>

@@ -15,6 +15,7 @@ import {
   UserModel,
   OrganizationModel,
   SuperAdminModel,
+  PartnerPolicyModel,
 } from "./models";
 import {
   Franchise,
@@ -32,7 +33,10 @@ import {
   TerritoryMapping,
   UserSession,
   Organization,
+  PartnerPolicyDoc,
+  PartnerTierTerms,
 } from "./types";
+import { DEFAULT_PARTNER_POLICY } from "./defaultTerms";
 
 let initPromise: Promise<void> | null = null;
 let isInitialized = false;
@@ -1309,6 +1313,69 @@ export const dbRepository = {
       };
     }
     return { hasConflict: false, matchedTerritory: cleanDoc(match) };
+  },
+
+  // PARTNER POLICY / TERMS & CONDITIONS
+  async getPartnerPolicy(orgId?: string | null): Promise<PartnerPolicyDoc> {
+    await ensureInitialized();
+    const activeOrgId = orgId || "ORG-MATTTE-104";
+    let doc: any = await PartnerPolicyModel.findOne({ orgId: activeOrgId }).lean();
+    if (!doc) {
+      const seeded = await PartnerPolicyModel.create({
+        orgId: activeOrgId,
+        tiers: DEFAULT_PARTNER_POLICY.tiers,
+      });
+      return cleanDoc<PartnerPolicyDoc>(seeded);
+    }
+    // Ensure all 3 tiers exist
+    let needsUpdate = false;
+    const updatedTiers = { ...doc.tiers };
+    for (const key of ["regional_partner", "channel_partner", "referral_partner"] as const) {
+      if (!updatedTiers[key]) {
+        updatedTiers[key] = (DEFAULT_PARTNER_POLICY.tiers as any)[key];
+        needsUpdate = true;
+      }
+    }
+    if (needsUpdate) {
+      doc = await PartnerPolicyModel.findOneAndUpdate(
+        { _id: doc._id },
+        { $set: { tiers: updatedTiers } },
+        { new: true }
+      ).lean();
+    }
+    return cleanDoc<PartnerPolicyDoc>(doc);
+  },
+
+  async updatePartnerTierTerms(
+    orgId: string,
+    tier: "regional_partner" | "channel_partner" | "referral_partner",
+    updates: Partial<PartnerTierTerms>,
+    updatedBy?: string
+  ): Promise<PartnerPolicyDoc | null> {
+    await ensureInitialized();
+    if (!orgId || !tier) return null;
+    const existing = await this.getPartnerPolicy(orgId);
+    if (!existing) return null;
+
+    const currentTier = existing.tiers[tier] || (DEFAULT_PARTNER_POLICY.tiers as any)[tier];
+    const mergedTier = {
+      ...currentTier,
+      ...updates,
+      tier,
+      lastUpdated: new Date().toISOString(),
+      updatedBy: updatedBy || "Head Office Admin",
+    };
+
+    const updateQuery: any = {};
+    updateQuery[`tiers.${tier}`] = mergedTier;
+
+    const updated = await PartnerPolicyModel.findOneAndUpdate(
+      { orgId },
+      { $set: updateQuery },
+      { new: true, upsert: true }
+    ).lean();
+
+    return updated ? cleanDoc<PartnerPolicyDoc>(updated) : null;
   },
 
   // LEADS

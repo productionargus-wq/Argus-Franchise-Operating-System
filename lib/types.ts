@@ -385,3 +385,33 @@ export interface CustomerProfile {
     reason: string;
   }>;
 }
+
+export interface PartnerClause {
+  title: string;
+  description: string;
+  points: string[];
+}
+
+export interface PartnerTierTerms {
+  tier: "regional_partner" | "channel_partner" | "referral_partner";
+  tierName: string; // "REGIONAL PARTNER" | "CHANNEL PARTNER" | "REFERRAL PARTNER"
+  badge: string; // "Master Territory Distributor" | "Authorized Dealer" | "Registered Referral Partner"
+  marginSummary: string;
+  targetSummary: string;
+  territoryScope: string;
+  slaSummary: string;
+  commissionRate: string;
+  clauses: PartnerClause[];
+  lastUpdated?: string;
+  updatedBy?: string;
+}
+
+export interface PartnerPolicyDoc {
+  _id: string;
+  orgId: string;
+  tiers: {
+    regional_partner: PartnerTierTerms;
+    channel_partner: PartnerTierTerms;
+    referral_partner: PartnerTierTerms;
+  };
+}

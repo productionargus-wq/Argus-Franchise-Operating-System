@@ -19,6 +19,7 @@ import {
   MapPin,
   Tag,
   ChevronRight,
+  FileCheck,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -45,6 +46,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     { label: "Support Tickets", href: "/support", icon: LifeBuoy },
     { label: "Renewals / AMC", href: "/renewals", icon: RefreshCw },
     { label: "Commission / Reports", href: "/commissions", icon: Coins },
+    { label: "Terms & Conditions", href: "/terms", icon: FileCheck },
   ];
 
   const headOfficeNavItems = [
@@ -59,6 +61,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     { label: "Renewals", href: "/ho/renewals", icon: RefreshCw },
     { label: "Payments / Commission", href: "/ho/commissions", icon: Coins },
     { label: "Price / Product Master", href: "/ho/products", icon: Tag },
+    { label: "Partner Terms & Policy", href: "/ho/terms", icon: FileCheck },
     { label: "Territory Management", href: "/ho/territory", icon: MapPin },
     { label: "Users & Roles", href: "/ho/users", icon: Users },
   ];

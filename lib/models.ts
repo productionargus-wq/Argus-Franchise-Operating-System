@@ -392,6 +392,18 @@ export const CommissionModel: Model<any> =
 export const TerritoryModel: Model<any> =
   mongoose.models.Territory || mongoose.model("Territory", TerritorySchema);
 
+// PARTNER POLICY & TERMS SCHEMA
+const PartnerPolicySchema = new Schema(
+  {
+    orgId: { type: String, required: true, index: true },
+    tiers: { type: Schema.Types.Mixed, default: {} },
+  },
+  { collection: "partner_policies", strict: false, timestamps: true }
+);
+
+export const PartnerPolicyModel: Model<any> =
+  mongoose.models.PartnerPolicy || mongoose.model("PartnerPolicy", PartnerPolicySchema);
+
 export const UserModel: Model<any> =
   mongoose.models.User || mongoose.model("User", UserSchema);
 

@@ -106,7 +106,7 @@ export default function OpportunityDetailPage() {
         setDemoEngineerName(data.demo?.assignedEngineerName || currentUser?.name || "Field Applications Specialist");
         setDemoResult(data.demo?.result || "Positive");
         setDemoNotes(data.demo?.notes || "");
-        setDemoAttachments(data.demo?.attachments || ["part_trial_report.pdf", "cycle_time_sheet.xlsx"]);
+        setDemoAttachments(data.demo?.attachments || []);
 
         // Init qualified
         setQualValue(data.expectedValue || 1850000);
@@ -721,30 +721,36 @@ export default function OpportunityDetailPage() {
 
                 <div>
                   <span className="block font-semibold text-slate-700 mb-1.5">Attachments & Test Reports</span>
-                  <div className="space-y-1.5">
-                    {demoAttachments.map((att, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-200 text-[11px]"
-                      >
-                        <div className="flex items-center gap-1.5 text-slate-700 font-medium">
-                          <Paperclip className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{att}</span>
+                  {demoAttachments.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {demoAttachments.map((att, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-200 text-[11px]"
+                        >
+                          <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                            <Paperclip className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{att}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-emerald-600 font-semibold">Verified</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAttachment(idx)}
+                              className="text-slate-400 hover:text-red-500 transition-colors"
+                              title="Remove attachment"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-emerald-600 font-semibold">Verified</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveAttachment(idx)}
-                            className="text-slate-400 hover:text-red-500 transition-colors"
-                            title="Remove attachment"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-lg border border-dashed border-slate-200 text-center text-slate-400 text-[11px] bg-slate-50/50">
+                      No test reports or documents attached yet. Add attachments below (e.g. part trial report, CMM sheet).
+                    </div>
+                  )}
 
                   <div className="mt-2 flex gap-1.5">
                     <input

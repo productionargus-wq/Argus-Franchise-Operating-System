@@ -1496,6 +1496,12 @@ export const dbRepository = {
         const orderIds = orders.map((o) => [o.orderId, o._id?.toString()]).flat().filter(Boolean);
 
         if (orderIds.length > 0) {
+          const insts: any[] = await InstallationModel.find({ orgId, orderId: { $in: orderIds } }).lean();
+          const instSerials = insts.map((i) => i.machineSerial).filter(Boolean);
+          if (instSerials.length > 0) {
+            await RenewalModel.deleteMany({ orgId, machineSerial: { $in: instSerials } });
+            await SupportTicketModel.deleteMany({ orgId, machineSerial: { $in: instSerials } });
+          }
           await InstallationModel.deleteMany({ orgId, orderId: { $in: orderIds } });
           await CommissionModel.deleteMany({ orgId, orderId: { $in: orderIds } });
         }
@@ -1855,6 +1861,12 @@ export const dbRepository = {
     const orders: any[] = await OrderModel.find({ orgId, quoteId: { $in: quoteIds } }).lean();
     const orderIds = orders.map((o) => [o.orderId, o._id?.toString()]).flat().filter(Boolean);
     if (orderIds.length > 0) {
+      const insts: any[] = await InstallationModel.find({ orgId, orderId: { $in: orderIds } }).lean();
+      const instSerials = insts.map((i) => i.machineSerial).filter(Boolean);
+      if (instSerials.length > 0) {
+        await RenewalModel.deleteMany({ orgId, machineSerial: { $in: instSerials } });
+        await SupportTicketModel.deleteMany({ orgId, machineSerial: { $in: instSerials } });
+      }
       await InstallationModel.deleteMany({ orgId, orderId: { $in: orderIds } });
       await CommissionModel.deleteMany({ orgId, orderId: { $in: orderIds } });
       await OrderModel.deleteMany({ orgId, quoteId: { $in: quoteIds } });
@@ -2317,11 +2329,32 @@ export const dbRepository = {
   async getRenewals(orgId?: string | null, franchiseId?: string | null): Promise<Renewal[]> {
     await ensureInitialized();
     if (!orgId) return [];
+
+    // Self-healing: verify renewals against actual active installations in this organization
+    const activeInstallations = await InstallationModel.find({ orgId }).select("machineSerial companyName customerName").lean();
+    const activeSerials = new Set(activeInstallations.map((i: any) => i.machineSerial).filter(Boolean));
+
+    // Delete any orphan renewals that have no corresponding installation in the organization
+    if (activeSerials.size > 0) {
+      await RenewalModel.deleteMany({
+        orgId,
+        machineSerial: { $exists: true, $ne: "", $nin: Array.from(activeSerials) },
+      });
+    } else {
+      await RenewalModel.deleteMany({ orgId });
+    }
+
     const query: any = { orgId };
     if (franchiseId) query.franchiseId = franchiseId;
     const docs = await RenewalModel.find(query).sort({ expiryDate: 1 }).lean();
     return docs.map((doc: any) => {
       const clean = cleanDoc<Renewal>(doc);
+      if (clean.companyName) {
+        clean.companyName = clean.companyName.trim();
+      }
+      if (clean.customerName) {
+        clean.customerName = clean.customerName.trim();
+      }
       if (!clean.remindersSent || !Array.isArray(clean.remindersSent)) {
         clean.remindersSent = [];
       }

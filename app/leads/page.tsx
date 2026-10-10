@@ -789,44 +789,56 @@ export default function LeadsPage() {
             )}
           </div>
 
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
-              <label className="block text-xs font-semibold text-slate-700">
-                Product Interest & Requirements
+          <div className="space-y-3 pt-2 border-t border-slate-100">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Target Machine / Product Model *
               </label>
-              <div className="flex items-center gap-1.5 self-start sm:self-auto">
-                <span className="text-[11px] font-medium text-slate-500 whitespace-nowrap">Product:</span>
-                <select
-                  value={leadForm.productInterest}
-                  required
-                  onChange={(e) => setLeadForm({ ...leadForm, productInterest: e.target.value })}
-                  className="text-xs py-1 px-2.5 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-[#FF6600] text-slate-800 font-medium"
-                >
-                  {productsList.length > 0 ? (
-                    productsList.map((p) => {
-                      const val = p.sku || p.name;
-                      const label = p.sku && p.name && p.sku !== p.name
-                        ? `${p.sku} - ${p.name}`
-                        : (p.name || p.sku);
-                      return (
-                        <option key={p._id || p.sku} value={val}>
-                          {label}
-                        </option>
-                      );
-                    })
-                  ) : (
-                    <option value="">No products in catalog</option>
-                  )}
-                </select>
-              </div>
+              <select
+                value={leadForm.productInterest}
+                required
+                onChange={(e) => setLeadForm({ ...leadForm, productInterest: e.target.value })}
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-[#FF6600] text-slate-800 font-medium"
+              >
+                {productsList.length > 0 ? (
+                  productsList.map((p) => {
+                    const val = p.sku || p.name;
+                    const label = p.sku && p.name && p.sku !== p.name
+                      ? `${p.sku} - ${p.name}`
+                      : (p.name || p.sku);
+                    return (
+                      <option key={p._id || p.sku} value={val}>
+                        {label}
+                      </option>
+                    );
+                  })
+                ) : (
+                  <option value="">No products in catalog</option>
+                )}
+              </select>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Select the primary CNC machine or equipment from your product catalog.
+              </p>
             </div>
-            <textarea
-              rows={3}
-              placeholder="Spindle specifications, part drawing details, expected delivery..."
-              value={leadForm.notes}
-              onChange={(e) => setLeadForm({ ...leadForm, notes: e.target.value })}
-              className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
-            ></textarea>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Technical Requirements & Notes
+                </label>
+                <span className="text-[11px] text-slate-400 font-normal">Optional</span>
+              </div>
+              <textarea
+                rows={3}
+                placeholder="e.g. Spindle specifications, workpiece material, part drawing details, expected delivery..."
+                value={leadForm.notes}
+                onChange={(e) => setLeadForm({ ...leadForm, notes: e.target.value })}
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+              ></textarea>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Specific machining requirements, workpiece tolerances, or client requests for the applications engineer.
+              </p>
+            </div>
           </div>
 
           <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
@@ -986,7 +998,7 @@ export default function LeadsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Product Interest</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Target Machine / Product Model *</label>
               {productsList.length > 0 ? (
                 <select
                   value={editForm.productInterest}
@@ -1060,14 +1072,22 @@ export default function LeadsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Product Interest & Requirements</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-slate-700">
+                Technical Requirements & Notes
+              </label>
+              <span className="text-[11px] text-slate-400 font-normal">Optional</span>
+            </div>
             <textarea
               rows={3}
-              placeholder="Spindle specifications, part drawing details, expected delivery..."
+              placeholder="e.g. Spindle specifications, workpiece material, part drawing details, expected delivery..."
               value={editForm.notes}
               onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
               className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
             ></textarea>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Specific machining requirements, workpiece tolerances, or client requests for the applications engineer.
+            </p>
           </div>
 
           <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">

@@ -30,6 +30,7 @@ export default function FranchiseDashboard() {
   const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
 
   // Form state for quick add lead modal
+  const [productsList, setProductsList] = useState<any[]>([]);
   const [leadForm, setLeadForm] = useState({
     customerName: "",
     companyName: "",
@@ -37,9 +38,10 @@ export default function FranchiseDashboard() {
     email: "",
     source: "Direct Call",
     industry: "Auto Components",
-    productInterest: "ARG-VMC-700",
+    productInterest: "",
     pincode: "",
     district: "",
+    notes: "",
   });
   const [formSuccess, setFormSuccess] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -68,6 +70,18 @@ export default function FranchiseDashboard() {
   useEffect(() => {
     if (currentUser?.orgId) {
       fetchKpis();
+      fetch(`/api/products?orgId=${encodeURIComponent(currentUser.orgId)}`)
+        .then((res) => (res.ok ? res.json() : []))
+        .then((prods) => {
+          if (Array.isArray(prods) && prods.length > 0) {
+            setProductsList(prods);
+            setLeadForm((prev) => ({
+              ...prev,
+              productInterest: prev.productInterest || prods[0].sku || prods[0].name || "",
+            }));
+          }
+        })
+        .catch(console.error);
     }
   }, [currentUser?.orgId, currentUser?.franchiseId]);
 
@@ -304,16 +318,30 @@ export default function FranchiseDashboard() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Product Interest</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Target Machine / Product Model *
+                </label>
                 <select
                   value={leadForm.productInterest}
+                  required
                   onChange={(e) => setLeadForm({ ...leadForm, productInterest: e.target.value })}
-                  className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+                  className="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-[#FF6600] text-slate-800 font-medium"
                 >
-                  <option value="ARG-VMC-700">ARGUS VMC-700 3-Axis</option>
-                  <option value="ARG-CL-200">ARGUS CNC Lathe CL-200</option>
-                  <option value="ARG-ACC-4AXIS">4th Axis Rotary Table</option>
-                  <option value="ARG-SOFT-CAMPRO">ArgusCAM Pro Suite</option>
+                  {productsList.length > 0 ? (
+                    productsList.map((p) => {
+                      const val = p.sku || p.name;
+                      const label = p.sku && p.name && p.sku !== p.name
+                        ? `${p.sku} - ${p.name}`
+                        : (p.name || p.sku);
+                      return (
+                        <option key={p._id || p.sku} value={val}>
+                          {label}
+                        </option>
+                      );
+                    })
+                  ) : (
+                    <option value="">No products in catalog</option>
+                  )}
                 </select>
               </div>
               <div>
@@ -348,6 +376,24 @@ export default function FranchiseDashboard() {
                   onChange={(e) => setLeadForm({ ...leadForm, district: e.target.value })}
                   className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
                 />
+              </div>
+              <div className="sm:col-span-2">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Technical Requirements & Notes
+                  </label>
+                  <span className="text-[11px] text-slate-400 font-normal">Optional</span>
+                </div>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Spindle specifications, workpiece material, part drawing details, expected delivery..."
+                  value={leadForm.notes}
+                  onChange={(e) => setLeadForm({ ...leadForm, notes: e.target.value })}
+                  className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+                ></textarea>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Specific machining requirements or client requests for the applications engineer.
+                </p>
               </div>
             </div>
 

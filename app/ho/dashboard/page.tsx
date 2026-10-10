@@ -68,11 +68,11 @@ export default function HeadOfficeDashboard() {
       {/* Head Office Header */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-extrabold text-[#293033] tracking-tight">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-extrabold text-[#293033] tracking-tight">
               Head Office Central Command Dashboard
             </h1>
-            <span className="bg-[#293033] text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+            <span className="bg-[#293033] text-white text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap inline-flex items-center shrink-0">
               Multi-Franchise View
             </span>
           </div>
@@ -81,7 +81,7 @@ export default function HeadOfficeDashboard() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Link
             href="/ho/franchises"
             className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
@@ -100,7 +100,7 @@ export default function HeadOfficeDashboard() {
       </div>
 
       {/* Multi-Franchise KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
           title="Franchises"
           value={data?.totalFranchises ?? 0}

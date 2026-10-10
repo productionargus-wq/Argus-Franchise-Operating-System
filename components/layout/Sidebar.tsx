@@ -32,7 +32,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const superAdminNavItems = [
     { label: "Organization Approvals", href: "/super-admin", icon: ShieldAlert },
-    { label: "All Organizations", href: "/super-admin", icon: Building2 },
   ];
 
   const franchiseNavItems = [

@@ -17,21 +17,6 @@ import {
   SuperAdminModel,
 } from "./models";
 import {
-  MOCK_FRANCHISES,
-  MOCK_PRODUCTS,
-  MOCK_CUSTOMERS,
-  MOCK_LEADS,
-  MOCK_OPPORTUNITIES,
-  MOCK_QUOTATIONS,
-  MOCK_ORDERS,
-  MOCK_INSTALLATIONS,
-  MOCK_SUPPORT_TICKETS,
-  MOCK_RENEWALS,
-  MOCK_COMMISSIONS,
-  MOCK_TERRITORIES,
-  MOCK_USERS,
-} from "./mockData";
-import {
   Franchise,
   ProductMasterItem,
   CustomerProfile,
@@ -71,26 +56,6 @@ async function ensureInitialized() {
   if (!initPromise) {
     initPromise = (async () => {
       try {
-        const TEMP_ORG = "ORG-TEMP";
-
-        // One-time migration: Tag any legacy records that lack orgId or have ORG-ARGUS with ORG-TEMP
-        await Promise.all([
-          FranchiseModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
-          ProductModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
-          CustomerModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
-          LeadModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
-          OpportunityModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
-          QuotationModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
-          OrderModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
-          InstallationModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
-          SupportTicketModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
-          RenewalModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
-          CommissionModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
-          TerritoryModel.updateMany({ $or: [{ orgId: { $exists: false } }, { orgId: "ORG-ARGUS" }] }, { $set: { orgId: TEMP_ORG } }),
-          UserModel.updateMany({ orgId: "ORG-ARGUS" }, { $set: { orgId: TEMP_ORG, orgName: "Demo CNC Systems (Template)" } }),
-          OrganizationModel.updateMany({ orgId: "ORG-ARGUS" }, { $set: { orgId: TEMP_ORG, name: "Demo CNC Systems (Template)" } }),
-        ]);
-
         // Multi-tenant index migration: ensure old global single-field unique indexes are replaced with compound { orgId: 1, ... }
         const indexMigrations = [
           { model: LeadModel, indexName: "leadId_1", field: "leadId" },
@@ -116,93 +81,8 @@ async function ensureInitialized() {
           }
         }
 
-        const franchiseCount = await FranchiseModel.countDocuments();
-        if (franchiseCount < 12) {
-          for (const fr of MOCK_FRANCHISES) {
-            await FranchiseModel.findOneAndUpdate(
-              { code: fr.code, orgId: TEMP_ORG },
-              { $set: { ...sanitize(fr), orgId: TEMP_ORG } },
-              { upsert: true }
-            );
-          }
-        }
-
-        if ((await ProductModel.countDocuments()) === 0) {
-          await ProductModel.insertMany(MOCK_PRODUCTS.map((p) => ({ ...sanitize(p), orgId: TEMP_ORG })));
-        }
-        if ((await CustomerModel.countDocuments()) === 0) {
-          await CustomerModel.insertMany(MOCK_CUSTOMERS.map((c) => ({ ...sanitize(c), orgId: TEMP_ORG })));
-        }
-        if ((await LeadModel.countDocuments()) === 0) {
-          await LeadModel.insertMany(MOCK_LEADS.map((l) => ({ ...sanitize(l), orgId: TEMP_ORG })));
-        }
-        if ((await OpportunityModel.countDocuments()) === 0) {
-          const opps = MOCK_OPPORTUNITIES.map((opp) => {
-            const clean = sanitize(opp);
-            clean.orgId = TEMP_ORG;
-            clean.oppId = clean.opportunityId || clean.oppId || `OP-${Date.now()}`;
-            return clean;
-          });
-          await OpportunityModel.insertMany(opps);
-        }
-        if ((await QuotationModel.countDocuments()) === 0) {
-          const quotes = MOCK_QUOTATIONS.map((q) => {
-            const clean = sanitize(q);
-            clean.orgId = TEMP_ORG;
-            clean.oppId = clean.opportunityId || clean.oppId;
-            return clean;
-          });
-          await QuotationModel.insertMany(quotes);
-        }
-        if ((await OrderModel.countDocuments()) === 0) {
-          await OrderModel.insertMany(MOCK_ORDERS.map((o) => ({ ...sanitize(o), orgId: TEMP_ORG })));
-        }
-        if ((await InstallationModel.countDocuments()) === 0) {
-          await InstallationModel.insertMany(MOCK_INSTALLATIONS.map((i) => ({ ...sanitize(i), orgId: TEMP_ORG })));
-        }
-        if ((await SupportTicketModel.countDocuments()) === 0) {
-          await SupportTicketModel.insertMany(MOCK_SUPPORT_TICKETS.map((s) => ({ ...sanitize(s), orgId: TEMP_ORG })));
-        }
-        if ((await RenewalModel.countDocuments()) === 0) {
-          await RenewalModel.insertMany(MOCK_RENEWALS.map((r) => ({ ...sanitize(r), orgId: TEMP_ORG })));
-        }
-        if ((await CommissionModel.countDocuments()) === 0) {
-          await CommissionModel.insertMany(MOCK_COMMISSIONS.map((c) => ({ ...sanitize(c), orgId: TEMP_ORG })));
-        }
-        if ((await TerritoryModel.countDocuments()) === 0) {
-          await TerritoryModel.insertMany(MOCK_TERRITORIES.map((t) => ({ ...sanitize(t), orgId: TEMP_ORG })));
-        }
-
-        // Default Organization Seed (Template Org)
-        const defaultOrg = await OrganizationModel.findOne({ orgId: TEMP_ORG });
-        if (!defaultOrg) {
-          await OrganizationModel.create({
-            orgId: TEMP_ORG,
-            name: "Demo CNC Systems (Template)",
-            gstin: "33AAAAA0000A1Z5",
-            adminEmail: "vikram.ho@arguscnc.com",
-            adminName: "Vikram Rathore",
-            status: "APPROVED",
-            createdAt: "2026-01-01",
-            approvedAt: "2026-01-01",
-            approvedBy: "System Setup",
-          });
-        }
-
         // Super admins are strictly managed in the dedicated super_admins collection.
         await UserModel.deleteMany({ role: "super_admin" });
-
-        if ((await UserModel.countDocuments({ orgId: TEMP_ORG })) <= 1) {
-          const seededUsers = MOCK_USERS.map((u) => ({
-            ...sanitize(u),
-            orgId: TEMP_ORG,
-            orgName: "Demo CNC Systems (Template)",
-            status: "active",
-          }));
-          for (const u of seededUsers) {
-            await UserModel.findOneAndUpdate({ id: u.id }, { $set: u }, { upsert: true });
-          }
-        }
 
         // Auto-heal: Ensure quotations created with standard pricing (<= 10% discount) have status "Approved"
         await QuotationModel.updateMany(
@@ -224,7 +104,7 @@ async function ensureInitialized() {
         }
 
         isInitialized = true;
-        console.log("✅ MongoDB Atlas collections & Organization multi-tenant seed synchronized successfully with ORG-TEMP!");
+        console.log("✅ MongoDB Atlas collections & Multi-tenant indexes initialized successfully!");
       } catch (e) {
         console.error("Error initializing MongoDB Atlas collections:", e);
       }
@@ -1975,7 +1855,7 @@ export const dbRepository = {
           contractValue: 0,
           startDate,
           expiryDate: nextYear,
-          daysRemaining: 365,
+          daysRemaining: Math.max(0, Math.ceil((new Date(nextYear).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
           remindersSent: [],
           status: "Active",
           contactPerson: (updated as any).customerSignOffData?.signeeName || updated.customerName,
@@ -2147,9 +2027,24 @@ export const dbRepository = {
       if (!clean.productOrModule && (clean as any).productName) {
         clean.productOrModule = (clean as any).productName;
       }
-      if (clean.daysRemaining === undefined && clean.expiryDate) {
+      if (clean.expiryDate) {
         const diffMs = new Date(clean.expiryDate).getTime() - Date.now();
         clean.daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+        if (clean.status !== "Renewed") {
+          if (clean.daysRemaining <= 0) {
+            clean.status = "Expired";
+          } else if (clean.daysRemaining <= 7) {
+            clean.status = "Notice_7d";
+          } else if (clean.daysRemaining <= 15) {
+            clean.status = "Notice_15d";
+          } else if (clean.daysRemaining <= 30) {
+            clean.status = "Notice_30d";
+          } else if (clean.daysRemaining <= 60) {
+            clean.status = "Notice_60d";
+          } else {
+            clean.status = "Active";
+          }
+        }
       }
       return clean;
     });

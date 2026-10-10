@@ -238,7 +238,11 @@ export default function Customer360Page() {
           </span>
           <span className="text-xs text-slate-500 mt-0.5 block truncate">
             {nextRenewal
-              ? `${nextRenewal.contractType || "Warranty"} (${nextRenewal.daysRemaining ?? 365}d left)`
+              ? `${nextRenewal.contractType || "Warranty"} (${
+                  nextRenewal.expiryDate
+                    ? Math.max(0, Math.ceil((new Date(nextRenewal.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                    : (nextRenewal.daysRemaining ?? 0)
+                }d left)`
               : "No upcoming renewal"}
           </span>
         </div>
@@ -452,7 +456,13 @@ export default function Customer360Page() {
               <div key={r._id} className="py-3 flex items-center justify-between text-xs">
                 <div>
                   <span className="font-bold text-slate-900 block">{r.productOrModule}</span>
-                  <span className="text-slate-500">Expiry: {r.expiryDate} ({r.daysRemaining} days remaining)</span>
+                  <span className="text-slate-500">
+                    Expiry: {r.expiryDate} (
+                    {r.expiryDate
+                      ? Math.max(0, Math.ceil((new Date(r.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                      : (r.daysRemaining ?? 0)}{" "}
+                    days remaining)
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-bold text-slate-900">₹{r.contractValue.toLocaleString("en-IN")}</span>

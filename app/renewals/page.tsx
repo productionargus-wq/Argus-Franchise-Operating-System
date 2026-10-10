@@ -148,7 +148,9 @@ export default function RenewalsPage() {
                 </tr>
               ) : (
                 filtered.map((rn) => {
-                  const days = rn.daysRemaining ?? (rn.expiryDate ? Math.max(0, Math.ceil((new Date(rn.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 365);
+                  const days = rn.expiryDate
+                    ? Math.max(0, Math.ceil((new Date(rn.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                    : (rn.daysRemaining ?? 0);
                   const isUrgent = days <= 7;
                   const isModerate = days <= 30;
                   const reminders = rn.remindersSent || [];

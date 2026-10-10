@@ -11,23 +11,13 @@ interface FranchiseSalesBarChartProps {
   data?: FranchiseSalesData[];
 }
 
-const DEFAULT_SALES_DATA: FranchiseSalesData[] = [
-  { name: "Coimbatore", salesLakhs: 14.2 },
-  { name: "Chennai", salesLakhs: 17.8 },
-  { name: "Hosur", salesLakhs: 9.6 },
-  { name: "Bengaluru", salesLakhs: 11.4 },
-  { name: "Pune", salesLakhs: 7.2 },
-  { name: "Others", salesLakhs: 10.5 },
-];
-
 export function FranchiseSalesBarChart({
   data,
 }: FranchiseSalesBarChartProps) {
   const { currentUser } = useAuth();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const isTemplate = currentUser?.orgId === "ORG-TEMP";
-  const chartData = (data && data.length > 0) ? data : (isTemplate ? DEFAULT_SALES_DATA : []);
+  const chartData = Array.isArray(data) ? data : [];
 
   if (chartData.length === 0) {
     return (
@@ -40,8 +30,8 @@ export function FranchiseSalesBarChart({
             Monthly Revenue Delivered
           </span>
         </div>
-        <div className="h-48 flex items-center justify-center text-slate-400 text-xs">
-          No franchise sales recorded yet
+        <div className="h-56 flex flex-col items-center justify-center text-slate-400 text-xs">
+          <span>No franchise territories registered yet</span>
         </div>
       </div>
     );
@@ -49,29 +39,58 @@ export function FranchiseSalesBarChart({
 
   // SVG Chart Geometry
   const chartWidth = 560;
-  const chartHeight = 260;
+  const chartHeight = 270;
   const paddingLeft = 55;
-  const paddingRight = 20;
-  const paddingTop = 25;
-  const paddingBottom = 45;
+  const paddingRight = 25;
+  const paddingTop = 32;
+  const paddingBottom = 48;
 
   const innerWidth = chartWidth - paddingLeft - paddingRight;
   const innerHeight = chartHeight - paddingTop - paddingBottom;
 
-  const maxScale = 20;
-  const yTicks = [20, 15, 10, 5, 0];
+  // Calculate dynamic max scale and ticks based on actual data
+  const maxVal = Math.max(...chartData.map((d) => Number(d.salesLakhs) || 0), 0);
+  let maxScale = 5;
+  let yTicks: number[] = [5, 4, 3, 2, 1, 0];
 
-  const barWidth = 36;
+  if (maxVal <= 1) {
+    maxScale = 1.5;
+    yTicks = [1.5, 1.0, 0.5, 0];
+  } else if (maxVal <= 2.5) {
+    maxScale = 3;
+    yTicks = [3, 2, 1, 0];
+  } else if (maxVal <= 5) {
+    maxScale = 5;
+    yTicks = [5, 4, 3, 2, 1, 0];
+  } else if (maxVal <= 10) {
+    maxScale = 10;
+    yTicks = [10, 8, 6, 4, 2, 0];
+  } else if (maxVal <= 20) {
+    maxScale = 20;
+    yTicks = [20, 15, 10, 5, 0];
+  } else {
+    maxScale = Math.ceil(maxVal / 10) * 10;
+    const step = maxScale / 4;
+    yTicks = [maxScale, maxScale - step, maxScale - 2 * step, step, 0];
+  }
+
+  // Responsive bar width and spacing
   const barSpacing = innerWidth / chartData.length;
+  const barWidth = Math.min(56, Math.max(28, barSpacing * 0.45));
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-base text-[#293033] tracking-tight">
-          Franchise-wise Sales
-        </h3>
-        <span className="text-xs font-semibold text-slate-400">
-          Monthly Revenue Delivered
+        <div>
+          <h3 className="font-bold text-base text-[#293033] tracking-tight">
+            Franchise-wise Sales
+          </h3>
+          <p className="text-[11px] text-slate-400">
+            Real-time closed revenue per territory
+          </p>
+        </div>
+        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+          Max: ₹{maxVal.toFixed(1)} L
         </span>
       </div>
 
@@ -117,12 +136,13 @@ export function FranchiseSalesBarChart({
             );
           })}
 
-          {/* Bars & X-Axis Labels */}
+          {/* Bars & Labels */}
           {chartData.map((item, index) => {
-            const barHeight = Math.max(
-              4,
-              (Number(item.salesLakhs) / maxScale) * innerHeight
-            );
+            const val = Number(item.salesLakhs) || 0;
+            const barHeight = val > 0
+              ? Math.max(14, (val / maxScale) * innerHeight)
+              : 3; // 3px subtle baseline for 0
+
             const x =
               paddingLeft +
               index * barSpacing +
@@ -146,41 +166,33 @@ export function FranchiseSalesBarChart({
                   rx={4}
                   ry={4}
                   className={`transition-all duration-200 ${
-                    isHovered
+                    val === 0
+                      ? "fill-slate-200"
+                      : isHovered
                       ? "fill-[#1D4ED8] filter drop-shadow-md"
                       : "fill-[#2563EB]"
                   }`}
                 />
 
-                {/* Optional Value Label on Hover */}
-                {isHovered && (
-                  <g>
-                    <rect
-                      x={x + barWidth / 2 - 32}
-                      y={y - 28}
-                      width={64}
-                      height={22}
-                      rx={4}
-                      className="fill-[#1E293B]"
-                    />
-                    <text
-                      x={x + barWidth / 2}
-                      y={y - 14}
-                      textAnchor="middle"
-                      className="text-[10px] font-bold fill-white"
-                    >
-                      ₹{item.salesLakhs} L
-                    </text>
-                  </g>
-                )}
-
-                {/* X-axis label */}
+                {/* Visible Sales Value on Top of Bar */}
                 <text
                   x={x + barWidth / 2}
-                  y={chartHeight - paddingBottom + 20}
+                  y={val > 0 ? y - 8 : y - 6}
                   textAnchor="middle"
-                  className={`text-[11px] font-medium transition-colors ${
-                    isHovered ? "fill-blue-600 font-bold" : "fill-slate-600"
+                  className={`text-[11px] font-bold ${
+                    val > 0 ? (isHovered ? "fill-blue-700 font-extrabold" : "fill-slate-800") : "fill-slate-400"
+                  }`}
+                >
+                  ₹{val.toFixed(1)} L
+                </text>
+
+                {/* X-axis territory name */}
+                <text
+                  x={x + barWidth / 2}
+                  y={chartHeight - paddingBottom + 22}
+                  textAnchor="middle"
+                  className={`text-xs font-semibold transition-colors ${
+                    isHovered ? "fill-blue-700 font-bold" : "fill-slate-700"
                   }`}
                 >
                   {item.name}

@@ -9,58 +9,105 @@ export interface DateRangePreset {
   endDate: string;
 }
 
-const PRESETS_2026: DateRangePreset[] = [
-  {
-    label: "This Month (Sep 2026)",
-    startDate: "2026-09-01",
-    endDate: "2026-09-30",
-  },
-  {
-    label: "Last Month (Aug 2026)",
-    startDate: "2026-08-01",
-    endDate: "2026-08-31",
-  },
-  {
-    label: "This Quarter (Q3 2026)",
-    startDate: "2026-07-01",
-    endDate: "2026-09-30",
-  },
-  {
-    label: "Year to Date (YTD 2026)",
-    startDate: "2026-01-01",
-    endDate: "2026-09-22",
-  },
-  {
-    label: "Financial Year (FY 2026-27)",
-    startDate: "2026-04-01",
-    endDate: "2027-03-31",
-  },
-  {
-    label: "Full Year 2026",
-    startDate: "2026-01-01",
-    endDate: "2026-12-31",
-  },
+function toYMD(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
+
+function getDynamicPresets(): { presets: DateRangePreset[]; defaultPreset: DateRangePreset; currentFY: string } {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+
+  // 1. This Month
+  const thisMonthStart = new Date(year, month, 1);
+  const thisMonthEnd = new Date(year, month + 1, 0);
+
+  // 2. Last Month
+  const lastMonthStart = new Date(year, month - 1, 1);
+  const lastMonthEnd = new Date(year, month, 0);
+
+  // 3. This Quarter (Calendar)
+  const quarterIdx = Math.floor(month / 3) + 1;
+  const quarterStart = new Date(year, (quarterIdx - 1) * 3, 1);
+  const quarterEnd = new Date(year, quarterIdx * 3, 0);
+
+  // 4. Year to Date (Jan 1 to today)
+  const ytdStart = new Date(year, 0, 1);
+  const ytdEnd = now;
+
+  // 5. Financial Year (India: Apr 1 to Mar 31)
+  const fyStartYear = month >= 3 ? year : year - 1;
+  const fyEndYear = fyStartYear + 1;
+  const fyStart = new Date(fyStartYear, 3, 1);
+  const fyEnd = new Date(fyEndYear, 2, 31);
+  const currentFY = `FY ${fyStartYear}-${String(fyEndYear).slice(-2)}`;
+
+  // 6. Full Year
+  const fullYearStart = new Date(year, 0, 1);
+  const fullYearEnd = new Date(year, 11, 31);
+
+  const presets: DateRangePreset[] = [
+    {
+      label: `This Month (${MONTH_NAMES[month]} ${year})`,
+      startDate: toYMD(thisMonthStart),
+      endDate: toYMD(thisMonthEnd),
+    },
+    {
+      label: `Last Month (${MONTH_NAMES[lastMonthStart.getMonth()]} ${lastMonthStart.getFullYear()})`,
+      startDate: toYMD(lastMonthStart),
+      endDate: toYMD(lastMonthEnd),
+    },
+    {
+      label: `This Quarter (Q${quarterIdx} ${year})`,
+      startDate: toYMD(quarterStart),
+      endDate: toYMD(quarterEnd),
+    },
+    {
+      label: `Year to Date (YTD ${year})`,
+      startDate: toYMD(ytdStart),
+      endDate: toYMD(ytdEnd),
+    },
+    {
+      label: `Financial Year (${currentFY})`,
+      startDate: toYMD(fyStart),
+      endDate: toYMD(fyEnd),
+    },
+    {
+      label: `Full Year ${year}`,
+      startDate: toYMD(fullYearStart),
+      endDate: toYMD(fullYearEnd),
+    },
+  ];
+
+  return { presets, defaultPreset: presets[0], currentFY };
+}
 
 function formatDateDisplay(dateStr: string): string {
   if (!dateStr) return "";
   const [y, m, d] = dateStr.split("-");
-  const months = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  ];
   const monthIdx = parseInt(m, 10) - 1;
-  return `${d} ${months[monthIdx] || m} ${y}`;
+  return `${d} ${MONTH_NAMES[monthIdx] || m} ${y}`;
 }
 
 export function DateRangePicker() {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedPreset, setSelectedPreset] = useState<string>("This Month (Sep 2026)");
-  const [startDate, setStartDate] = useState("2026-09-01");
-  const [endDate, setEndDate] = useState("2026-09-30");
+  const dynamicConfig = getDynamicPresets();
+  const presets = dynamicConfig.presets;
 
-  const [customStart, setCustomStart] = useState("2026-09-01");
-  const [customEnd, setCustomEnd] = useState("2026-09-30");
+  const [selectedPreset, setSelectedPreset] = useState<string>(dynamicConfig.defaultPreset.label);
+  const [startDate, setStartDate] = useState(dynamicConfig.defaultPreset.startDate);
+  const [endDate, setEndDate] = useState(dynamicConfig.defaultPreset.endDate);
+
+  const [customStart, setCustomStart] = useState(dynamicConfig.defaultPreset.startDate);
+  const [customEnd, setCustomEnd] = useState(dynamicConfig.defaultPreset.endDate);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -115,19 +162,19 @@ export function DateRangePicker() {
           <div className="px-4 py-3 bg-[#293033] text-white flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-[#FF6600]" />
-              <span className="text-xs font-bold tracking-tight">Select Operating Period (2026)</span>
+              <span className="text-xs font-bold tracking-tight">Select Operating Period</span>
             </div>
             <span className="text-[10px] bg-[#FF6600] text-white px-2 py-0.5 rounded-full font-bold">
-              FY 2026-27
+              {dynamicConfig.currentFY}
             </span>
           </div>
 
-          {/* Quick 2026 Presets */}
+          {/* Quick Dynamic Presets */}
           <div className="p-2 space-y-1 border-b border-slate-100">
             <div className="px-2 pt-1 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Quick Select 2026
+              Quick Select Period
             </div>
-            {PRESETS_2026.map((preset) => {
+            {presets.map((preset) => {
               const isSelected = selectedPreset === preset.label;
               return (
                 <button

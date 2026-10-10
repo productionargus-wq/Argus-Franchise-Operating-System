@@ -172,7 +172,9 @@ export default function FranchisesManagementPage() {
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-xl font-black text-slate-900">
-              ₹{(totalSales / 10000000).toFixed(2)} Cr
+              {totalSales >= 10000000
+                ? `₹${(totalSales / 10000000).toFixed(2)} Cr`
+                : `₹${(totalSales / 100000).toFixed(1)} L`}
             </span>
             <span className="text-xs font-semibold text-[#FF6600]">
               ({totalTarget > 0 ? Math.round((totalSales / totalTarget) * 100) : 0}%)
@@ -190,7 +192,9 @@ export default function FranchisesManagementPage() {
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-xl font-black text-slate-900">
-              ₹{(totalCollections / 10000000).toFixed(2)} Cr
+              {totalCollections >= 10000000
+                ? `₹${(totalCollections / 10000000).toFixed(2)} Cr`
+                : `₹${(totalCollections / 100000).toFixed(1)} L`}
             </span>
             <span className="text-xs font-semibold text-emerald-600">
               ({totalSales > 0 ? Math.round((totalCollections / totalSales) * 100) : 0}%)

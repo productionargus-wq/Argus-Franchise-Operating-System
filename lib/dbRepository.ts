@@ -455,14 +455,60 @@ export const dbRepository = {
     await ensureInitialized();
     if (!orgId) return [];
     const docs = await FranchiseModel.find({ orgId }).lean();
-    return cleanDocs<Franchise>(docs);
+    const franchises = cleanDocs<Franchise>(docs);
+    if (franchises.length === 0) return [];
+
+    // Dynamically calculate live achievedSales, collections, commissionEarned, commissionPaid from live Orders and Commissions
+    const [orders, commissions] = await Promise.all([
+      OrderModel.find({ orgId }).lean(),
+      CommissionModel.find({ orgId }).lean(),
+    ]);
+
+    return franchises.map((f) => {
+      const fCode = (f.code || "").toUpperCase().trim();
+      const fId = ((f as any).franchiseId || "").toUpperCase().trim();
+      const fName = (f.name || "").toLowerCase().trim();
+
+      const isMatch = (recFrId?: string, recFrName?: string) => {
+        const rId = (recFrId || "").toUpperCase().trim();
+        const rName = (recFrName || "").toLowerCase().trim();
+        if (rId && (rId === fCode || rId === fId)) return true;
+        if (fName && rName && (rName === fName || rName.includes(fName) || fName.includes(rName))) return true;
+        return false;
+      };
+
+      const fOrders = orders.filter((o) => isMatch(o.franchiseId, o.franchiseName) && o.orderStatus !== "Cancelled");
+      const dynamicSales = fOrders.reduce((sum, o) => sum + (o.orderValue || 0), 0);
+
+      const dynamicCollections = fOrders.reduce((sum, o) => {
+        const schedule = Array.isArray(o.paymentSchedule) ? o.paymentSchedule : [];
+        return sum + schedule.reduce((mSum: number, m: any) => mSum + (m.receivedAmount || 0), 0);
+      }, 0);
+
+      const fComms = commissions.filter((c) => isMatch(c.franchiseId, c.franchiseName));
+      const dynamicCommissionEarned = fComms.reduce((sum, c) => sum + (c.calculatedAmount || 0), 0);
+      const dynamicCommissionPaid = fComms
+        .filter((c) => c.status === "Paid")
+        .reduce((sum, c) => sum + (c.calculatedAmount || 0), 0);
+
+      return {
+        ...f,
+        achievedSales: dynamicSales > 0 ? dynamicSales : (f.achievedSales || 0),
+        collections: dynamicCollections > 0 ? dynamicCollections : (f.collections || 0),
+        commissionEarned: dynamicCommissionEarned > 0 ? dynamicCommissionEarned : (f.commissionEarned || 0),
+        commissionPaid: dynamicCommissionPaid > 0 ? dynamicCommissionPaid : (f.commissionPaid || 0),
+      };
+    });
   },
 
   async getFranchiseByCode(code: string, orgId?: string | null): Promise<Franchise | null> {
     await ensureInitialized();
     if (!orgId) return null;
     const doc = await FranchiseModel.findOne({ code, orgId }).lean();
-    return doc ? cleanDoc<Franchise>(doc) : null;
+    if (!doc) return null;
+    const franchise = cleanDoc<Franchise>(doc);
+    const franchises = await this.getFranchises(orgId);
+    return franchises.find((f) => f.code === franchise.code || f._id === franchise._id) || franchise;
   },
 
   async createFranchise(
@@ -2407,11 +2453,28 @@ export const dbRepository = {
     });
 
     return {
-      newLeads: { count: newLeadsCount, trend: newLeadsCount > 0 ? "+ 10%" : "0%" },
-      qualified: { count: qualifiedCount, trend: qualifiedCount > 0 ? "+ 5%" : "0%" },
-      demos: { count: demosCount, trend: demosCount > 0 ? "+ 8%" : "0%" },
-      quotationValue: { value: quoteTotal, formatted: `₹${(quoteTotal / 100000).toFixed(1)} L`, trend: quoteTotal > 0 ? "+ 12%" : "0%" },
-      poReceived: { value: poReceivedValue, formatted: `₹${(poReceivedValue / 100000).toFixed(1)} L`, trend: poReceivedValue > 0 ? "+ 15%" : "0%" },
+      newLeads: {
+        count: newLeadsCount,
+        trend: qualifiedCount > 0 ? `${qualifiedCount} Qualified` : undefined,
+      },
+      qualified: {
+        count: qualifiedCount,
+        trend: demosCount > 0 ? `${demosCount} Demos` : undefined,
+      },
+      demos: {
+        count: demosCount,
+        trend: quotes.length > 0 ? `${quotes.length} Quotes` : undefined,
+      },
+      quotationValue: {
+        value: quoteTotal,
+        formatted: `₹${(quoteTotal / 100000).toFixed(1)} L`,
+        trend: quotes.length > 0 ? `${quotes.length} Active` : undefined,
+      },
+      poReceived: {
+        value: poReceivedValue,
+        formatted: `₹${(poReceivedValue / 100000).toFixed(1)} L`,
+        trend: orders.length > 0 ? `${orders.length} Confirmed` : undefined,
+      },
       paymentPending: {
         value: paymentPending,
         formatted: `₹${(paymentPending / 100000).toFixed(1)} L`,
@@ -2471,6 +2534,9 @@ export const dbRepository = {
         renewalsDue: "₹0.0 L",
         totalRenewals: 0,
         activeRenewalsCount: 0,
+        totalOrders: 0,
+        qualifiedLeads: 0,
+        wonOpps: 0,
         franchiseSalesBreakdown: [],
         categoryBreakdown: [
           { category: "CNC Accessories", percent: 0, color: "#2563EB" },
@@ -2517,10 +2583,22 @@ export const dbRepository = {
     const activeRenewalsCount = renewals.filter((r) => r.status === "Active").length;
 
     const franchiseSalesBreakdown = franchises.map((f) => {
-      const fOrders = orders.filter((o) => o.franchiseId === f.code || o.franchiseId === f.franchiseId || o.franchiseName === f.name);
+      const fCode = (f.code || "").toUpperCase().trim();
+      const fId = ((f as any).franchiseId || "").toUpperCase().trim();
+      const fName = (f.name || "").toLowerCase().trim();
+
+      const isMatch = (recFrId?: string, recFrName?: string) => {
+        const rId = (recFrId || "").toUpperCase().trim();
+        const rName = (recFrName || "").toLowerCase().trim();
+        if (rId && (rId === fCode || rId === fId)) return true;
+        if (fName && rName && (rName === fName || rName.includes(fName) || fName.includes(rName))) return true;
+        return false;
+      };
+
+      const fOrders = orders.filter((o) => isMatch(o.franchiseId, o.franchiseName) && o.orderStatus !== "Cancelled");
       const fSales = fOrders.reduce((sum, o) => sum + (o.orderValue || 0), 0) || f.achievedSales || 0;
-      const fLeads = leads.filter((l) => l.franchiseId === f.code || l.franchiseId === f.franchiseId).length;
-      const fQuotes = quotes.filter((q) => q.franchiseId === f.code || q.franchiseId === f.franchiseId).length;
+      const fLeads = leads.filter((l) => isMatch(l.franchiseId, l.franchiseName)).length;
+      const fQuotes = quotes.filter((q) => isMatch(q.franchiseId, q.franchiseName)).length;
       const target = f.annualTarget || 5000000;
       const rate = Math.min(100, Math.round((fSales / target) * 100));
       return {
@@ -2614,6 +2692,9 @@ export const dbRepository = {
       renewalsDue: renewalsDue > 0 ? `₹${(renewalsDue / 100000).toFixed(1)} L` : "₹0.0 L",
       totalRenewals,
       activeRenewalsCount,
+      totalOrders: orders.length,
+      qualifiedLeads: leads.filter((l) => l.status === "Qualified" || l.status === "Converted").length,
+      wonOpps: opps.filter((o) => o.stage === "Won" || o.stage === "Closed Won").length,
       franchiseSalesBreakdown,
       categoryBreakdown,
       alerts,

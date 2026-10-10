@@ -16,33 +16,43 @@ import {
 export default function TerritoryManagementPage() {
   const { currentUser } = useAuth();
   const [territories, setTerritories] = useState<TerritoryMapping[]>([]);
+  const [franchises, setFranchises] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Test PIN code conflict simulator
   const [testPincode, setTestPincode] = useState("641601");
-  const [testFranchise, setTestFranchise] = useState("FR-CBE");
+  const [testFranchise, setTestFranchise] = useState("");
   const [conflictResult, setConflictResult] = useState<any>(null);
 
   useEffect(() => {
     if (!currentUser?.orgId) {
       setTerritories([]);
+      setFranchises([]);
       setLoading(false);
       return;
     }
-    async function loadTerritories() {
+    async function loadData() {
       try {
         setLoading(true);
-        const url = `/api/territories?orgId=${encodeURIComponent(currentUser.orgId!)}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        setTerritories(Array.isArray(data) ? data : []);
+        const [tRes, fRes] = await Promise.all([
+          fetch(`/api/territories?orgId=${encodeURIComponent(currentUser.orgId!)}`),
+          fetch(`/api/franchises?orgId=${encodeURIComponent(currentUser.orgId!)}`),
+        ]);
+        const tData = await tRes.json();
+        const fData = await fRes.json();
+        const frList = Array.isArray(fData) ? fData : [];
+        setTerritories(Array.isArray(tData) ? tData : []);
+        setFranchises(frList);
+        if (frList.length > 0 && !testFranchise) {
+          setTestFranchise(frList[0].code);
+        }
       } catch (e) {
         console.error(e);
       } finally {
         setLoading(false);
       }
     }
-    loadTerritories();
+    loadData();
   }, [currentUser?.orgId]);
 
   const handleTestConflict = async (e: React.FormEvent) => {
@@ -98,9 +108,15 @@ export default function TerritoryManagementPage() {
               onChange={(e) => setTestFranchise(e.target.value)}
               className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
             >
-              <option value="FR-CBE">Coimbatore Franchise (FR-CBE)</option>
-              <option value="FR-CHE">Chennai Franchise (FR-CHE)</option>
-              <option value="FR-BLR">Bangalore Franchise (FR-BLR)</option>
+              {franchises.length === 0 ? (
+                <option value="">No Franchises Configured</option>
+              ) : (
+                franchises.map((fr) => (
+                  <option key={fr.code} value={fr.code}>
+                    {fr.name} ({fr.code}) - {fr.location}
+                  </option>
+                ))
+              )}
             </select>
           </div>
           <div className="flex items-end">

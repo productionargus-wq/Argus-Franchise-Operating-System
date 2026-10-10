@@ -28,6 +28,7 @@ export default function SupportPage() {
 
   // Create ticket modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [franchises, setFranchises] = useState<any[]>([]);
   const [ticketForm, setTicketForm] = useState({
     companyName: "",
     machineSerial: "",
@@ -35,6 +36,7 @@ export default function SupportPage() {
     category: "Breakdown",
     priority: "Critical",
     issueDescription: "",
+    franchiseId: "",
   });
 
   const loadTickets = async () => {
@@ -63,18 +65,35 @@ export default function SupportPage() {
 
   useEffect(() => {
     loadTickets();
+    if (currentUser?.orgId) {
+      fetch(`/api/franchises?orgId=${encodeURIComponent(currentUser.orgId)}`)
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => {
+          const list = Array.isArray(data) ? data : [];
+          setFranchises(list);
+          if (list.length > 0 && !ticketForm.franchiseId) {
+            setTicketForm((prev) => ({
+              ...prev,
+              franchiseId: currentUser?.franchiseId || list[0].code,
+            }));
+          }
+        })
+        .catch((e) => console.error(e));
+    }
   }, [currentUser?.orgId, currentUser?.franchiseId, isHeadOffice]);
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const resolvedFranchiseId =
+        ticketForm.franchiseId || currentUser?.franchiseId || (franchises[0]?.code ?? "");
       const res = await fetch("/api/support", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...ticketForm,
           orgId: currentUser?.orgId,
-          franchiseId: currentUser.franchiseId || "FR-CBE",
+          franchiseId: resolvedFranchiseId,
           assignedEngineerId: currentUser?.id || "usr-eng",
           assignedEngineerName: currentUser.name || "Service Engineer",
         }),

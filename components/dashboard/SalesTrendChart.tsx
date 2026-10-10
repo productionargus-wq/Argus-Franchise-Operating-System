@@ -49,8 +49,31 @@ export function SalesTrendChart({ data }: SalesTrendChartProps) {
   const innerWidth = chartWidth - paddingLeft - paddingRight;
   const innerHeight = chartHeight - paddingTop - paddingBottom;
 
-  const maxScale = 20;
-  const yTicks = [20, 15, 10, 5, 0];
+  // Dynamic scale calculation based on actual monthly total sales
+  const maxVal = Math.max(...chartData.map((d) => (d.hardware || 0) + (d.software || 0)), 0);
+  let maxScale = 5;
+  let yTicks: number[] = [5, 4, 3, 2, 1, 0];
+
+  if (maxVal <= 1) {
+    maxScale = 1.5;
+    yTicks = [1.5, 1.0, 0.5, 0];
+  } else if (maxVal <= 2.5) {
+    maxScale = 3;
+    yTicks = [3, 2, 1, 0];
+  } else if (maxVal <= 5) {
+    maxScale = 5;
+    yTicks = [5, 4, 3, 2, 1, 0];
+  } else if (maxVal <= 10) {
+    maxScale = 10;
+    yTicks = [10, 8, 6, 4, 2, 0];
+  } else if (maxVal <= 20) {
+    maxScale = 20;
+    yTicks = [20, 15, 10, 5, 0];
+  } else {
+    maxScale = Math.ceil(maxVal / 10) * 10;
+    const step = maxScale / 4;
+    yTicks = [maxScale, maxScale - step, maxScale - 2 * step, step, 0];
+  }
 
   const barWidth = 32;
   const barSpacing = innerWidth / chartData.length;

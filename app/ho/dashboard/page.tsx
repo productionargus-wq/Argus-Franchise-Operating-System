@@ -113,7 +113,7 @@ export default function HeadOfficeDashboard() {
           title="Total Leads"
           value={data?.totalLeads ?? 0}
           icon={Users}
-          trend={data?.totalLeads > 0 ? "+ 10%" : "0%"}
+          trend={data?.qualifiedLeads > 0 ? `${data.qualifiedLeads} Qualified` : (data?.totalLeads > 0 ? `${data.totalLeads} Captured` : undefined)}
           isPositiveTrend={true}
           colorScheme="sky"
         />
@@ -121,7 +121,7 @@ export default function HeadOfficeDashboard() {
           title="Opportunities"
           value={data?.totalOpps ?? 0}
           icon={Target}
-          trend={data?.totalOpps > 0 ? "+ 5%" : "0%"}
+          trend={data?.wonOpps > 0 ? `${data.wonOpps} Won` : (data?.totalOpps > 0 ? `${data.totalOpps} Active Deals` : undefined)}
           isPositiveTrend={true}
           colorScheme="emerald"
         />
@@ -129,7 +129,7 @@ export default function HeadOfficeDashboard() {
           title="Total Sales"
           value={data?.totalSales ?? "₹0.0 L"}
           icon={DollarSign}
-          trend={data?.totalSales && data.totalSales !== "₹0.0 L" ? "+ 15%" : "0%"}
+          trend={data?.totalOrders > 0 ? `${data.totalOrders} Confirmed Order${data.totalOrders > 1 ? "s" : ""}` : undefined}
           isPositiveTrend={true}
           colorScheme="purple"
         />

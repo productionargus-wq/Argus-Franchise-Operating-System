@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { UserSession, Organization } from "./types";
-import { MOCK_USERS } from "./mockData";
 
 interface AuthContextType {
   currentUser: UserSession;

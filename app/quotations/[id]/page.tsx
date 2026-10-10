@@ -26,7 +26,7 @@ import {
 export default function QuotationDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { currentUser, canApprovePrice } = useAuth();
+  const { currentUser, canApprovePrice, isHeadOffice } = useAuth();
   const [quotation, setQuotation] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -318,7 +318,7 @@ export default function QuotationDetailPage() {
             </div>
           </div>
           <Link
-            href="/orders"
+            href={isHeadOffice ? "/ho/orders" : "/orders"}
             className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
           >
             <ShoppingCart className="w-3.5 h-3.5" />

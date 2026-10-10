@@ -103,12 +103,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <nav className="flex-1 px-2.5 py-3 space-y-1 overflow-y-auto">
           {currentNav.map((item) => {
             const Icon = item.icon;
-            // Robust active check handling top-level and nested dynamic routes
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/dashboard" &&
-                item.href !== "/ho/dashboard" &&
-                (pathname === item.href || pathname.startsWith(item.href + "/")));
+            // Robust active check handling top-level, nested dynamic routes, and HO <-> base shared routes
+            const normalizedItem = item.href.replace(/^\/ho\//, "/");
+            const normalizedPath = pathname.replace(/^\/ho\//, "/");
+            const isExactDashboard = item.href === "/dashboard" || item.href === "/ho/dashboard";
+
+            const isActive = isExactDashboard
+              ? pathname === item.href
+              : pathname === item.href ||
+                pathname.startsWith(item.href + "/") ||
+                normalizedPath === normalizedItem ||
+                normalizedPath.startsWith(normalizedItem + "/");
 
             return (
               <Link

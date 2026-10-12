@@ -211,6 +211,10 @@ export interface Quotation {
     details: string;
   }[];
   validUntil: string;
+  customerAddress?: string;
+  shippingAddress?: string;
+  customerGst?: string;
+  paymentTerms?: string;
   createdAt: string;
 }
 
@@ -241,11 +245,70 @@ export interface SalesOrder {
   poNumber: string;
   poDate: string;
   orderValue: number;
+  totalValue?: number; // alias for orderValue
+  deliveryAddress?: string;
+  customerGstin?: string;
   orderStatus: "Confirmed" | "Production/Stock" | "QC" | "Dispatch" | "Delivered" | "Payment Cleared" | "Order Placed" | string;
   paymentSchedule: PaymentMilestone[];
   items?: QuotationItem[];
   materialDispatchedDate?: string;
   deliveredDate?: string;
+  createdAt: string;
+}
+
+export type InvoiceType = "Tax Invoice" | "Proforma Invoice" | "Milestone Invoice";
+export type InvoiceStatus = "Draft" | "Issued" | "Partially Paid" | "Paid" | "Overdue" | "Cancelled";
+
+export interface InvoiceItem {
+  sku: string;
+  name: string;
+  hsnCode: string; // e.g. "84592990"
+  quantity: number;
+  unitPrice: number; // Base rate excluding GST
+  discountPercent?: number;
+  taxableAmount: number;
+  gstPercent: number; // 18%
+  cgstAmount: number; // 9% for intra-state
+  sgstAmount: number; // 9% for intra-state
+  igstAmount: number; // 18% for inter-state
+  total: number;
+}
+
+export interface Invoice {
+  _id: string;
+  orgId?: string;
+  invoiceId: string; // e.g. INV-2026-0042 or PI-2026-0042
+  invoiceType: InvoiceType;
+  invoiceDate: string; // YYYY-MM-DD
+  dueDate: string; // YYYY-MM-DD
+  quotationId?: string; // Linked quote (e.g. QT-9201)
+  orderId?: string; // Linked sales order (e.g. SO-1023)
+  franchiseId: string;
+  franchiseName: string;
+  customerId?: string;
+  customerName: string;
+  companyName: string;
+  customerGstin?: string;
+  billingAddress: string;
+  shippingAddress: string;
+  placeOfSupply: string; // State / Code
+  items: InvoiceItem[];
+  subtotal: number;
+  discountTotal: number;
+  taxableAmount: number;
+  taxAmount: number;
+  grandTotal: number;
+  amountPaid: number;
+  balanceDue: number;
+  status: InvoiceStatus;
+  paymentTerms: string; // e.g. "20% Advance, 70% Dispatch, 10% Installation"
+  bankDetails?: {
+    bankName: string;
+    accountNumber: string;
+    ifscCode: string;
+    branch: string;
+  };
+  notes?: string;
   createdAt: string;
 }
 

@@ -16,6 +16,7 @@ import {
   OrganizationModel,
   SuperAdminModel,
   PartnerPolicyModel,
+  InvoiceModel,
 } from "./models";
 import {
   Franchise,
@@ -25,6 +26,7 @@ import {
   Opportunity,
   Quotation,
   SalesOrder,
+  Invoice,
   Installation,
   InstallationChecklist,
   SupportTicket,
@@ -105,6 +107,116 @@ async function ensureInitialized() {
             }));
             await OrderModel.updateOne({ _id: ord._id }, { $set: { paymentSchedule: updatedSched } });
           }
+        }
+
+        // Seed initial sample invoices if collection is empty
+        const invCount = await InvoiceModel.countDocuments();
+        if (invCount === 0) {
+          const sampleOrg = (await OrganizationModel.findOne().lean()) as any;
+          const defaultOrgId = sampleOrg?.orgId || "ORG-ARGUS";
+          await InvoiceModel.insertMany([
+            {
+              orgId: defaultOrgId,
+              invoiceId: "INV-2026-0001",
+              invoiceType: "Tax Invoice",
+              invoiceDate: "2026-04-02",
+              dueDate: "2026-04-17",
+              quotationId: "QT-9201",
+              orderId: "SO-1021",
+              franchiseId: "FR-MAT01",
+              franchiseName: "Argus Chennai Franchise",
+              customerId: "CUST-5001",
+              customerName: "Ramesh Narayanan",
+              companyName: "Kovai Precision Tooling Works",
+              customerGstin: "33AABCK1029F1Z3",
+              billingAddress: "Plot 42, SIDCO Industrial Estate, Ambattur, Chennai, TN - 600058",
+              shippingAddress: "Plot 42, SIDCO Industrial Estate, Ambattur, Chennai, TN - 600058",
+              placeOfSupply: "Tamil Nadu (33)",
+              items: [
+                {
+                  sku: "ARG-VMC-850",
+                  name: "Argus VMC 850 High Precision Machining Center",
+                  hsnCode: "84592990",
+                  quantity: 1,
+                  unitPrice: 1850000,
+                  discountPercent: 0,
+                  taxableAmount: 1850000,
+                  gstPercent: 18,
+                  cgstAmount: 166500,
+                  sgstAmount: 166500,
+                  igstAmount: 0,
+                  total: 2183000,
+                },
+              ],
+              subtotal: 1850000,
+              discountTotal: 0,
+              taxableAmount: 1850000,
+              taxAmount: 333000,
+              grandTotal: 2183000,
+              amountPaid: 2183000,
+              balanceDue: 0,
+              status: "Paid",
+              paymentTerms: "20% Advance, 70% Dispatch, 10% Installation",
+              bankDetails: {
+                bankName: "HDFC Bank Ltd",
+                accountNumber: "50200084920194",
+                ifscCode: "HDFC0001248",
+                branch: "Peelamedu Commercial Branch, Coimbatore",
+              },
+              notes: "Material dispatched with E-Way Bill 481902819201. 1 Year Standard Warranty included.",
+              createdAt: "2026-04-02T10:00:00.000Z",
+            },
+            {
+              orgId: defaultOrgId,
+              invoiceId: "PI-2026-0002",
+              invoiceType: "Proforma Invoice",
+              invoiceDate: "2026-04-06",
+              dueDate: "2026-04-21",
+              quotationId: "QT-9202",
+              franchiseId: "FR-MAD",
+              franchiseName: "Argus Madurai Franchise",
+              customerId: "CUST-5002",
+              customerName: "K. Shanmugam",
+              companyName: "Madurai Aero Engg Components",
+              customerGstin: "33AABCM4928L1Z8",
+              billingAddress: "12-B Industrial Corridor, Kappalur, Madurai, TN - 625008",
+              shippingAddress: "12-B Industrial Corridor, Kappalur, Madurai, TN - 625008",
+              placeOfSupply: "Tamil Nadu (33)",
+              items: [
+                {
+                  sku: "ARG-CNC-TC200",
+                  name: "Argus Heavy Duty CNC Turning Center TC-200",
+                  hsnCode: "84581100",
+                  quantity: 1,
+                  unitPrice: 1420000,
+                  discountPercent: 5,
+                  taxableAmount: 1349000,
+                  gstPercent: 18,
+                  cgstAmount: 121410,
+                  sgstAmount: 121410,
+                  igstAmount: 0,
+                  total: 1591820,
+                },
+              ],
+              subtotal: 1420000,
+              discountTotal: 71000,
+              taxableAmount: 1349000,
+              taxAmount: 242820,
+              grandTotal: 1591820,
+              amountPaid: 318364,
+              balanceDue: 1273456,
+              status: "Partially Paid",
+              paymentTerms: "20% Advance for Production Slot Booking, Balance 80% on Dispatch",
+              bankDetails: {
+                bankName: "HDFC Bank Ltd",
+                accountNumber: "50200084920194",
+                ifscCode: "HDFC0001248",
+                branch: "Peelamedu Commercial Branch, Coimbatore",
+              },
+              notes: "Proforma issued for bank disbursement / advance payment clearance.",
+              createdAt: "2026-04-06T14:30:00.000Z",
+            },
+          ]).catch(() => {});
         }
 
         isInitialized = true;
@@ -1854,8 +1966,45 @@ export const dbRepository = {
     let franchiseId = data.franchiseId || (typeof createdBy === "object" ? createdBy?.franchiseId : undefined) || "";
     let franchiseName = data.franchiseName || (typeof createdBy === "object" ? createdBy?.franchiseName : undefined) || "";
 
-    const targetOppId = data.opportunityId || data.oppId;
-    if (targetOppId && (!companyName || !customerName || !franchiseId || !franchiseName)) {
+    const userName = (typeof createdBy === "string" ? createdBy : createdBy?.name) || "Franchise User";
+
+    let targetOppId = (data.opportunityId || data.oppId || "").trim();
+    if (!targetOppId) {
+      const oppCount = await OpportunityModel.countDocuments({ orgId: activeOrgId });
+      let nextOppNum = 1050 + oppCount + 1;
+      while (await OpportunityModel.exists({ orgId: activeOrgId, opportunityId: `OP-${nextOppNum}` })) {
+        nextOppNum++;
+      }
+      targetOppId = `OP-${nextOppNum}`;
+
+      // Also create lightweight Opportunity record so the relationship is fully established
+      await OpportunityModel.create({
+        orgId: activeOrgId,
+        opportunityId: targetOppId,
+        customerId: data.customerId || "CUST-5001",
+        customerName: customerName || "Valued Customer",
+        companyName: companyName || customerName || "Valued Customer",
+        phone: "+91 98000 00000",
+        email: "contact@client.com",
+        stage: "Quotation Generated",
+        estimatedValue: grandTotal,
+        franchiseId,
+        franchiseName,
+        ownerId: (typeof createdBy === "object" ? createdBy?.id : "") || "usr-admin",
+        ownerName: userName,
+        requirementsNotes: "Auto-created opportunity from direct quotation",
+        timeline: [
+          {
+            stage: "Quotation Generated",
+            date: new Date().toISOString().split("T")[0],
+            completed: true,
+            note: `Quotation ${quoteId} generated.`,
+          },
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }).catch((e: any) => console.warn("Auto-opportunity creation warning:", e.message));
+    } else if (!companyName || !customerName || !franchiseId || !franchiseName) {
       const opp: any = await OpportunityModel.findOne({
         orgId: activeOrgId,
         ...idOr(targetOppId, { opportunityId: targetOppId }, { oppId: targetOppId }),
@@ -1868,12 +2017,10 @@ export const dbRepository = {
       }
     }
 
-    const userName = (typeof createdBy === "string" ? createdBy : createdBy?.name) || "Franchise User";
-
     const newQuote = await QuotationModel.create({
       orgId: activeOrgId,
       quoteId,
-      opportunityId: targetOppId || "OP-1001",
+      opportunityId: targetOppId,
       customerId: data.customerId || "CUST-5001",
       customerName: customerName || "Valued Customer",
       companyName: companyName || customerName || "Valued Customer",
@@ -1971,6 +2118,151 @@ export const dbRepository = {
     }
 
     const res = await QuotationModel.deleteOne(query);
+    return (res.deletedCount || 0) > 0;
+  },
+
+  // INVOICES
+  async getInvoices(orgId?: string | null, franchiseId?: string | null): Promise<Invoice[]> {
+    await ensureInitialized();
+    if (!orgId) return [];
+    const query: any = { orgId };
+    if (franchiseId) query.franchiseId = franchiseId;
+    const docs = await InvoiceModel.find(query).sort({ createdAt: -1 }).lean();
+    return cleanDocs<Invoice>(docs);
+  },
+
+  async getInvoiceById(id: string, orgId?: string | null): Promise<Invoice | null> {
+    await ensureInitialized();
+    if (!orgId) return null;
+    const query: any = { ...idOr(id, { invoiceId: id }), orgId };
+    const doc = await InvoiceModel.findOne(query).lean();
+    return doc ? cleanDoc<Invoice>(doc) : null;
+  },
+
+  async createInvoice(data: Partial<Invoice>, orgId?: string | null): Promise<Invoice> {
+    await ensureInitialized();
+    const activeOrgId = data.orgId || orgId || "ORG-TEMP";
+    const invoiceType = data.invoiceType || "Tax Invoice";
+    const prefix = invoiceType === "Proforma Invoice" ? "PI" : "INV";
+    const currentYear = new Date().getFullYear();
+
+    const count = await InvoiceModel.countDocuments({ orgId: activeOrgId });
+    let nextNum = 100 + count + 1;
+    let invoiceId = data.invoiceId || `${prefix}-${currentYear}-${String(nextNum).padStart(4, "0")}`;
+    while (await InvoiceModel.exists({ orgId: activeOrgId, invoiceId })) {
+      nextNum++;
+      invoiceId = `${prefix}-${currentYear}-${String(nextNum).padStart(4, "0")}`;
+    }
+
+    const items = (data.items || []).map((item: any) => {
+      const qty = item.quantity || 1;
+      const rate = item.unitPrice || 0;
+      const discount = item.discountPercent || 0;
+      const taxable = Math.round(rate * qty * (1 - discount / 100));
+      const gstPercent = item.gstPercent || 18;
+      const gstAmount = Math.round(taxable * (gstPercent / 100));
+      return {
+        sku: item.sku || "CUSTOM-SKU",
+        name: item.name || "Machinery / Equipment",
+        hsnCode: item.hsnCode || "84592990",
+        quantity: qty,
+        unitPrice: rate,
+        discountPercent: discount,
+        taxableAmount: taxable,
+        gstPercent,
+        cgstAmount: Math.round(gstAmount / 2),
+        sgstAmount: Math.round(gstAmount / 2),
+        igstAmount: 0,
+        total: taxable + gstAmount,
+      };
+    });
+
+    const subtotal = items.reduce((acc: number, i: any) => acc + (i.unitPrice * i.quantity), 0);
+    const taxableAmount = items.reduce((acc: number, i: any) => acc + i.taxableAmount, 0);
+    const taxAmount = items.reduce((acc: number, i: any) => acc + (i.total - i.taxableAmount), 0);
+    const grandTotal = taxableAmount + taxAmount;
+    const amountPaid = Number(data.amountPaid) || 0;
+    const balanceDue = Math.max(0, grandTotal - amountPaid);
+    const status = data.status || (balanceDue === 0 ? "Paid" : amountPaid > 0 ? "Partially Paid" : "Issued");
+
+    const defaultBank = {
+      bankName: "HDFC Bank Ltd",
+      accountNumber: "50200084920194",
+      ifscCode: "HDFC0001248",
+      branch: "Peelamedu Commercial Branch, Coimbatore",
+    };
+
+    const newInvoice = await InvoiceModel.create({
+      orgId: activeOrgId,
+      invoiceId,
+      invoiceType,
+      invoiceDate: data.invoiceDate || new Date().toISOString().split("T")[0],
+      dueDate: data.dueDate || new Date(Date.now() + 15 * 86400000).toISOString().split("T")[0],
+      quotationId: data.quotationId,
+      orderId: data.orderId,
+      franchiseId: data.franchiseId || "FR-HO",
+      franchiseName: data.franchiseName || "Argus Head Office",
+      customerId: data.customerId || "CUST-5001",
+      customerName: data.customerName || "Customer",
+      companyName: data.companyName || data.customerName || "Customer Company",
+      customerGstin: data.customerGstin || "33AAACA1234A1Z5",
+      billingAddress: data.billingAddress || "Industrial Estate, Sector 4, Chennai, TN",
+      shippingAddress: data.shippingAddress || data.billingAddress || "Industrial Estate, Sector 4, Chennai, TN",
+      placeOfSupply: data.placeOfSupply || "Tamil Nadu (33)",
+      items,
+      subtotal,
+      discountTotal: subtotal - taxableAmount,
+      taxableAmount,
+      taxAmount,
+      grandTotal,
+      amountPaid,
+      balanceDue,
+      status,
+      paymentTerms: data.paymentTerms || "20% Advance, 70% Dispatch, 10% Installation",
+      bankDetails: data.bankDetails || defaultBank,
+      notes: data.notes || "Statutory GST invoice issued subject to Coimbatore jurisdiction.",
+      createdAt: new Date().toISOString(),
+    });
+
+    return cleanDoc<Invoice>(newInvoice);
+  },
+
+  async updateInvoiceStatus(
+    id: string,
+    updateData: { status?: Invoice["status"]; amountPaid?: number; notes?: string },
+    orgId?: string | null
+  ): Promise<Invoice | null> {
+    await ensureInitialized();
+    if (!orgId) return null;
+    const query = { ...idOr(id, { invoiceId: id }), orgId };
+    const invoice = await InvoiceModel.findOne(query);
+    if (!invoice) return null;
+
+    if (updateData.amountPaid !== undefined) {
+      invoice.amountPaid = Number(updateData.amountPaid);
+      invoice.balanceDue = Math.max(0, invoice.grandTotal - invoice.amountPaid);
+      if (invoice.balanceDue === 0) {
+        invoice.status = "Paid";
+      } else if (invoice.amountPaid > 0) {
+        invoice.status = "Partially Paid";
+      }
+    }
+    if (updateData.status) {
+      invoice.status = updateData.status;
+    }
+    if (updateData.notes) {
+      invoice.notes = updateData.notes;
+    }
+
+    await invoice.save();
+    return cleanDoc<Invoice>(invoice);
+  },
+
+  async deleteInvoice(id: string, orgId?: string | null): Promise<boolean> {
+    await ensureInitialized();
+    if (!orgId) return false;
+    const query = { ...idOr(id, { invoiceId: id }), orgId };
+    const res = await InvoiceModel.deleteOne(query);
     return (res.deletedCount || 0) > 0;
   },
 

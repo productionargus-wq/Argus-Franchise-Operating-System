@@ -21,6 +21,7 @@ import {
   Printer,
   Trash2,
   RefreshCw,
+  ReceiptText,
 } from "lucide-react";
 
 export default function QuotationDetailPage() {
@@ -42,6 +43,67 @@ export default function QuotationDetailPage() {
   const [isPoModalOpen, setIsPoModalOpen] = useState(false);
   const [poNumber, setPoNumber] = useState("");
   const [poDate, setPoDate] = useState(new Date().toISOString().split("T")[0]);
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
+
+  const handleGenerateProformaInvoice = async () => {
+    if (!quotation || !currentUser?.orgId) return;
+    setCreatingInvoice(true);
+    try {
+      const payload = {
+        orgId: currentUser.orgId,
+        invoiceType: "Proforma Invoice",
+        quotationId: quotation.quoteId,
+        franchiseId: quotation.franchiseId || currentUser.franchiseId || "FR-HO",
+        franchiseName: quotation.franchiseName || "Argus Partner",
+        customerId: quotation.customerId || "CUST-5001",
+        customerName: quotation.customerName,
+        companyName: quotation.companyName || quotation.customerName,
+        billingAddress: quotation.customerAddress || "Industrial Estate, Sector 4, Chennai, TN",
+        shippingAddress: quotation.shippingAddress || quotation.customerAddress || "Industrial Estate, Sector 4, Chennai, TN",
+        items: quotation.items.map((it: any) => {
+          const qty = it.quantity || 1;
+          const rate = it.unitPrice || 0;
+          const disc = it.discount || 0;
+          const taxable = Math.round(rate * qty * (1 - disc / 100));
+          const gst = Math.round(taxable * 0.18);
+          return {
+            sku: it.sku || "CUSTOM-SKU",
+            name: it.productName || it.name || "Industrial Machine Tool",
+            hsnCode: "84592990",
+            quantity: qty,
+            unitPrice: rate,
+            discountPercent: disc,
+            taxableAmount: taxable,
+            gstPercent: 18,
+            cgstAmount: Math.round(gst / 2),
+            sgstAmount: Math.round(gst / 2),
+            igstAmount: 0,
+            total: taxable + gst,
+          };
+        }),
+        paymentTerms: quotation.paymentTerms || "20% Advance, 70% Dispatch, 10% Installation",
+        notes: "Proforma Invoice generated for advance payment release against Quotation " + quotation.quoteId,
+      };
+
+      const res = await fetch(`/api/invoices?orgId=${encodeURIComponent(currentUser.orgId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        router.push("/invoices");
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to generate Proforma Invoice");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to generate Proforma Invoice");
+    } finally {
+      setCreatingInvoice(false);
+    }
+  };
 
   const handleDeleteQuotation = async () => {
     if (!quotation || !currentUser?.orgId) return;
@@ -178,16 +240,29 @@ export default function QuotationDetailPage() {
 
         <div className="flex items-center gap-2">
           {(quotation.status === "Approved" || (!quotation.requiresSpecialApproval && quotation.status !== "Rejected" && quotation.status !== "Accepted")) && (
-            <button
-              onClick={() => {
-                setPoNumber(`PO-${Math.floor(10000 + Math.random() * 90000)}`);
-                setIsPoModalOpen(true);
-              }}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <ShoppingCart className="w-3.5 h-3.5" />
-              <span>Convert to Sales Order</span>
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  setPoNumber(`PO-${Math.floor(10000 + Math.random() * 90000)}`);
+                  setIsPoModalOpen(true);
+                }}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <ShoppingCart className="w-3.5 h-3.5" />
+                <span>Convert to Sales Order</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleGenerateProformaInvoice}
+                disabled={creatingInvoice}
+                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Generate Proforma Invoice for advance payment"
+              >
+                <ReceiptText className="w-3.5 h-3.5" />
+                <span>{creatingInvoice ? "Generating..." : "Generate Proforma Invoice"}</span>
+              </button>
+            </>
           )}
 
           <button

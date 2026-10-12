@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { SalesOrder, PaymentMilestone } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -20,13 +20,16 @@ import {
   Wrench,
   DollarSign,
   Plus,
+  ReceiptText,
 } from "lucide-react";
 
 export default function OrderDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const { currentUser } = useAuth();
   const [order, setOrder] = useState<SalesOrder | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
 
   // Payment recording modal
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -34,6 +37,67 @@ export default function OrderDetailPage() {
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const [paymentRef, setPaymentRef] = useState<string>("");
   const [submittingPayment, setSubmittingPayment] = useState(false);
+
+  const handleGenerateTaxInvoice = async () => {
+    if (!order || !currentUser?.orgId) return;
+    setGeneratingInvoice(true);
+    try {
+      const totalPaid = order.paymentSchedule.reduce((acc, m) => acc + m.receivedAmount, 0);
+      const val = order.orderValue || order.totalValue || 0;
+      const taxable = Math.round(val / 1.18);
+      const gst = val - taxable;
+      const payload = {
+        orgId: currentUser.orgId,
+        invoiceType: "Tax Invoice",
+        orderId: order.orderId,
+        quotationId: order.quoteId,
+        franchiseId: order.franchiseId || currentUser.franchiseId || "FR-HO",
+        franchiseName: order.franchiseName || "Argus Partner",
+        customerId: order.customerId || "CUST-5001",
+        customerName: order.customerName,
+        companyName: order.companyName || order.customerName,
+        billingAddress: order.deliveryAddress || "Industrial Estate, Sector 4, Chennai, TN",
+        shippingAddress: order.deliveryAddress || "Industrial Estate, Sector 4, Chennai, TN",
+        amountPaid: totalPaid,
+        items: [
+          {
+            sku: "ARG-PRO-ORD",
+            name: `Industrial Equipment — Ref ${order.orderId} (PO ${order.poNumber})`,
+            hsnCode: "84592990",
+            quantity: 1,
+            unitPrice: taxable,
+            discountPercent: 0,
+            taxableAmount: taxable,
+            gstPercent: 18,
+            cgstAmount: Math.round(gst / 2),
+            sgstAmount: Math.round(gst / 2),
+            igstAmount: 0,
+            total: val,
+          },
+        ],
+        paymentTerms: "20% Advance, 70% Dispatch, 10% Installation",
+        notes: `Statutory GST Tax Invoice for Sales Order ${order.orderId} (PO ${order.poNumber}).`,
+      };
+
+      const res = await fetch(`/api/invoices?orgId=${encodeURIComponent(currentUser.orgId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        router.push("/invoices");
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to generate Tax Invoice");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to generate Tax Invoice");
+    } finally {
+      setGeneratingInvoice(false);
+    }
+  };
 
   const stages: SalesOrder["orderStatus"][] = [
     "Confirmed",
@@ -149,6 +213,17 @@ export default function OrderDetailPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleGenerateTaxInvoice}
+            disabled={generatingInvoice}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            title="Generate Statutory GST Tax Invoice"
+          >
+            <ReceiptText className="w-3.5 h-3.5" />
+            <span>{generatingInvoice ? "Generating..." : "Generate Tax Invoice"}</span>
+          </button>
+
           <Link
             href="/installations"
             className="px-3.5 py-2 bg-[#293033] hover:bg-[#FF6600] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors flex items-center gap-1.5"

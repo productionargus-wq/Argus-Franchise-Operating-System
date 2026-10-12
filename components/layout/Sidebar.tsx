@@ -20,6 +20,7 @@ import {
   Tag,
   ChevronRight,
   FileCheck,
+  ReceiptText,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -40,6 +41,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     { label: "Leads", href: "/leads", icon: Users },
     { label: "Opportunities / Demos", href: "/opportunities", icon: Target },
     { label: "Quotations", href: "/quotations", icon: FileText },
+    { label: "Invoices", href: "/invoices", icon: ReceiptText },
     { label: "Orders / Payments", href: "/orders", icon: ShoppingCart },
     { label: "Customers", href: "/customers", icon: Building2 },
     { label: "Installations / Training", href: "/installations", icon: Wrench },
@@ -55,6 +57,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     { label: "Customers (360°)", href: "/customers", icon: Users },
     { label: "Leads", href: "/ho/leads", icon: Target },
     { label: "Quotations & Approvals", href: "/quotations", icon: FileText },
+    { label: "Invoices & Billing", href: "/invoices", icon: ReceiptText },
     { label: "Sales & Orders", href: "/ho/orders", icon: ShoppingCart },
     { label: "Installations", href: "/ho/installations", icon: Wrench },
     { label: "Support Monitoring", href: "/ho/support", icon: LifeBuoy },

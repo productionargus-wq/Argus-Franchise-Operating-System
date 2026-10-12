@@ -280,7 +280,7 @@ function QuotationBuilderContent() {
       <form onSubmit={handleSubmitQuotation} className="space-y-6">
         {/* Customer & Opportunity Metadata */}
         <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Company / Account Name *</label>
               <input
@@ -289,6 +289,7 @@ function QuotationBuilderContent() {
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+                placeholder="e.g. Precision Gears Pvt Ltd"
               />
             </div>
             <div>
@@ -299,15 +300,7 @@ function QuotationBuilderContent() {
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Opportunity ID</label>
-              <input
-                type="text"
-                value={opportunityId}
-                onChange={(e) => setOpportunityId(e.target.value)}
-                className="w-full p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#FF6600]"
+                placeholder="e.g. Ramesh Kumar (Director of Operations)"
               />
             </div>
           </div>

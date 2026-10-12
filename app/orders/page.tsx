@@ -14,6 +14,7 @@ import {
   FileCheck,
   Truck,
   IndianRupee,
+  ReceiptText,
 } from "lucide-react";
 
 export default function OrdersPage() {
@@ -69,12 +70,21 @@ export default function OrdersPage() {
           </p>
         </div>
 
-        <Link
-          href="/quotations"
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 self-start sm:self-auto"
-        >
-          <span>Convert Approved Quotation →</span>
-        </Link>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Link
+            href="/invoices"
+            className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            <ReceiptText className="w-3.5 h-3.5" />
+            <span>Invoices & Billing →</span>
+          </Link>
+          <Link
+            href="/quotations"
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            <span>Convert Approved Quotation →</span>
+          </Link>
+        </div>
       </div>
 
       {/* Filter Bar */}

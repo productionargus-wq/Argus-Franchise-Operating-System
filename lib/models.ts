@@ -417,3 +417,51 @@ export const PartnerPolicyModel: Model<any> =
 export const UserModel: Model<any> =
   mongoose.models.User || mongoose.model("User", UserSchema);
 
+// INVOICE SCHEMA
+const InvoiceSchema = new Schema(
+  {
+    orgId: { type: String, required: true, index: true },
+    invoiceId: { type: String, required: true, index: true },
+    invoiceType: {
+      type: String,
+      default: "Tax Invoice",
+      enum: ["Tax Invoice", "Proforma Invoice", "Milestone Invoice"],
+      index: true,
+    },
+    invoiceDate: { type: String, required: true },
+    dueDate: { type: String, required: true },
+    quotationId: { type: String, index: true },
+    orderId: { type: String, index: true },
+    franchiseId: { type: String, required: true, index: true },
+    franchiseName: { type: String, required: true },
+    customerId: { type: String, index: true },
+    customerName: { type: String, required: true },
+    companyName: { type: String, required: true },
+    customerGstin: { type: String },
+    billingAddress: { type: String },
+    shippingAddress: { type: String },
+    placeOfSupply: { type: String, default: "Tamil Nadu (33)" },
+    items: [{ type: Schema.Types.Mixed }],
+    subtotal: { type: Number, default: 0 },
+    discountTotal: { type: Number, default: 0 },
+    taxableAmount: { type: Number, default: 0 },
+    taxAmount: { type: Number, default: 0 },
+    grandTotal: { type: Number, default: 0 },
+    amountPaid: { type: Number, default: 0 },
+    balanceDue: { type: Number, default: 0 },
+    status: {
+      type: String,
+      default: "Issued",
+      enum: ["Draft", "Issued", "Partially Paid", "Paid", "Overdue", "Cancelled"],
+      index: true,
+    },
+    paymentTerms: { type: String, default: "20% Advance, 70% Dispatch, 10% Installation" },
+    bankDetails: { type: Schema.Types.Mixed },
+    notes: { type: String },
+  },
+  { collection: "invoices", strict: false, timestamps: true }
+);
+
+export const InvoiceModel: Model<any> =
+  mongoose.models.Invoice || mongoose.model("Invoice", InvoiceSchema);
+

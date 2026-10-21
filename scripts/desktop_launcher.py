@@ -237,6 +237,8 @@ def main():
     )
 
     try:
+        # Keep authentication and app navigation inside the desktop window
+        webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = False
         webview.start(gui='edgechromium', debug=False)
     finally:
         cleanup_server()

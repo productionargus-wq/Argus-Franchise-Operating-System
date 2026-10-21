@@ -68,8 +68,15 @@ export function GoogleSignInButton({
       if (typeof window !== "undefined" && window.google?.accounts?.id) {
         try {
           if (!(window as any).__google_gsi_initialized) {
+            const callbackUri =
+              typeof window !== "undefined"
+                ? `${window.location.origin}/api/auth/google/callback`
+                : "http://localhost:3000/api/auth/google/callback";
+
             window.google.accounts.id.initialize({
               client_id: clientId,
+              ux_mode: "redirect",
+              login_uri: callbackUri,
               callback: (resp: any) => {
                 if (typeof (window as any).__google_gsi_handler === "function") {
                   (window as any).__google_gsi_handler(resp);

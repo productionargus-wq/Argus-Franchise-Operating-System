@@ -98,11 +98,11 @@ SPLASH_HTML = """<!DOCTYPE html>
         var attempts = 0;
         function checkServer() {
             attempts++;
-            fetch('http://127.0.0.1:3000', { mode: 'no-cors' })
+            fetch('http://localhost:3000', { mode: 'no-cors' })
                 .then(function() {
                     document.getElementById('status-text').innerText = 'Ready! Opening Portal...';
                     setTimeout(function() {
-                        window.location.replace('http://127.0.0.1:3000');
+                        window.location.replace('http://localhost:3000');
                     }, 300);
                 })
                 .catch(function() {
@@ -198,7 +198,7 @@ def start_node_server(node_exe, target_dir):
     
     env = os.environ.copy()
     env['PORT'] = '3000'
-    env['HOSTNAME'] = '127.0.0.1'
+    env['HOSTNAME'] = '0.0.0.0'
     env['NODE_ENV'] = 'production'
     # Environment variables (MONGODB_URI, GOOGLE_CLIENT_ID, etc.) are loaded directly
     # from the unpacked .env.local and .env files inside target_dir by Next.js.
